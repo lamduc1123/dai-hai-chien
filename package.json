@@ -8,7 +8,12 @@
     "dev": "node server.js",
     "test:sim": "node tests/simulator.js"
   },
-  "keywords": ["battleship", "multiplayer", "socket.io", "team-building"],
+  "keywords": [
+    "battleship",
+    "multiplayer",
+    "socket.io",
+    "team-building"
+  ],
   "author": "Antigravity",
   "license": "ISC",
   "dependencies": {
@@ -17,6 +22,7 @@
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
+    "firebase-tools": "^15.32.0",
     "socket.io-client": "^4.7.5"
   }
 }
