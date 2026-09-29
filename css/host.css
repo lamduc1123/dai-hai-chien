@@ -1,0 +1,234 @@
+/* public/css/host.css - Bảng điều khiển MC */
+
+.host-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.host-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 20px;
+}
+
+.host-title-area {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.host-badge-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.host-badge-live::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: pulseGlow 1s infinite alternate;
+}
+
+.host-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Privacy Mode */
+.privacy-active .secret-text {
+  filter: blur(5px);
+  user-select: none;
+  transition: filter 0.2s ease;
+}
+
+/* Control Bar */
+.control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 20px;
+  border-left: 4px solid #38bdf8;
+}
+
+.control-status-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.control-buttons-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Teams Grid in Host */
+.host-teams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+.team-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 4px solid;
+  transition: all 0.2s ease;
+}
+
+.team-card.is-active-turn {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+  background: rgba(14, 165, 233, 0.08);
+}
+
+.team-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.team-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.team-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.score-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.score-val {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--amber-gold);
+  min-width: 60px;
+  text-align: center;
+}
+
+.fleet-mini-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+}
+
+.fleet-ship-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fleet-ship-cells {
+  font-family: monospace;
+  color: #38bdf8;
+  letter-spacing: 1px;
+}
+
+/* Log and Simulator section */
+.host-bottom-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .host-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.log-box {
+  height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: #020617;
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+  font-size: 0.85rem;
+}
+
+.log-item {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border-left: 3px solid #38bdf8;
+  background: rgba(30, 41, 59, 0.4);
+}
+.log-item.HIT { border-left-color: #ef4444; }
+.log-item.SUNK { border-left-color: #f59e0b; }
+.log-item.ELIMINATED { border-left-color: #a855f7; }
+.log-item.MISS { border-left-color: #64748b; }
+
+/* QR Tab Navigation in Modal */
+.qr-tab-nav {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #334155;
+}
+.qr-tab-btn {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.qr-tab-btn.active {
+  background: #0284c7;
+  color: #fff;
+  border-color: #38bdf8;
+}

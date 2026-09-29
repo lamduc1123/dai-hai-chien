@@ -1,0 +1,357 @@
+/* public/css/naval-light.css */
+/* Giao diện sáng (Light Theme) hiện đại, phong cách Trung tâm Chỉ huy Hải quân Công nghệ cao */
+
+:root {
+  --bg-ocean: #f0f7ff;
+  --bg-gradient: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 50%, #eff6ff 100%);
+  --surface-card: rgba(255, 255, 255, 0.9);
+  --surface-card-hover: rgba(255, 255, 255, 0.98);
+  --border-ocean: rgba(14, 165, 233, 0.28);
+  --border-focus: #0284c7;
+  
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-naval: #0369a1;
+
+  --navy-dark: #0c4a6e;
+  --navy-primary: #0284c7;
+  --navy-accent: #0ea5e9;
+
+  --cell-water: #e0f2fe;
+  --cell-water-border: #bae6fd;
+  --cell-hover: #7dd3fc;
+  
+  --color-hit: #ef4444;
+  --color-miss: #38bdf8;
+  --color-sunk: #1e293b;
+  --color-ship: #3b82f6;
+
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 6px -1px rgba(14, 165, 233, 0.12), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 25px -5px rgba(14, 165, 233, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --shadow-glow: 0 0 20px rgba(14, 165, 233, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--bg-gradient);
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Glassmorphism Panel */
+.glass-panel {
+  background: var(--surface-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-ocean);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s ease;
+}
+
+/* Button System */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  text-decoration: none;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+.btn-outline {
+  background: #ffffff;
+  border-color: var(--border-ocean);
+  color: var(--navy-dark);
+}
+
+.btn-outline:hover {
+  background: #f0f9ff;
+  border-color: var(--navy-primary);
+  color: var(--navy-primary);
+}
+
+.btn-large {
+  padding: 12px 24px;
+  font-size: 1.05rem;
+  border-radius: 10px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.badge-live {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  animation: pulse-live 2s infinite;
+}
+
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Grid Caro 20x10 Tactical Ocean Map */
+.ocean-map-wrapper {
+  position: relative;
+  width: 100%;
+  overflow-x: auto;
+  padding: 8px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid var(--border-ocean);
+  box-shadow: inset 0 2px 8px rgba(14, 165, 233, 0.08);
+}
+
+.ocean-grid {
+  display: grid;
+  grid-template-columns: 36px repeat(20, minmax(26px, 1fr));
+  grid-template-rows: 28px repeat(10, minmax(26px, 1fr));
+  gap: 2px;
+  user-select: none;
+  min-width: 680px;
+}
+
+.ocean-header-corner {
+  background: #f8fafc;
+  border-radius: 4px;
+}
+
+.ocean-col-header, .ocean-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  color: var(--navy-dark);
+  background: #e0f2fe;
+  border-radius: 4px;
+}
+
+.ocean-cell {
+  position: relative;
+  background: var(--cell-water);
+  border: 1px solid var(--cell-water-border);
+  border-radius: 4px;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ocean-cell:hover:not(.shot-hit):not(.shot-miss):not(.disabled) {
+  background: var(--cell-hover);
+  border-color: #0284c7;
+  transform: scale(1.08);
+  z-index: 10;
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+}
+
+/* Cell States */
+.ocean-cell.shot-miss {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0284c7;
+  cursor: default;
+}
+
+.ocean-cell.shot-miss::after {
+  content: '🌊';
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.ocean-cell.shot-hit {
+  background: #fee2e2;
+  border-color: #f87171;
+  color: #dc2626;
+  cursor: default;
+  animation: hit-wobble 0.4s ease;
+}
+
+.ocean-cell.shot-hit::after {
+  content: '💥';
+  font-size: 0.95rem;
+}
+
+.ocean-cell.shot-sunk {
+  background: #1e293b;
+  border-color: #0f172a;
+  color: #f87171;
+}
+
+.ocean-cell.shot-sunk::after {
+  content: '☠️';
+  font-size: 0.95rem;
+}
+
+.ocean-cell.has-ship {
+  background: #bfdbfe;
+  border-color: #60a5fa;
+}
+
+.ocean-cell.has-ship::before {
+  content: '🚢';
+  font-size: 0.9rem;
+}
+
+.ocean-cell.zone-highlight {
+  border-width: 2px;
+  box-shadow: inset 0 0 6px rgba(2, 132, 199, 0.25);
+}
+
+@keyframes hit-wobble {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+
+/* Modals & Dialogs */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid var(--border-ocean);
+  box-shadow: var(--shadow-lg);
+  width: 90%;
+  max-width: 540px;
+  padding: 24px;
+  transform: translateY(20px);
+  transition: transform 0.2s ease;
+}
+
+.modal-overlay.active .modal-content {
+  transform: translateY(0);
+}
+
+/* Form Controls */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--navy-dark);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #f8fafc;
+  color: var(--text-main);
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: var(--navy-primary);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+/* Missile Animation Overlay */
+.missile-flyer {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+  transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s;
+  font-size: 2rem;
+  filter: drop-shadow(0 4px 10px rgba(239, 68, 68, 0.6));
+}
