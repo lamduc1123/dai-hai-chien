@@ -1,0 +1,25 @@
+name: Tự động Deploy lên Firebase Hosting khi có cập nhật
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy_to_firebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kiểm tra mã nguồn (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Cài đặt Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Deploy lên Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DAI_HAI_CHIEN }}'
+          channelId: live
+          projectId: dai-hai-chien
