@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📺 Đại Hải Đồ Trình Chiếu Máy Chiếu - 200 Ô</title>
+  <link rel="stylesheet" href="/css/naval-light.css">
+  <style>
+    body {
+      background: #f0f7ff;
+      overflow-x: hidden;
+    }
+
+    .projector-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 12px 16px;
+      gap: 12px;
+      max-width: 1920px;
+      margin: 0 auto;
+    }
+
+    .projector-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid var(--border-ocean);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .projector-main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 16px;
+      min-height: 0;
+    }
+
+    .projector-map-box {
+      background: #ffffff;
+      border-radius: 14px;
+      border: 1px solid var(--border-ocean);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-md);
+    }
+
+    .projector-side-box {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .team-badge-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: #ffffff;
+      border: 1px solid var(--border-ocean);
+      transition: all 0.2s ease;
+    }
+
+    .team-badge-row.active {
+      border-color: #0284c7;
+      background: #f0f9ff;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.35);
+      transform: scale(1.02);
+    }
+
+    .team-badge-row.eliminated {
+      opacity: 0.45;
+      background: #f1f5f9;
+      filter: grayscale(1);
+    }
+
+    .fullscreen-btn {
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--border-ocean);
+    }
+  </style>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-sync.js"></script>
+  <script src="/js/audio.js"></script>
+</head>
+<body>
+
+  <div class="projector-container">
+
+    <!-- Thanh tiêu đề máy chiếu -->
+    <header class="projector-header">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <span style="font-size: 2rem;">⚓</span>
+        <div>
+          <h1 style="font-size: 1.4rem; font-weight: 900; color: var(--navy-dark); letter-spacing: 0.5px;">
+            ĐẠI HẢI CHIẾN: TRANH ĐOẠT ĐẠI DƯƠNG
+          </h1>
+          <div style="display: flex; align-items: center; gap: 10px; margin-top: 2px;">
+            <span class="badge badge-live">TRỰC TIẾP 16:9</span>
+            <span style="font-size: 0.9rem; color: var(--text-muted);">Phòng: <b id="projRoomCode" style="color: var(--navy-primary);">------</b></span>
+            <span id="projPhaseBadge" class="badge" style="background: #e0f2fe; color: #0284c7;">SẢNH CHỜ</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Khung hiển thị lượt bắn hiện tại -->
+      <div id="projTurnBanner" style="display: flex; align-items: center; gap: 10px; padding: 8px 20px; border-radius: 12px; background: #f0f9ff; border: 2px solid #0284c7;">
+        <span style="font-size: 1.2rem;">🎯</span>
+        <span id="projTurnText" style="font-size: 1.25rem; font-weight: 900; color: var(--navy-dark);">
+          CHỜ KHỞI ĐỘNG
+        </span>
+      </div>
+
+      <!-- Nút chức năng máy chiếu -->
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button id="btnToggleSound" class="fullscreen-btn" title="Bật/Tắt âm thanh">🔊</button>
+        <button id="btnFullscreen" class="fullscreen-btn" title="Toàn màn hình">⛶ F11</button>
+      </div>
+    </header>
+
+    <!-- Khu vực trình chiếu chính -->
+    <main class="projector-main">
+      
+      <!-- Cột trái: Đại Hải Đồ 200 ô -->
+      <section class="projector-map-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--navy-dark);">
+            🗺️ HẢI ĐỒ TÁC CHIẾN 200 Ô (A-T × 1-10)
+          </h2>
+          <div style="font-size: 0.85rem; color: var(--text-muted);">
+            Lưới bảo mật cấp cao (Ẩn tuyệt đối vị trí tàu)
+          </div>
+        </div>
+
+        <div class="ocean-map-wrapper" style="flex: 1; display: flex; align-items: center; justify-content: center;">
+          <div id="projOceanGrid" class="ocean-grid" style="width: 100%;">
+            <!-- Render bằng screen.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Cột phải: Sinh lực hạm đội & QR -->
+      <aside class="projector-side-box">
+        
+        <div class="glass-panel" style="padding: 14px; flex: 1; display: flex; flex-direction: column;">
+          <h3 style="font-size: 1rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 10px;">
+            🛡️ SINH LỰC HẠM ĐỘI
+          </h3>
+          <div id="projTeamsList" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto;">
+            <!-- Render tự động -->
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding: 14px; text-align: center;">
+          <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-bottom: 6px;">
+            📱 QUÉT ĐỂ THAM GIA
+          </div>
+          <img id="projQrImg" src="" alt="Mã QR" style="width: 140px; height: 140px; border-radius: 8px; border: 1px solid var(--border-ocean); margin: 0 auto; display: block;">
+          <div id="projQrUrl" style="font-size: 0.75rem; color: var(--navy-primary); margin-top: 6px; font-weight: bold; word-break: break-all;"></div>
+        </div>
+
+      </aside>
+
+    </main>
+
+  </div>
+
+  <script src="/js/screen.js"></script>
+</body>
+</html>

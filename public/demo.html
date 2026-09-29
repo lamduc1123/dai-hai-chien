@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎮 Bản Demo Chơi Thử Solo - Đại Hải Chiến 6 Vùng</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/screen.css">
+  <link rel="stylesheet" href="/css/join.css">
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    /* Demo Specific Layout */
+    body {
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #020617;
+    }
+
+    /* Demo Header Bar */
+    .demo-header {
+      height: 52px;
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      gap: 12px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .demo-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .demo-badge {
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      color: #fff;
+      font-weight: 900;
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .demo-room-chip {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+      font-size: 0.8rem;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 6px;
+    }
+
+    .demo-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .demo-btn {
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .demo-btn-green {
+      background: #10b981;
+      color: #fff;
+    }
+    .demo-btn-green:hover { background: #059669; }
+
+    .demo-btn-blue {
+      background: #0284c7;
+      color: #fff;
+    }
+    .demo-btn-blue:hover { background: #0369a1; }
+
+    .demo-btn-amber {
+      background: #d97706;
+      color: #fff;
+    }
+    .demo-btn-amber:hover { background: #b45309; }
+
+    .demo-btn-outline {
+      background: rgba(30, 41, 59, 0.8);
+      color: #94a3b8;
+      border-color: #334155;
+    }
+    .demo-btn-outline:hover { color: #f8fafc; border-color: #64748b; }
+
+    .demo-count-btn {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #94a3b8;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .demo-count-btn:hover {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.15);
+    }
+    .demo-count-btn.active {
+      background: #0284c7 !important;
+      color: #ffffff !important;
+      border-color: #38bdf8;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Main Split Body */
+    .demo-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Left Pane: Big Screen */
+    .demo-screen-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-right: 2px solid rgba(56, 189, 248, 0.2);
+      padding: 8px 12px;
+      position: relative;
+      background: #070d19;
+    }
+
+    .demo-screen-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      padding: 4px 10px;
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      flex-shrink: 0;
+    }
+
+    .demo-screen-container {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Right Pane: Phone Simulator */
+    .demo-phone-pane {
+      width: 410px;
+      max-width: 420px;
+      flex-shrink: 0;
+      background: #0b1120;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      position: relative;
+    }
+
+    .phone-mockup {
+      width: 100%;
+      height: 100%;
+      max-height: 860px;
+      background: #020617;
+      border-radius: 28px;
+      border: 5px solid #1e293b;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), 0 0 15px rgba(56, 189, 248, 0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .phone-top-notch {
+      width: 120px;
+      height: 16px;
+      background: #1e293b;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      align-self: center;
+      flex-shrink: 0;
+      z-index: 50;
+    }
+
+    .phone-screen-content {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      padding: 8px;
+      position: relative;
+    }
+
+    /* Mobile tabs override */
+    .enemy-selector-wrap {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+
+    .enemy-tab-pill {
+      padding: 5px 9px;
+      border-radius: 6px;
+      background: rgba(30, 41, 59, 0.8);
+      color: #94a3b8;
+      font-size: 0.72rem;
+      font-weight: 800;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .enemy-tab-pill.active {
+      background: #0284c7;
+      color: #fff;
+      border-color: #38bdf8;
+    }
+
+    .enemy-tab-pill.eliminated {
+      opacity: 0.4;
+      text-decoration: line-through;
+      pointer-events: none;
+    }
+
+    /* Responsive for small laptop */
+    @media (max-width: 1100px) {
+      .demo-phone-pane {
+        width: 360px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Demo Bar -->
+  <header class="demo-header">
+    <div class="demo-title-group">
+      <span style="font-size: 1.4rem;">⚓</span>
+      <div>
+        <span style="font-weight: 900; font-size: 1rem; color: #f8fafc; letter-spacing: 0.5px;">ĐẠI HẢI CHIẾN</span>
+        <span class="demo-badge">CHƠI THỬ SOLO (1 NGƯỜI vs 5 BOT)</span>
+      </div>
+      <div class="demo-room-chip">PHÒNG: <span id="demoRoomCode">DEMO</span></div>
+      <a href="/" class="demo-btn demo-btn-outline" style="text-decoration: none; border-color: #38bdf8; color: #38bdf8; padding: 4px 10px;" title="Quay lại Trang Chủ chọn Chế độ và Số Đội">
+        🏠 Chọn Chế Độ
+      </a>
+    </div>
+
+    <!-- Turn status -->
+    <div id="demoGlobalTurnText" style="font-weight: 800; font-size: 0.85rem; color: #fbbf24;">
+      ⏳ Đang thiết lập phòng đấu...
+    </div>
+
+    <!-- Quick action controls -->
+    <div class="demo-actions">
+      <!-- Selector số người chơi trong demo -->
+      <div style="display: flex; align-items: center; background: rgba(30, 41, 59, 0.9); border: 1px solid #475569; border-radius: 8px; padding: 2px 4px; gap: 2px;" id="demoPlayerCountGroup">
+        <span style="font-size: 0.72rem; font-weight: 800; color: #94a3b8; padding: 0 4px;">SỐ NGƯỜI:</span>
+        <button class="demo-count-btn" data-count="2" title="1 Người vs 1 Bot (Solo 1v1)">2</button>
+        <button class="demo-count-btn" data-count="3" title="1 Người vs 2 Bot">3</button>
+        <button class="demo-count-btn" data-count="4" title="1 Người vs 3 Bot (Đấu Trường 4 Góc)">4</button>
+        <button class="demo-count-btn" data-count="5" title="1 Người vs 4 Bot">5</button>
+        <button class="demo-count-btn active" data-count="6" title="1 Người vs 5 Bot (Đại Chiến Tiêu Chuẩn)">6</button>
+      </div>
+
+      <button id="btnDemoQuickStart" class="demo-btn demo-btn-green" title="Bắt đầu 2 phút dàn trận hoặc vào bắn ngay">
+        🛠️ BẮT ĐẦU DÀN TRẬN (2 PHÚT)
+      </button>
+
+      <button id="btnDemoBotSpeed" class="demo-btn demo-btn-blue" title="Thay đổi tốc độ bắn của Bot">
+        ⚡ TỐC ĐỘ: 1.2S
+      </button>
+
+      <button id="btnDemoSimulateTop3" class="demo-btn demo-btn-amber" title="Xem trước bục vinh danh và lật mở Quán Quân Top 3">
+        👑 TEST TOP 3
+      </button>
+
+      <button id="btnDemoReset" class="demo-btn demo-btn-outline" title="Tạo trận đấu thử nghiệm mới">
+        🔄 VÁN MỚI
+      </button>
+
+      <button id="btnDemoSound" class="demo-btn demo-btn-outline" title="Bật/Tắt âm thanh">
+        🔊
+      </button>
+
+      <a href="/screen" target="_blank" class="demo-btn demo-btn-outline" style="text-decoration: none;" title="Mở Màn hình lớn ở tab riêng">
+        📺 Màn hình rời
+      </a>
+    </div>
+  </header>
+
+  <!-- Split Body: Left Big Screen + Right Phone Simulator -->
+  <main class="demo-body">
+
+    <!-- LEFT: Màn Hình Lớn Trình Chiếu (MultiZoneRenderer) -->
+    <section class="demo-screen-pane">
+      <div class="demo-screen-topbar">
+        <div style="font-size: 0.8rem; font-weight: 800; color: #38bdf8;">
+          📺 MÀN HÌNH LỚN TRÌNH CHIẾU (6 CHIẾN KHU 15x15 = 1,350 Ô)
+        </div>
+        <div style="display: flex; gap: 8px; font-size: 0.75rem; color: #94a3b8; align-items: center;">
+          <button id="btnDemoToggleSecretShips" class="demo-btn demo-btn-outline" style="padding: 3px 8px; font-size: 0.72rem; border-color: #38bdf8; color: #38bdf8;" title="Xem vị trí 6 tàu của tất cả các đội trên màn hình lớn (Dành cho MC / Kiểm tra)">
+            👁️ Xem Vị Trí Tàu (Chế độ MC)
+          </button>
+          <span>•</span>
+          <span>Sương mù: <strong style="color: #34d399;">Ẩn Danh</strong></span>
+          <span>•</span>
+          <span>Xáo trộn vị trí: <strong style="color: #38bdf8;">Bật</strong></span>
+        </div>
+      </div>
+
+      <!-- Container 6 Chiến Khu 15x15 -->
+      <div class="demo-screen-container" id="screenMapContainer">
+        <!-- MultiZoneRenderer renders here -->
+      </div>
+    </section>
+
+    <!-- RIGHT: Phone Simulator (Điện Thoại Người Chơi) -->
+    <section class="demo-phone-pane">
+      <div class="phone-mockup">
+        <div class="phone-top-notch"></div>
+
+        <div class="phone-screen-content">
+
+          <!-- Player Status Card -->
+          <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span id="playerTeamDot" style="width: 10px; height: 10px; border-radius: 50%; background: #38bdf8;"></span>
+                <strong id="playerTeamName" style="color: #38bdf8; font-size: 0.85rem;">Đội Của Bạn (Đang khởi tạo...)</strong>
+              </div>
+              <div style="font-weight: 900; color: #fbbf24; font-size: 0.85rem;" id="playerScoreText">0đ</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: #94a3b8; margin-top: 3px;">
+              <span>Máu hạm đội: <strong id="playerHpText" style="color: #34d399;">21/21 ô</strong></span>
+              <span>Bí danh: <strong id="playerMysteryZoneText" style="color: #f59e0b;">Bí mật</strong></span>
+            </div>
+          </div>
+
+          <!-- Turn Alert Banner -->
+          <div id="playerTurnBanner" class="mobile-turn-alert waiting" style="padding: 8px 12px; font-size: 0.82rem; margin-bottom: 8px;">
+            ⏳ Chờ trận đấu bắt đầu...
+          </div>
+
+          <!-- Phone Lobby Action Button -->
+          <div id="playerLobbyActionWrap" style="margin-bottom: 8px;">
+            <button id="btnPhoneStartPrep" class="btn btn-success" style="width: 100%; padding: 12px; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.5px; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); cursor: pointer;">
+              🛠️ BẮT ĐẦU DÀN TRẬN (2 PHÚT)
+            </button>
+          </div>
+
+          <!-- 1. Giai Đoạn Dàn Trận View (Preparation) -->
+          <div id="playerPrepView" style="display: none; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; background: rgba(56, 189, 248, 0.1); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.2);">
+              <span style="font-weight: 800; color: #38bdf8;">⚓ DÀN TRẬN 6 TÀU (21 Ô):</span>
+              <strong style="color: #fbbf24; font-size: 1rem; font-family: monospace;" id="playerPrepCountdown">02:00</strong>
+            </div>
+
+            <!-- Ship Selector Tabs -->
+            <div class="prep-ship-selector" id="demoPrepShipSelector">
+              <button class="prep-ship-btn active" data-type="CARRIER_1">🚢 Tàu 5</button>
+              <button class="prep-ship-btn" data-type="CARRIER_2">⚓ Tàu 5</button>
+              <button class="prep-ship-btn" data-type="BATTLESHIP">⛴️ Tàu 4</button>
+              <button class="prep-ship-btn" data-type="CRUISER">🛳️ Tàu 3</button>
+              <button class="prep-ship-btn" data-type="DESTROYER_1">🚤 Tàu 2</button>
+              <button class="prep-ship-btn" data-type="DESTROYER_2">🤿 Tàu 2</button>
+            </div>
+
+            <!-- Action Toolbar for active ship -->
+            <div class="prep-action-bar" id="demoPrepActionBar">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span id="demoActiveShipIcon" style="font-size: 1.1rem;">🚢</span>
+                <div>
+                  <div id="demoActiveShipName" style="font-size: 0.75rem; font-weight: 800; color: #38bdf8;">Tàu sân bay I</div>
+                  <div id="demoActiveShipStatus" style="font-size: 0.65rem; color: #94a3b8;">5 ô • Đã đặt</div>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 4px; align-items: center;">
+                <button id="btnDemoRotateShip" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.72rem; font-weight: 800; border-color: #f59e0b; color: #f59e0b; cursor: pointer;" title="Bấm để xoay hướng Ngang hoặc Dọc">
+                  🔄 <span id="demoPrepOrientationText">Ngang (↔)</span>
+                </button>
+                <button id="btnDemoClearBoard" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.72rem; color: #f87171; border-color: #ef4444; cursor: pointer;" title="Xóa toàn bộ tàu để tự đặt từng tàu từ đầu">
+                  🧹 Xóa
+                </button>
+              </div>
+            </div>
+
+            <!-- SingleZoneRenderer for own fleet -->
+            <div id="playerPrepBoardContainer" style="width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #020617; border: 1px solid rgba(56, 189, 248, 0.2);"></div>
+
+            <div id="demoPrepHintText" style="font-size: 0.68rem; color: #34d399; text-align: center; font-weight: 700;">
+              ✨ Chạm ô trống để dời tàu • Chạm vào tàu để chọn & xoay hướng!
+            </div>
+
+            <div style="display: flex; gap: 6px; margin-top: 2px;">
+              <button id="btnPlayerRandomFleet" class="btn btn-outline" style="flex: 1; padding: 9px 4px; font-size: 0.78rem; font-weight: 800; border-color: #38bdf8; color: #38bdf8; cursor: pointer;">
+                🎲 Xếp Ngẫu Nhiên
+              </button>
+              <button id="btnPlayerConfirmFleet" class="btn btn-success" style="flex: 1.3; padding: 9px 4px; font-size: 0.82rem; font-weight: 900; cursor: pointer;">
+                ✓ Xác Nhận Đội Hình
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. Giai Đoạn Bắn Tàu View (Battle) -->
+          <div id="playerBattleView" style="display: flex; flex-direction: column; flex: 1;">
+            
+            <!-- Enemy Tabs -->
+            <div class="enemy-selector-wrap" id="playerEnemyTabs">
+              <!-- Render enemy tabs (Vùng A..F) -->
+            </div>
+
+            <div id="playerTargetAimText" style="font-size: 0.72rem; color: #94a3b8; margin-bottom: 4px; text-align: center;">
+              Chọn 1 ô trên bảng đối thủ để ngắm bắn
+            </div>
+
+            <!-- SingleZoneRenderer for enemy board -->
+            <div id="playerEnemyBoardContainer" style="width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #020617; border: 1px solid rgba(56, 189, 248, 0.2);"></div>
+
+            <!-- Selected Cell and Fire Button -->
+            <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+              <div id="playerSelectedChip" style="display: none; justify-content: space-between; align-items: center; background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; border-radius: 6px; padding: 4px 8px; font-size: 0.75rem;">
+                <span>🎯 Tọa độ chọn: <strong id="playerChipCell" style="color: #38bdf8; font-size: 0.95rem;">--</strong></span>
+                <span id="playerChipTarget" style="color: #fbbf24; font-weight: 800;">Vùng ?</span>
+              </div>
+
+              <button id="btnPlayerFire" class="btn btn-outline btn-large" style="width: 100%; padding: 10px; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.5px; cursor: pointer;">
+                👉 CHỌN 1 Ô TRÊN BẢNG ĐỂ BẮN
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Cinematic Shot Overlay -->
+  <div id="shotCinematicOverlay" class="shot-cinematic-overlay">
+    <div class="shot-cinematic-box">
+      <div id="shotCinematicTarget" class="shot-cinematic-target">MỤC TIÊU: VÙNG D</div>
+      <div id="shotCinematicCell" class="shot-cinematic-cell">H8</div>
+      <div id="shotCinematicResult" class="shot-cinematic-result HIT">BẮN TRÚNG MỤC TIÊU! 🔥 (+100đ)</div>
+    </div>
+  </div>
+
+  <!-- Victory Overlay (Bục Olympic Vinh Danh Top 3) -->
+  <div id="victoryOverlay" class="victory-overlay">
+    <div class="victory-modal">
+      <div class="victory-header">
+        <h1 class="victory-title">👑 BẢNG VINH DANH QUÁN QUÂN</h1>
+        <p class="victory-subtitle">Trận Đại Hải Chiến đã kết thúc! Tôn vinh Top 3 Hạm đội xuất sắc nhất!</p>
+      </div>
+
+      <div class="podium-container" id="podiumContainer">
+        <!-- Render Top 3 Olympic Podium -->
+      </div>
+
+      <!-- Rankings Table -->
+      <table class="rankings-table">
+        <thead>
+          <tr>
+            <th>Hạng</th>
+            <th>Danh hiệu</th>
+            <th>Đội / Chiến khu</th>
+            <th>Trạng thái</th>
+            <th>Tàu sống sót</th>
+            <th>Sinh lực</th>
+            <th>Tổng điểm</th>
+          </tr>
+        </thead>
+        <tbody id="rankingsTableBody">
+          <!-- Render 6 teams -->
+        </tbody>
+      </table>
+
+      <div class="victory-actions">
+        <button id="btnRestartFromVictory" class="btn btn-success" style="padding: 10px 24px;">🔄 Chơi Lại Ván Mới</button>
+        <button id="btnCloseVictory" class="btn btn-outline" style="padding: 10px 20px;">Đóng Bảng Vinh Danh</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Result Toast on Phone -->
+  <div id="mobileResultToast" class="mobile-toast">
+    <span id="toastIcon" style="font-size: 1.5rem;">🎯</span>
+    <div>
+      <div id="toastTitle" style="font-weight: 900; font-size: 0.95rem;">BẮN TRÚNG!</div>
+      <div id="toastSubtitle" style="font-size: 0.78rem; opacity: 0.9;">Trúng ô H8</div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/audio.js?v=2.1"></script>
+  <script src="/js/map-renderer.js?v=2.1"></script>
+  <script src="/js/demo.js?v=2.1"></script>
+</body>
+</html>

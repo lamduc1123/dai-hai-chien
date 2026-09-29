@@ -1,0 +1,336 @@
+/* public/css/style.css - Cyber Naval Tactical Design System */
+
+:root {
+  --bg-deep: #070d19;
+  --bg-surface: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
+  --border-dim: #1e293b;
+  --border-bright: #38bdf8;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --cyan-neon: #00f0ff;
+  --cyan-glow: rgba(0, 240, 255, 0.35);
+  --red-crimson: #ef4444;
+  --red-glow: rgba(239, 68, 68, 0.4);
+  --amber-gold: #f59e0b;
+  --amber-glow: rgba(245, 158, 11, 0.35);
+  --emerald-radar: #10b981;
+  --emerald-glow: rgba(16, 185, 129, 0.35);
+  --purple-neon: #a855f7;
+  --font-main: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-deep);
+  color: var(--text-main);
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image: 
+    radial-gradient(circle at 50% 10%, rgba(14, 165, 233, 0.08) 0%, transparent 60%),
+    radial-gradient(circle at 90% 90%, rgba(99, 102, 241, 0.06) 0%, transparent 50%),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+}
+
+/* Common Animations */
+@keyframes radarSweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+@keyframes missileFly {
+  0% { transform: translateY(-80px) scale(0.4); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes explosionShake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, 4px) scale(1.03); }
+  40% { transform: translate(4px, -4px) scale(1.05); }
+  60% { transform: translate(-3px, -2px) scale(1.02); }
+  80% { transform: translate(2px, 3px) scale(1); }
+}
+
+/* Glass Card */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Tactical Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #fff;
+  border: 1px solid #38bdf8;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #0369a1, #0284c7);
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.5);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: #fff;
+  border: 1px solid #f87171;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.35);
+}
+.btn-danger:hover {
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.6);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #059669, #047857);
+  color: #fff;
+  border: 1px solid #34d399;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.35);
+}
+.btn-success:hover {
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.6);
+}
+
+.btn-outline {
+  background: rgba(30, 41, 59, 0.7);
+  color: #94a3b8;
+  border: 1px solid #475569;
+}
+.btn-outline:hover {
+  background: rgba(51, 65, 85, 0.9);
+  color: #f8fafc;
+  border-color: #64748b;
+}
+
+.btn-large {
+  padding: 16px 32px;
+  font-size: 1.25rem;
+  letter-spacing: 1px;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* Zone Colors & Styling */
+.zone-1 { border-color: #2563eb !important; }
+.zone-2 { border-color: #f59e0b !important; }
+.zone-3 { border-color: #ef4444 !important; }
+.zone-4 { border-color: #8b5cf6 !important; }
+.zone-5 { border-color: #10b981 !important; }
+.zone-6 { border-color: #06b6d4 !important; }
+
+/* Grand Map Grid 15x15 */
+.grand-map-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.grand-map {
+  display: grid;
+  grid-template-columns: 24px repeat(15, minmax(0, 1fr));
+  grid-template-rows: 20px repeat(15, minmax(0, 1fr));
+  gap: 1.5px;
+  background-color: #020617;
+  padding: 6px;
+  border-radius: 10px;
+  border: 2px solid #1e293b;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: calc(100vh - 80px);
+  aspect-ratio: 1 / 1;
+  margin: auto;
+  box-sizing: border-box;
+}
+
+/* Grid Headers */
+.grid-header-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 2px;
+}
+
+.grid-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #38bdf8;
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 2px;
+}
+
+/* Map Cells */
+.map-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background-color: #0b1329;
+  border: 1px solid rgba(30, 41, 59, 0.7);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.map-cell:hover:not(.shot):not(.own-zone) {
+  background-color: #1e3a8a;
+  border-color: #60a5fa;
+  transform: scale(1.08);
+  z-index: 5;
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.6);
+}
+
+.map-cell.selected {
+  background-color: #0284c7 !important;
+  border: 2px solid #38bdf8 !important;
+  box-shadow: 0 0 15px #38bdf8 !important;
+  transform: scale(1.15);
+  z-index: 10;
+  animation: pulseGlow 1s infinite alternate;
+}
+
+.map-cell.shot-hit {
+  background-color: rgba(220, 38, 38, 0.45);
+  border-color: #ef4444;
+  color: #fca5a5;
+  box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.8);
+}
+
+.map-cell.shot-miss {
+  background-color: rgba(30, 41, 59, 0.6);
+  border-color: #334155;
+  color: #64748b;
+}
+
+.map-cell.own-ship {
+  background-color: rgba(14, 165, 233, 0.35);
+  border-color: #0284c7;
+  box-shadow: inset 0 0 6px rgba(14, 165, 233, 0.5);
+}
+
+.map-cell.own-zone {
+  cursor: not-allowed;
+  opacity: 0.95;
+}
+
+/* Zone Divider Lines on 24x16 grid */
+/* Zone 1-3 vs Zone 4-6 horizontal divider (Row H vs I) */
+.map-cell.row-H {
+  border-bottom: 2.5px solid rgba(255, 255, 255, 0.35);
+}
+.map-cell.col-8, .map-cell.col-16 {
+  border-right: 2.5px solid rgba(255, 255, 255, 0.35);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.badge-online { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+.badge-offline { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+.badge-ready { background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid #0284c7; }
+.badge-waiting { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.modal-card {
+  background: #0f172a;
+  border: 1px solid #38bdf8;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.25);
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+  transform: scale(0.92);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-overlay.active .modal-card {
+  transform: scale(1);
+}

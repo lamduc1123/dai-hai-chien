@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>⚓ Điều Khiển Chiến Hạm - Đại Hải Chiến</title>
+  <link rel="stylesheet" href="/css/naval-light.css">
+  <style>
+    body {
+      background: #f0f7ff;
+      padding-bottom: 30px;
+      touch-action: manipulation;
+    }
+
+    .mobile-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-ocean);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .mobile-container {
+      padding: 12px;
+      max-width: 580px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .turn-banner {
+      padding: 12px;
+      border-radius: 12px;
+      text-align: center;
+      font-weight: 900;
+      font-size: 1rem;
+      letter-spacing: 0.5px;
+      transition: all 0.3s ease;
+    }
+
+    .turn-banner.my-turn {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      color: #92400e;
+      border: 2px solid #f59e0b;
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
+      animation: pulse-turn 1.5s infinite;
+    }
+
+    .turn-banner.wait-turn {
+      background: #f1f5f9;
+      color: #64748b;
+      border: 1px solid #cbd5e1;
+    }
+
+    @keyframes pulse-turn {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+
+    .target-readout {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #ffffff;
+      border-radius: 10px;
+      border: 1px solid var(--border-ocean);
+    }
+
+    .target-key-box {
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: #0284c7;
+      background: #e0f2fe;
+      padding: 4px 14px;
+      border-radius: 6px;
+    }
+
+    .ocean-cell.selected-target {
+      background: #fef08a !important;
+      border-color: #eab308 !important;
+      box-shadow: 0 0 10px rgba(234, 179, 8, 0.8);
+      transform: scale(1.15);
+      z-index: 20;
+    }
+
+    .ocean-cell.selected-target::after {
+      content: '🎯' !important;
+      font-size: 0.9rem;
+    }
+
+    .my-fleet-status {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+    }
+
+    .ship-status-card {
+      background: #ffffff;
+      border: 1px solid var(--border-ocean);
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 0.8rem;
+    }
+
+    .ship-status-card.sunk {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      text-decoration: line-through;
+      color: #dc2626;
+    }
+
+    .slot-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      width: 100%;
+      text-align: left;
+    }
+
+    .slot-btn.selected {
+      border-color: #0284c7;
+      background: #e0f2fe;
+      box-shadow: 0 0 0 2px #0284c7;
+    }
+
+    .slot-btn.taken {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: #f1f5f9;
+    }
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-sync.js"></script>
+  <script src="/js/audio.js"></script>
+</head>
+<body>
+
+  <!-- Thanh tiêu đề di động -->
+  <header class="mobile-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 1.4rem;">⚓</span>
+      <div>
+        <div id="headerTeamTitle" style="font-weight: 800; font-size: 0.95rem; color: var(--navy-dark);">
+          ĐẠI HẢI CHIẾN
+        </div>
+        <div id="headerSubTitle" style="font-size: 0.75rem; color: var(--text-muted);">
+          Giao diện chỉ huy di động
+        </div>
+      </div>
+    </div>
+    <div id="teamBadgeHeader" class="badge" style="display: none; background: #e0f2fe; color: #0284c7;">
+      ĐỘI
+    </div>
+  </header>
+
+  <div class="mobile-container">
+
+    <!-- PHẦN 1: ĐĂNG KÝ VÀ VÀO PHÒNG -->
+    <section id="viewLobby" class="glass-panel" style="padding: 16px;">
+      <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 12px; text-align: center;">
+        📱 ĐĂNG KÝ HẠM ĐỘI
+      </h2>
+
+      <div class="form-group">
+        <label class="form-label">Tên Chỉ Huy / Tên Đội:</label>
+        <input type="text" id="inputPlayerName" class="form-control" placeholder="Nhập tên thuyền trưởng của bạn..." maxlength="20">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Chọn Vị Trí Chiến Hạm:</label>
+        <div id="teamSlotsContainer" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Nút chọn đội sinh động bằng JS -->
+        </div>
+      </div>
+
+      <button id="btnJoinTeam" class="btn btn-primary btn-large" style="width: 100%; margin-top: 10px;">
+        ⚓ XÁC NHẬN THAM GIA
+      </button>
+
+      <!-- Trạng thái chờ sau khi đã vào đội -->
+      <div id="waitingRoomState" style="display: none; margin-top: 16px; text-align: center; border-top: 1px solid var(--border-ocean); padding-top: 16px;">
+        <div style="font-size: 1rem; font-weight: bold; color: var(--navy-dark); margin-bottom: 8px;">
+          Bạn đã vào vị trí thành công!
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
+          Bấm nút sẵn sàng để thông báo cho chỉ huy trưởng bắt đầu dàn trận.
+        </p>
+        <button id="btnToggleReady" class="btn btn-success btn-large" style="width: 100%;">
+          ✓ BẤM SẴN SÀNG
+        </button>
+      </div>
+    </section>
+
+    <!-- PHẦN 2: DÀN TRẬN CHIẾN HẠM BÍ MẬT -->
+    <section id="viewPlacement" class="glass-panel" style="display: none; padding: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div>
+          <h2 style="font-size: 1rem; font-weight: 800; color: var(--navy-dark);">🗺️ DÀN TRẬN CHIẾN HẠM</h2>
+          <div id="placementZoneHint" style="font-size: 0.75rem; color: var(--navy-primary); font-weight: bold;">
+            Vùng triển khai của bạn: ...
+          </div>
+        </div>
+        <button id="btnAutoPlace" class="btn btn-outline" style="font-size: 0.8rem; padding: 6px 12px;">
+          🎲 Xếp Tự Động
+        </button>
+      </div>
+
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
+        Hạm đội của bạn sẽ được bảo mật tuyệt đối. Bạn có thể bấm "Xếp Tự Động" để dàn trận nhanh chóng.
+      </p>
+
+      <div class="ocean-map-wrapper">
+        <div id="placementGrid" class="ocean-grid">
+          <!-- Render bằng join.js -->
+        </div>
+      </div>
+
+      <div style="margin-top: 14px;">
+        <button id="btnLockFleet" class="btn btn-success btn-large" style="width: 100%;">
+          🔒 KHÓA HẠM ĐỘI & SẴN SÀNG
+        </button>
+      </div>
+    </section>
+
+    <!-- PHẦN 3: CHIẾN ĐẤU THỜI GIAN THỰC -->
+    <section id="viewBattle" style="display: none; flex-direction: column; gap: 12px;">
+      
+      <!-- Thông báo lượt bắn -->
+      <div id="turnBanner" class="turn-banner wait-turn">
+        ⏳ ĐANG CHỜ ĐỐI THỦ KHAI HỎA...
+      </div>
+
+      <!-- Hiển thị tọa độ nhắm bắn -->
+      <div class="target-readout">
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Mục Tiêu Đã Chọn:</div>
+          <div id="selectedTargetText" style="font-size: 0.85rem; color: var(--navy-dark); font-weight: bold;">Chạm 1 ô trên bản đồ</div>
+        </div>
+        <div id="selectedTargetDisplay" class="target-key-box">--</div>
+      </div>
+
+      <!-- Đại hải đồ chiến đấu 20x10 -->
+      <div class="glass-panel" style="padding: 10px;">
+        <div class="ocean-map-wrapper">
+          <div id="battleGrid" class="ocean-grid">
+            <!-- Render bằng join.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Nút Khai Hỏa lớn -->
+      <button id="btnFire" class="btn btn-danger btn-large" disabled style="padding: 16px; font-size: 1.15rem; font-weight: 900; letter-spacing: 1px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);">
+        🚀 KHAI HỎA TÊN LỬA!
+      </button>
+
+      <!-- Tình trạng hạm đội của mình -->
+      <div class="glass-panel" style="padding: 12px;">
+        <div style="font-size: 0.85rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 8px;">
+          🛡️ TÌNH TRẠNG HẠM ĐỘI CỦA BẠN:
+        </div>
+        <div id="myFleetList" class="my-fleet-status">
+          <!-- Render tự động -->
+        </div>
+      </div>
+
+      <!-- Kho vật phẩm & Vũ khí cá nhân -->
+      <div class="glass-panel" style="padding: 12px; background: #ffffff;">
+        <div style="font-size: 0.85rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 6px;">
+          🎒 KHO VẬT PHẨM & VŨ KHÍ:
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <div style="flex: 1; padding: 8px; border: 1px dashed #94a3b8; border-radius: 8px; text-align: center; font-size: 0.75rem; color: #64748b;">
+            🛰️ Radar Trinh Sát<br><i>(Đang cập nhật)</i>
+          </div>
+          <div style="flex: 1; padding: 8px; border: 1px dashed #94a3b8; border-radius: 8px; text-align: center; font-size: 0.75rem; color: #64748b;">
+            💣 Thủy Lôi Bí Mật<br><i>(Đang cập nhật)</i>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- PHẦN 4: KẾT THÚC TRẬN ĐẤU -->
+    <section id="viewFinished" class="glass-panel" style="display: none; padding: 24px; text-align: center;">
+      <div style="font-size: 3rem; margin-bottom: 12px;">🏆</div>
+      <h2 style="font-size: 1.4rem; font-weight: 900; color: var(--navy-dark); margin-bottom: 6px;">
+        TRẬN CHIẾN KẾT THÚC!
+      </h2>
+      <div id="winnerAnnounceText" style="font-size: 1.1rem; font-weight: bold; color: var(--navy-primary); margin-bottom: 16px;">
+        ...
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted);">
+        Cảm ơn chỉ huy đã tham gia tác chiến! Vui lòng theo dõi màn hình chính của MC để xem lễ vinh danh.
+      </p>
+    </section>
+
+  </div>
+
+  <script src="/js/join.js"></script>
+</body>
+</html>

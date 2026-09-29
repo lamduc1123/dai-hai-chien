@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚓ Chỉ Huy Trưởng - Đại Hải Chiến 200 Ô</title>
+  <link rel="stylesheet" href="/css/naval-light.css">
+  <style>
+    .host-layout {
+      display: grid;
+      grid-template-columns: 290px 1fr 280px;
+      gap: 16px;
+      padding: 16px;
+      max-width: 1750px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 1200px) {
+      .host-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      margin: 12px 16px 0 16px;
+      background: #ffffff;
+    }
+
+    .teams-roster-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .team-roster-card {
+      padding: 12px;
+      border-radius: 10px;
+      background: #ffffff;
+      border: 1px solid var(--border-ocean);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .team-roster-card.active-turn {
+      border-color: #0284c7;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.3);
+      background: #f0f9ff;
+    }
+
+    .team-roster-card.eliminated {
+      opacity: 0.5;
+      background: #f1f5f9;
+      filter: grayscale(1);
+    }
+
+    .combat-log-container {
+      max-height: 520px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .log-item {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      background: #f8fafc;
+      border-left: 3px solid #cbd5e1;
+    }
+
+    .log-item.hit {
+      border-left-color: #ef4444;
+      background: #fef2f2;
+    }
+
+    .log-item.sunk {
+      border-left-color: #1e293b;
+      background: #fee2e2;
+      font-weight: bold;
+    }
+
+    .log-item.miss {
+      border-left-color: #0284c7;
+      background: #f0f9ff;
+    }
+  </style>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-sync.js"></script>
+  <script src="/js/audio.js"></script>
+</head>
+<body>
+
+  <!-- Thanh điều khiển trên cùng -->
+  <header class="glass-panel header-bar">
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <span style="font-size: 1.8rem;">⚓</span>
+      <div>
+        <h1 style="font-size: 1.25rem; font-weight: 900; color: var(--navy-dark); letter-spacing: 0.5px;">
+          ĐẠI HẢI CHIẾN: CHỈ HUY HẢI QUÂN
+        </h1>
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+          <span class="badge badge-live">TRỰC TIẾP MC</span>
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Mã phòng: <b id="roomCodeText" style="color: var(--navy-primary);">------</b></span>
+          <span id="phaseBadge" class="badge" style="background: #e0f2fe; color: #0284c7;">SẢNH CHỜ</span>
+        </div>
+      </div>
+    </div>
+
+      <button id="btnOpenFirebaseModal" class="btn btn-outline" style="border-color: #f59e0b; color: #d97706;" title="Cài đặt kết nối Google Firebase Cloud">
+        🔥 Firebase
+      </button>
+      <button id="btnOpenConfig" class="btn btn-outline" title="Thiết lập số người chơi và số tàu">
+        ⚙️ Cài Đặt Game
+      </button>
+      <button id="btnAddBot" class="btn btn-outline" style="border-color: #0284c7; color: #0284c7;" title="Thêm 1 máy tự động">
+        🤖 +1 Máy (Bot)
+      </button>
+      <button id="btnFillBots" class="btn btn-outline" style="border-color: #059669; color: #059669;" title="Lấp đầy các đội trống bằng máy">
+        🤖 Lấp Đầy Bằng Máy
+      </button>
+      <button id="btnOpenQR" class="btn btn-primary" title="Mã QR cho người chơi quét">
+        📱 Quét QR Tham Gia
+      </button>
+      <a href="/screen" target="_blank" class="btn btn-outline" title="Mở Màn Hình Trình Chiếu Máy Chiếu">
+        📺 Tab Máy Chiếu
+      </a>
+      <button id="btnSoundToggle" class="btn btn-outline" title="Bật/Tắt âm thanh">
+        🔊 Âm Thanh
+      </button>
+      <button id="btnResetGame" class="btn btn-danger" title="Đặt lại ván mới">
+        🔄 Đặt Lại
+      </button>
+    </div>
+  </header>
+
+  <!-- Thanh hiển thị trạng thái và nút chuyển bước -->
+  <div class="glass-panel" style="margin: 12px 16px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; background: #ffffff; flex-wrap: wrap; gap: 12px;">
+    <div style="display: flex; align-items: center; gap: 24px;">
+      <div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Tiến độ phòng</div>
+        <div id="statusProgressText" style="font-size: 1.2rem; font-weight: 900; color: var(--navy-dark);">0/4 Đội Sẵn Sàng</div>
+      </div>
+      <div style="width: 1px; height: 32px; background: var(--border-ocean);"></div>
+      <div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Lượt Khai Hỏa Hiện Tại</div>
+        <div id="statusTurnText" style="font-size: 1.2rem; font-weight: 900; color: #0284c7;">Chờ Khởi Động</div>
+      </div>
+    </div>
+
+    <!-- Nút hành động theo từng giai đoạn -->
+    <div id="actionButtonsContainer" style="display: flex; align-items: center; gap: 10px;">
+      <button id="btnStartPlacement" class="btn btn-primary btn-large">
+        🗺️ BƯỚC 1: BẮT ĐẦU DÀN TRẬN
+      </button>
+      <button id="btnStartBattle" class="btn btn-success btn-large" style="display: none;">
+        ⚔️ BƯỚC 2: BẮT ĐẦU CHIẾN ĐẤU
+      </button>
+      <button id="btnManualTurn" class="btn btn-outline" style="display: none;" title="Chuyển lượt cho người kế tiếp">
+        ⏩ Chuyển Lượt
+      </button>
+      <button id="btnUndo" class="btn btn-outline" style="display: none;" title="Hủy lượt bắn vừa rồi">
+        ⏪ Hoàn Tác
+      </button>
+    </div>
+  </div>
+
+  <!-- Bố cục chính -->
+  <main class="host-layout">
+    
+    <!-- Cột trái: Danh sách các đội (2 - 8 người chơi / Máy) -->
+    <aside class="glass-panel" style="padding: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="font-size: 1rem; font-weight: 800; color: var(--navy-dark);">👥 DANH SÁCH CHIẾN HẠM</h2>
+        <span id="playerCountLabel" class="badge" style="background: #f1f5f9; color: var(--text-main);">4 Đội</span>
+      </div>
+      <div id="teamsRosterList" class="teams-roster-list">
+        <!-- Render tự động -->
+      </div>
+    </aside>
+
+    <!-- Cột giữa: Đại Hải Đồ 200 ô (20x10) -->
+    <section class="glass-panel" style="padding: 16px; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h2 style="font-size: 1.05rem; font-weight: 800; color: var(--navy-dark); display: flex; align-items: center; gap: 8px;">
+          <span>🗺️ ĐẠI HẢI ĐỒ 200 Ô (A-T × 1-10)</span>
+        </h2>
+        <div style="display: flex; align-items: center; gap: 12px; font-size: 0.85rem;">
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted);">
+            <input type="checkbox" id="chkShowSecretShips"> 👁️ Xem vị trí tàu ẩn (Chỉ MC)
+          </label>
+        </div>
+      </div>
+
+      <!-- Khung lưới hải đồ -->
+      <div class="ocean-map-wrapper">
+        <div id="oceanMapGrid" class="ocean-grid">
+          <!-- Render bằng host.js -->
+        </div>
+      </div>
+
+      <!-- Chú thích & Thống kê -->
+      <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 14px; padding: 10px; background: #f8fafc; border-radius: 8px; font-size: 0.85rem; color: var(--text-muted); flex-wrap: wrap; gap: 8px;">
+        <div>🌊 <b>Bắn Trượt:</b> <span id="statMissCount">0</span></div>
+        <div>💥 <b>Bắn Trúng:</b> <span id="statHitCount">0</span></div>
+        <div>☠️ <b>Tàu Bị Chìm:</b> <span id="statSunkCount">0</span></div>
+        <div>🎯 <b>Tổng Số Phát Bắn:</b> <span id="statTotalShots">0</span></div>
+      </div>
+    </section>
+
+    <!-- Cột phải: Nhật ký chiến sự & QR thu nhỏ -->
+    <aside class="glass-panel" style="padding: 16px; display: flex; flex-direction: column;">
+      <h2 style="font-size: 1rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 8px;">
+        📜 NHẬT KÝ CHIẾN SỰ
+      </h2>
+      <div id="combatLogContainer" class="combat-log-container">
+        <div class="log-item">⚓ Phòng đã sẵn sàng tiếp nhận chỉ huy hoặc máy...</div>
+      </div>
+
+      <div style="margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border-ocean); text-align: center;">
+        <div style="font-size: 0.75rem; font-weight: bold; color: var(--text-muted); margin-bottom: 6px;">QUÉT ĐỂ THAM GIA</div>
+        <img id="qrMiniThumb" src="" alt="Mã QR" style="width: 120px; height: 120px; border-radius: 8px; border: 1px solid var(--border-ocean); cursor: pointer; margin: 0 auto; display: block;" title="Bấm để phóng to">
+        <div id="qrMiniUrl" style="font-size: 0.75rem; color: var(--navy-primary); word-break: break-all; margin-top: 4px;"></div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- Hộp thoại Cài Đặt Game -->
+  <div id="modalConfig" class="modal-overlay">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--navy-dark);">⚙️ THIẾT LẬP THÔNG SỐ TRẬN ĐẤU</h3>
+        <button id="btnCloseConfig" class="btn btn-outline" style="padding: 4px 8px;">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Số lượng người chơi / Đội (2 - 8 đội):</label>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn btn-outline cfg-player-btn" data-val="2">2</button>
+          <button class="btn btn-outline cfg-player-btn" data-val="3">3</button>
+          <button class="btn btn-primary cfg-player-btn" data-val="4">4</button>
+          <button class="btn btn-outline cfg-player-btn" data-val="5">5</button>
+          <button class="btn btn-outline cfg-player-btn" data-val="6">6</button>
+          <button class="btn btn-outline cfg-player-btn" data-val="7">7</button>
+          <button class="btn btn-outline cfg-player-btn" data-val="8">8</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Số lượng tàu của mỗi đội (1 - 5 tàu):</label>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-outline cfg-ship-btn" data-val="1">1</button>
+          <button class="btn btn-primary cfg-ship-btn" data-val="2">2</button>
+          <button class="btn btn-outline cfg-ship-btn" data-val="3">3</button>
+          <button class="btn btn-outline cfg-ship-btn" data-val="4">4</button>
+          <button class="btn btn-outline cfg-ship-btn" data-val="5">5</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Chủng loại & Chiều dài tàu chiến:</label>
+        <select id="cfgShipConfigMode" class="form-control">
+          <option value="mix34">Hỗn hợp Tàu 4 ô & Tàu 3 ô (Khuyên dùng)</option>
+          <option value="size3">Chỉ sử dụng Tàu 3 ô</option>
+          <option value="size4">Chỉ sử dụng Tàu 4 ô</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Phân định thứ tự lượt chơi:</label>
+        <select id="cfgTurnOrderMode" class="form-control">
+          <option value="random">Máy chủ chọn ngẫu nhiên</option>
+          <option value="manual">Theo thứ tự đội đăng ký (1, 2, 3...)</option>
+        </select>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button id="btnSaveConfig" class="btn btn-primary btn-large" style="width: 100%;">
+          ✓ Áp Dụng Cài Đặt
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hộp thoại Mã QR -->
+  <div id="modalQR" class="modal-overlay">
+    <div class="modal-content" style="text-align: center; max-width: 440px;">
+      <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 8px;">
+        📱 QUÉT QR ĐỂ THAM GIA
+      </h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+        Người chơi mở camera điện thoại quét mã hoặc truy cập đường dẫn bên dưới
+      </p>
+      
+      <div style="background: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid var(--border-ocean); display: inline-block;">
+        <img id="qrBigImage" src="" alt="Mã QR Tham Gia" style="width: 260px; height: 260px; display: block; margin: 0 auto;">
+      </div>
+
+      <div style="margin-top: 14px;">
+        <input id="qrCopyUrlInput" type="text" class="form-control" readonly style="text-align: center; font-weight: bold; margin-bottom: 8px;">
+        <button id="btnCopyUrl" class="btn btn-outline" style="width: 100%;">📋 Sao Chép Đường Link</button>
+      </div>
+
+  <!-- Hộp thoại Cấu hình Firebase -->
+  <div id="modalFirebase" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h3 style="font-size: 1.15rem; font-weight: 800; color: #d97706;">🔥 KẾT NỐI GOOGLE FIREBASE</h3>
+        <button id="btnCloseFirebase" class="btn btn-outline" style="padding: 4px 8px;">✕</button>
+      </div>
+
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
+        Nhập <b>Database URL</b> hoặc dán cấu hình từ dự án Firebase của bạn (giống như game Vua Tiếng Việt). Game sẽ tự động chuyển sang đồng bộ qua Cloud Google!
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Database URL (Bắt buộc):</label>
+        <input type="text" id="inputFirebaseDbUrl" class="form-control" placeholder="https://ten-du-an-default-rtdb.asia-southeast1.firebasedatabase.app">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">API Key (Tùy chọn):</label>
+        <input type="text" id="inputFirebaseApiKey" class="form-control" placeholder="AIzaSy...">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Project ID (Tùy chọn):</label>
+        <input type="text" id="inputFirebaseProjectId" class="form-control" placeholder="vua-tieng-viet hoặc dai-hai-chien">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+        <button id="btnSaveFirebase" class="btn btn-primary btn-large" style="width: 100%;">
+          ✓ Lưu & Kích Hoạt Firebase
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/host.js"></script>
+</body>
+</html>

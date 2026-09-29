@@ -1,0 +1,22 @@
+{
+  "name": "dai-hai-chien",
+  "version": "1.0.0",
+  "description": "Multiplayer Naval Battleship Game for 6 Teams with MC Console, Projector Screen and Mobile Controllers",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test:sim": "node tests/simulator.js"
+  },
+  "keywords": ["battleship", "multiplayer", "socket.io", "team-building"],
+  "author": "Antigravity",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "qrcode": "^1.5.3",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.7.5"
+  }
+}

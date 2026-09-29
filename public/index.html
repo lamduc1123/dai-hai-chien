@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚓ ĐẠI HẢI CHIẾN - Chọn Chế Độ Chơi & Số Lượng Đội</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    :root {
+      --primary-cyan: #38bdf8;
+      --glow-cyan: rgba(56, 189, 248, 0.45);
+      --primary-emerald: #10b981;
+      --glow-emerald: rgba(16, 185, 129, 0.45);
+      --bg-dark-overlay: rgba(15, 23, 42, 0.85);
+      --border-card: rgba(56, 189, 248, 0.25);
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 24px 16px 40px;
+      background: radial-gradient(circle at 50% 15%, #0c1c38 0%, #030712 100%);
+      color: #f8fafc;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Container */
+    .hub-container {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .hub-header {
+      text-align: center;
+      position: relative;
+      padding: 10px 0 6px;
+    }
+
+    .hub-header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: #38bdf8;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
+    }
+
+    .hub-title {
+      font-size: 2.6rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #ffffff 30%, #38bdf8 70%, #0284c7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+      text-shadow: 0 4px 20px rgba(56, 189, 248, 0.3);
+    }
+
+    .hub-subtitle {
+      font-size: 1rem;
+      color: #94a3b8;
+      max-width: 640px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    /* Step Card Wrapper */
+    .step-section {
+      background: var(--bg-dark-overlay);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 24px 26px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+      position: relative;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .step-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .step-number {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #fff;
+      font-weight: 900;
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .step-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #f8fafc;
+      letter-spacing: 0.5px;
+    }
+
+    .step-status-tag {
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    .step-status-tag.active {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #10b981;
+      color: #10b981;
+    }
+
+    .step-status-tag.pending {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid #f59e0b;
+      color: #f59e0b;
+    }
+
+    .step-status-tag.locked {
+      background: rgba(148, 163, 184, 0.15);
+      border: 1px solid #64748b;
+      color: #94a3b8;
+    }
+
+    /* STEP 1: MODE CARDS */
+    .mode-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .mode-card {
+      background: rgba(30, 41, 59, 0.55);
+      border: 2px solid rgba(71, 85, 105, 0.5);
+      border-radius: 14px;
+      padding: 22px 20px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mode-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: transparent;
+      transition: all 0.25s;
+    }
+
+    .mode-card:hover {
+      background: rgba(30, 41, 59, 0.85);
+      border-color: rgba(56, 189, 248, 0.6);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .mode-card.selected {
+      background: rgba(15, 23, 42, 0.95);
+      border-color: #38bdf8;
+      box-shadow: 0 0 24px rgba(56, 189, 248, 0.35), inset 0 0 12px rgba(56, 189, 248, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .mode-card.selected::before {
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+    }
+
+    .mode-card-top {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .mode-icon-box {
+      width: 58px;
+      height: 58px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      flex-shrink: 0;
+      transition: transform 0.25s;
+    }
+
+    .mode-card.selected .mode-icon-box {
+      border-color: #38bdf8;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
+      transform: scale(1.05);
+    }
+
+    .mode-title-area {
+      flex: 1;
+    }
+
+    .mode-card-title {
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: #f8fafc;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mode-card.selected .mode-card-title {
+      color: #38bdf8;
+    }
+
+    .mode-check-badge {
+      font-size: 1.1rem;
+      color: #10b981;
+      display: none;
+    }
+
+    .mode-card.selected .mode-check-badge {
+      display: inline-block;
+    }
+
+    .mode-tagline {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-top: 3px;
+    }
+
+    .mode-desc {
+      font-size: 0.9rem;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
+
+    .mode-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-top: 1px dashed rgba(255, 255, 255, 0.08);
+      padding-top: 10px;
+    }
+
+    .mode-features li {
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mode-features li span {
+      color: #10b981;
+      font-weight: 900;
+    }
+
+    /* STEP 2: TEAM COUNT SELECTOR */
+    .step-section.locked {
+      opacity: 0.55;
+      pointer-events: none;
+      filter: grayscale(0.5);
+    }
+
+    .locked-notice {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px dashed #64748b;
+      border-radius: 10px;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .step-section:not(.locked) .locked-notice {
+      display: none;
+    }
+
+    .team-count-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .team-btn {
+      background: rgba(30, 41, 59, 0.7);
+      border: 2px solid rgba(71, 85, 105, 0.5);
+      border-radius: 12px;
+      padding: 16px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .team-btn:hover {
+      background: rgba(51, 65, 85, 0.8);
+      border-color: #38bdf8;
+      transform: translateY(-2px);
+    }
+
+    .team-btn.active {
+      background: linear-gradient(145deg, rgba(2, 132, 199, 0.25), rgba(15, 23, 42, 0.9));
+      border-color: #38bdf8;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .team-btn-icon {
+      font-size: 1.6rem;
+    }
+
+    .team-btn-title {
+      font-size: 1.15rem;
+      font-weight: 900;
+      color: #f8fafc;
+      letter-spacing: 0.5px;
+    }
+
+    .team-btn.active .team-btn-title {
+      color: #38bdf8;
+    }
+
+    .team-btn-subtitle {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    .team-btn.active .team-btn-subtitle {
+      color: #cbd5e1;
+    }
+
+    .team-btn-check {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      color: #10b981;
+      font-size: 0.9rem;
+      font-weight: 900;
+      display: none;
+    }
+
+    .team-btn.active .team-btn-check {
+      display: block;
+    }
+
+    .team-count-explain {
+      margin-top: 14px;
+      font-size: 0.85rem;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .team-count-explain strong {
+      color: #38bdf8;
+    }
+
+    /* STEP 3 / LAUNCH SECTION */
+    .launch-card {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.95));
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+      text-align: center;
+    }
+
+    .launch-summary-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid #475569;
+      border-radius: 9999px;
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: #cbd5e1;
+      transition: all 0.25s;
+    }
+
+    .launch-summary-chip strong {
+      color: #38bdf8;
+    }
+
+    .btn-launch-game {
+      width: 100%;
+      max-width: 480px;
+      padding: 16px 36px;
+      font-size: 1.3rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      background: #475569;
+      color: #94a3b8;
+    }
+
+    .btn-launch-game.ready {
+      background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
+      color: #ffffff;
+      box-shadow: 0 0 28px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      animation: pulseGlow 1.6s infinite alternate;
+    }
+
+    .btn-launch-game.ready:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 0 36px rgba(16, 185, 129, 0.7);
+    }
+
+    .btn-launch-game.ready:active {
+      transform: scale(0.98);
+    }
+
+    /* Direct shortcuts bottom */
+    .quick-links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .quick-link-btn {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(71, 85, 105, 0.4);
+      background: rgba(15, 23, 42, 0.6);
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .quick-link-btn:hover {
+      color: #38bdf8;
+      border-color: #38bdf8;
+      background: rgba(30, 41, 59, 0.8);
+    }
+
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+      100% { box-shadow: 0 0 34px rgba(16, 185, 129, 0.7); }
+    }
+
+    @media (max-width: 640px) {
+      .hub-title { font-size: 2rem; }
+      .step-section { padding: 18px 16px; }
+      .mode-cards-grid { grid-template-columns: 1fr; }
+      .team-count-grid { grid-template-columns: repeat(3, 1fr); }
+      .btn-launch-game { font-size: 1.1rem; padding: 14px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hub-container">
+    
+    <!-- Top Header -->
+    <header class="hub-header">
+      <div class="hub-header-badge">
+        <span>⚓</span> TRUNG TÂM TÁC CHIẾN HẠM ĐỘI
+      </div>
+      <h1 class="hub-title">ĐẠI HẢI CHIẾN</h1>
+      <p class="hub-subtitle">
+        Chiến trường hải chiến chiến thuật hạm đội đa vùng. Vui lòng chọn chế độ chơi và số lượng đội tham gia để bước vào trận đánh!
+      </p>
+    </header>
+
+    <!-- BƯỚC 1: CHỌN CHẾ ĐỘ CHƠI -->
+    <section class="step-section" id="step1Section">
+      <div class="step-header">
+        <div class="step-title-group">
+          <div class="step-number">1</div>
+          <div class="step-title">CHỌN CHẾ ĐỘ CHƠI</div>
+        </div>
+        <div id="step1Status" class="step-status-tag pending">
+          ⏳ Vui lòng chọn 1 chế độ
+        </div>
+      </div>
+
+      <div class="mode-cards-grid">
+        <!-- Chế độ Chơi với Bot -->
+        <div class="mode-card" id="modeCardBot" data-mode="bot">
+          <div class="mode-card-top">
+            <div class="mode-icon-box">🤖</div>
+            <div class="mode-title-area">
+              <div class="mode-card-title">
+                CHƠI VỚI BOT (AI)
+                <span class="mode-check-badge">✓ ĐÃ CHỌN</span>
+              </div>
+              <div class="mode-tagline">1 Người Chơi vs Bot AI • Vào Ngay</div>
+            </div>
+          </div>
+          <div class="mode-desc">
+            Trải nghiệm cá nhân mượt mà. Bạn là Chỉ huy trưởng Hạm Đội 1 đối đầu với các Bot AI thông minh. Bản đồ chiến trường và giao diện ngắm bắn tích hợp trên cùng màn hình.
+          </div>
+          <ul class="mode-features">
+            <li><span>✓</span> Tự do kéo/đặt vị trí 6 tàu hoặc xếp ngẫu nhiên</li>
+            <li><span>✓</span> Bot AI tự động ngắm bắn thông minh theo lượt</li>
+            <li><span>✓</span> Hỗ trợ tăng tốc độ Bot, double-click bắn ngay tức thì</li>
+          </ul>
+        </div>
+
+        <!-- Chế độ Chơi với Người -->
+        <div class="mode-card" id="modeCardHuman" data-mode="human">
+          <div class="mode-card-top">
+            <div class="mode-icon-box">👥</div>
+            <div class="mode-title-area">
+              <div class="mode-card-title">
+                CHƠI VỚI NGƯỜI
+                <span class="mode-check-badge">✓ ĐÃ CHỌN</span>
+              </div>
+              <div class="mode-tagline">Nhiều Người • Quét QR Điện Thoại</div>
+            </div>
+          </div>
+          <div class="mode-desc">
+            Dành cho Teambuilding & Sự kiện tập thể. Màn hình máy chiếu MC quản lý toàn cục, các đội dùng điện thoại quét mã QR riêng từng đội để dàn tàu bí mật và khai hỏa.
+          </div>
+          <ul class="mode-features">
+            <li><span>✓</span> Màn hình MC máy chiếu siêu nét với hiệu ứng phát nổ</li>
+            <li><span>✓</span> Các đội dùng điện thoại quét mã QR riêng tham gia</li>
+            <li><span>✓</span> Kịch tính, gay cấn, vinh danh Top 3 & Quán Quân</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- BƯỚC 2: CHỌN SỐ LƯỢNG ĐỘI CHƠI (CHỈ MỞ KHI ĐÃ CHỌN CHẾ ĐỘ) -->
+    <section class="step-section locked" id="step2Section">
+      <div class="step-header">
+        <div class="step-title-group">
+          <div class="step-number">2</div>
+          <div class="step-title">CHỌN SỐ LƯỢNG ĐỘI CHƠI</div>
+        </div>
+        <div id="step2Status" class="step-status-tag locked">
+          🔒 Chưa mở khóa (Hãy chọn Bước 1 trước)
+        </div>
+      </div>
+
+      <!-- Thông báo khóa -->
+      <div class="locked-notice" id="lockedNotice">
+        <span>🔒</span>
+        <span>Vui lòng chọn <strong>Chế độ chơi ở Bước 1</strong> để mở khóa lựa chọn số lượng đội chiến đấu!</span>
+      </div>
+
+      <!-- Danh sách nút chọn số đội -->
+      <div class="team-count-grid" id="teamCountGrid">
+        <div class="team-btn" data-count="2">
+          <span class="team-btn-check">✓</span>
+          <div class="team-btn-icon">⚔️</div>
+          <div class="team-btn-title">2 ĐỘI</div>
+          <div class="team-btn-subtitle" id="sub2">Solo Đối Đầu (1v1)</div>
+        </div>
+
+        <div class="team-btn" data-count="3">
+          <span class="team-btn-check">✓</span>
+          <div class="team-btn-icon">🔺</div>
+          <div class="team-btn-title">3 ĐỘI</div>
+          <div class="team-btn-subtitle" id="sub3">Tam Đấu Chiến</div>
+        </div>
+
+        <div class="team-btn" data-count="4">
+          <span class="team-btn-check">✓</span>
+          <div class="team-btn-icon">🛡️</div>
+          <div class="team-btn-title">4 ĐỘI</div>
+          <div class="team-btn-subtitle" id="sub4">Tứ Hùng Đại Chiến</div>
+        </div>
+
+        <div class="team-btn" data-count="5">
+          <span class="team-btn-check">✓</span>
+          <div class="team-btn-icon">⭐</div>
+          <div class="team-btn-title">5 ĐỘI</div>
+          <div class="team-btn-subtitle" id="sub5">Ngũ Hành Tương Tranh</div>
+        </div>
+
+        <div class="team-btn active" data-count="6">
+          <span class="team-btn-check">✓</span>
+          <div class="team-btn-icon">👑</div>
+          <div class="team-btn-title">6 ĐỘI</div>
+          <div class="team-btn-subtitle" id="sub6">Đại Chiến Tiêu Chuẩn</div>
+        </div>
+      </div>
+
+      <div class="team-count-explain" id="teamCountExplain">
+        <span>ℹ️</span>
+        <span>Quy tắc: Số vùng chiến 15x15 trên màn hình luôn bằng đúng số đội tham gia (<strong id="explainCountText">6 vùng chiến</strong>).</span>
+      </div>
+    </section>
+
+    <!-- BƯỚC 3: XÁC NHẬN VÀO TRẬN ĐẤU -->
+    <div class="launch-card">
+      <div class="launch-summary-chip" id="launchSummary">
+        <span>⚠️</span>
+        <span id="summaryText">Vui lòng hoàn thành Bước 1 để bắt đầu trận đấu</span>
+      </div>
+
+      <button id="btnLaunch" class="btn-launch-game" disabled>
+        <span>🚀 BẮT ĐẦU VÀO TRẬN ĐẤU</span>
+      </button>
+
+      <!-- Phím tắt nhanh cho MC hoặc Người chơi cũ -->
+      <div class="quick-links">
+        <span style="font-size: 0.8rem; color: #64748b;">Lối tắt trực tiếp:</span>
+        <a href="/demo" class="quick-link-btn">🎮 Chơi Thử Solo (Demo)</a>
+        <a href="/screen" class="quick-link-btn">📺 Màn Hình MC Máy Chiếu</a>
+        <a href="/join" class="quick-link-btn">📱 Màn Hình Điện Thoại Tham Gia</a>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Trạng thái cấu hình game
+    let selectedMode = null; // 'bot' hoặc 'human'
+    let selectedTeamCount = 6; // Mặc định 6 đội
+
+    // DOM Elements
+    const step1Status = document.getElementById('step1Status');
+    const modeCardBot = document.getElementById('modeCardBot');
+    const modeCardHuman = document.getElementById('modeCardHuman');
+    
+    const step2Section = document.getElementById('step2Section');
+    const step2Status = document.getElementById('step2Status');
+    const lockedNotice = document.getElementById('lockedNotice');
+    const teamCountGrid = document.getElementById('teamCountGrid');
+    const explainCountText = document.getElementById('explainCountText');
+    const sub2 = document.getElementById('sub2');
+    const sub3 = document.getElementById('sub3');
+    const sub4 = document.getElementById('sub4');
+    const sub5 = document.getElementById('sub5');
+    const sub6 = document.getElementById('sub6');
+
+    const launchSummary = document.getElementById('launchSummary');
+    const summaryText = document.getElementById('summaryText');
+    const btnLaunch = document.getElementById('btnLaunch');
+
+    // 1. Xử lý Chọn Chế Độ Chơi (Bước 1)
+    function selectMode(mode) {
+      selectedMode = mode;
+
+      // Cập nhật giao diện thẻ chế độ
+      modeCardBot.classList.toggle('selected', mode === 'bot');
+      modeCardHuman.classList.toggle('selected', mode === 'human');
+
+      // Cập nhật trạng thái Bước 1
+      step1Status.className = 'step-status-tag active';
+      step1Status.textContent = mode === 'bot' ? '✓ Đã chọn: Chơi với Bot' : '✓ Đã chọn: Chơi với Người';
+
+      // MỞ KHÓA BƯỚC 2: CHỌN SỐ ĐỘI
+      unlockStep2();
+
+      // Cập nhật text mô tả số đội theo chế độ
+      updateTeamSubtitles();
+
+      // Cập nhật nút bắt đầu
+      updateLaunchState();
+    }
+
+    modeCardBot.addEventListener('click', () => selectMode('bot'));
+    modeCardHuman.addEventListener('click', () => selectMode('human'));
+
+    // Mở khóa Bước 2
+    function unlockStep2() {
+      step2Section.classList.remove('locked');
+      step2Status.className = 'step-status-tag active';
+      step2Status.textContent = `✓ Đã mở khóa (${selectedTeamCount} Đội)`;
+    }
+
+    // Cập nhật phụ đề các nút số đội dựa theo chế độ
+    function updateTeamSubtitles() {
+      if (selectedMode === 'bot') {
+        sub2.textContent = 'Bạn vs 1 Bot (1v1)';
+        sub3.textContent = 'Bạn vs 2 Bot';
+        sub4.textContent = 'Bạn vs 3 Bot';
+        sub5.textContent = 'Bạn vs 4 Bot';
+        sub6.textContent = 'Bạn vs 5 Bot (Tiêu chuẩn)';
+      } else {
+        sub2.textContent = '2 Đội Người Thật (1v1)';
+        sub3.textContent = '3 Đội Người Thật';
+        sub4.textContent = '4 Đội Người Thật';
+        sub5.textContent = '5 Đội Người Thật';
+        sub6.textContent = '6 Đội Người Thật (Tiêu chuẩn)';
+      }
+      explainCountText.textContent = `${selectedTeamCount} vùng chiến`;
+    }
+
+    // 2. Xử lý Chọn Số Đội (Bước 2)
+    teamCountGrid.querySelectorAll('.team-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!selectedMode) return; // Nếu chưa chọn chế độ thì không cho chọn
+
+        teamCountGrid.querySelectorAll('.team-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        selectedTeamCount = Number(btn.dataset.count) || 6;
+        step2Status.textContent = `✓ Đã chọn: ${selectedTeamCount} Đội`;
+        explainCountText.textContent = `${selectedTeamCount} vùng chiến`;
+
+        updateLaunchState();
+      });
+    });
+
+    // 3. Cập nhật Trạng thái nút Bắt đầu (Bước 3)
+    function updateLaunchState() {
+      if (!selectedMode) {
+        btnLaunch.disabled = true;
+        btnLaunch.className = 'btn-launch-game';
+        btnLaunch.innerHTML = '<span>⚠️ VUI LÒNG CHỌN CHẾ ĐỘ CHƠI</span>';
+        summaryText.textContent = 'Vui lòng hoàn thành Bước 1 để bắt đầu trận đấu';
+        launchSummary.style.borderColor = '#475569';
+        return;
+      }
+
+      btnLaunch.disabled = false;
+      btnLaunch.className = 'btn-launch-game ready';
+
+      const modeName = selectedMode === 'bot' ? 'Chơi Với Bot (AI)' : 'Chơi Với Người (Multiplayer)';
+      const teamDetails = selectedMode === 'bot' 
+        ? `${selectedTeamCount} Đội (Bạn + ${selectedTeamCount - 1} Bot AI)` 
+        : `${selectedTeamCount} Đội Thi Đấu`;
+
+      btnLaunch.innerHTML = `<span>🚀 BẮT ĐẦU VÀO TRẬN ĐẤU (${selectedTeamCount} ĐỘI)</span>`;
+      summaryText.innerHTML = `Đã sẵn sàng: <strong>${modeName}</strong> • <strong>${teamDetails}</strong>`;
+      launchSummary.style.borderColor = '#10b981';
+    }
+
+    // 4. Xử lý khi nhấn Bắt đầu vào Game
+    btnLaunch.addEventListener('click', async () => {
+      if (!selectedMode) return;
+
+      btnLaunch.disabled = true;
+      btnLaunch.innerHTML = '<span>⏳ Đang khởi tạo chiến trường...</span>';
+
+      if (selectedMode === 'bot') {
+        // Chế độ chơi với Bot: Chuyển thẳng sang Demo với số lượng đội đã chọn
+        window.location.href = `/demo?count=${selectedTeamCount}`;
+      } else {
+        // Chế độ chơi với Người: Gọi API tạo phòng mới và chuyển đến màn hình MC trình chiếu
+        try {
+          const res = await fetch(`/api/create-room?playerCount=${selectedTeamCount}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playerCount: selectedTeamCount }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            localStorage.setItem('dhc_room_id', data.roomId);
+            localStorage.setItem('dhc_host_token', data.hostToken);
+            window.location.href = `/screen?room=${data.roomId}&token=${data.hostToken}`;
+          } else {
+            alert('Không thể tạo phòng đấu: ' + (data.error || 'Lỗi server'));
+            btnLaunch.disabled = false;
+            updateLaunchState();
+          }
+        } catch (err) {
+          alert('Lỗi kết nối máy chủ: ' + err.message);
+          btnLaunch.disabled = false;
+          updateLaunchState();
+        }
+      }
+    });
+  </script>
+</body>
+</html>

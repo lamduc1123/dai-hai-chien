@@ -1,0 +1,12 @@
+{
+  "rules": {
+    ".read": "now < 1893456000000",
+    ".write": "now < 1893456000000",
+    "rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}
