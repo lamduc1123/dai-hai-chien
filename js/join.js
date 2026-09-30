@@ -18,6 +18,17 @@ let selectedTargetKey = null;
 let currentWeaponMode = 'NORMAL'; // 'NORMAL', 'RADAR', 'CROSSFIRE'
 let currentZoomLevel = 1.0;
 
+const DEFAULT_TEAMS_FALLBACK = [
+  { id: 1, name: 'Hải Ưng', colorHex: '#2563eb', icon: '🦅', isConnected: false },
+  { id: 2, name: 'Thủy Quái', colorHex: '#dc2626', icon: '🐙', isConnected: false },
+  { id: 3, name: 'Cá Mập Trắng', colorHex: '#059669', icon: '🦈', isConnected: false },
+  { id: 4, name: 'Hạm Đội Vàng', colorHex: '#d97706', icon: '👑', isConnected: false },
+  { id: 5, name: 'Sấm Sét Biển', colorHex: '#7c3aed', icon: '⚡', isConnected: false },
+  { id: 6, name: 'Bão Biển', colorHex: '#ea580c', icon: '🌊', isConnected: false },
+  { id: 7, name: 'Sát Thủ Biển Sâu', colorHex: '#0891b2', icon: '🔱', isConnected: false },
+  { id: 8, name: 'Sao Biển', colorHex: '#e11d48', icon: '⭐', isConnected: false },
+];
+
 document.addEventListener('DOMContentLoaded', () => {
   soundManager = new SoundManager();
   soundManager.init();
@@ -25,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   currentRoomId = urlParams.get('room') || 'PHONG-01';
 
+  renderTeamSlots(DEFAULT_TEAMS_FALLBACK);
   initSocket();
   initEventListeners();
   startMobileTurnTicker();

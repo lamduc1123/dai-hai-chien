@@ -146,12 +146,14 @@ function handleLocalHostAction(actionType, payload) {
     addLogItem('🤖 Đã lấp đầy tất cả các đội trống bằng Bot!', 'hit');
     commitLocalState();
   } else if (actionType === 'host:start_placement') {
-    currentHostState = window.GameEngine.startPlacementPhase(currentHostState);
+    const res = window.GameEngine.startPlacementPhase(currentHostState);
+    if (res && typeof res === 'object') currentHostState = res;
     soundManager.playSonar();
     addLogItem('🗺️ Giai đoạn Dàn Trận: Các hạm đội hãy bố trí chiến hạm vào hải phận!', 'hit');
     commitLocalState();
   } else if (actionType === 'host:start_battle') {
-    currentHostState = window.GameEngine.startBattlePhase(currentHostState);
+    const res = window.GameEngine.startBattlePhase(currentHostState);
+    if (res && typeof res === 'object') currentHostState = res;
     soundManager.playAlarm();
     addLogItem('⚔️ BÁO ĐỘNG ĐỎ: CUỘC CHIẾN CHÍNH THỨC BẮT ĐẦU!', 'sunk');
     commitLocalState();
@@ -163,7 +165,8 @@ function handleLocalHostAction(actionType, payload) {
     commitLocalState();
     checkBotTurn();
   } else if (actionType === 'host:undo') {
-    currentHostState = window.GameEngine.undoLastShot(currentHostState);
+    const res = window.GameEngine.undoLastShot(currentHostState);
+    if (res && typeof res === 'object') currentHostState = res;
     addLogItem('⏪ Chỉ huy trưởng đã hoàn tác lượt bắn vừa rồi.', 'miss');
     commitLocalState();
   } else if (actionType === 'host:reset') {
@@ -175,10 +178,12 @@ function handleLocalHostAction(actionType, payload) {
     commitLocalState();
   } else if (actionType === 'host:update_config') {
     currentHostState = window.GameEngine.createInitialGameState({
-      playerCount: payload.playerCount,
-      shipsPerPlayer: payload.shipsPerPlayer,
+      playerCount: payload.playerCount || tempPlayerCount,
+      shipsPerPlayer: payload.shipsPerPlayer || tempShipsPerPlayer,
+      shipConfigMode: payload.shipConfigMode || 'mix34',
+      turnOrderMode: payload.turnOrderMode || 'random',
     });
-    addLogItem(`⚙️ Đã cập nhật cấu hình: ${payload.playerCount} Đội, ${payload.shipsPerPlayer} tàu/đội`, 'hit');
+    addLogItem(`⚙️ Đã cập nhật cấu hình: ${currentHostState.config.playerCount} Đội, ${currentHostState.config.shipsPerPlayer} tàu/đội`, 'hit');
     commitLocalState();
   }
 }
@@ -847,31 +852,40 @@ function initEventListeners() {
     if (e.target.id === 'modalConfig') closeConfigModal();
   });
 
-  document.querySelectorAll('#teamSelectGrid .config-chip').forEach(btn => {
+  // Chọn số lượng đội (2 -> 8)
+  document.querySelectorAll('.cfg-player-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#teamSelectGrid .config-chip').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      tempPlayerCount = parseInt(btn.dataset.count);
-      const desc = document.getElementById('configZoneDesc');
-      if (tempPlayerCount === 2) desc.textContent = '2 Hải phận riêng biệt (10x20 ô = 200 ô mỗi vùng)';
-      else if (tempPlayerCount === 4) desc.textContent = '4 Hải phận góc chiến trường (10x10 ô = 100 ô)';
-      else if (tempPlayerCount === 6) desc.textContent = '6 Hải phận tiêu chuẩn chiến hạm (~7 cột x 10 hàng = 70 ô)';
-      else if (tempPlayerCount === 8) desc.textContent = '8 Hải phận chiến hạm (5 cột x 10 hàng = 50 ô)';
+      document.querySelectorAll('.cfg-player-btn').forEach(b => {
+        b.classList.remove('btn-primary', 'active');
+        b.classList.add('btn-outline');
+      });
+      btn.classList.remove('btn-outline');
+      btn.classList.add('btn-primary', 'active');
+      tempPlayerCount = parseInt(btn.dataset.val, 10);
     });
   });
 
-  document.querySelectorAll('#shipsSelectGrid .config-chip').forEach(btn => {
+  // Chọn số lượng tàu (1 -> 5)
+  document.querySelectorAll('.cfg-ship-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#shipsSelectGrid .config-chip').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      tempShipsPerPlayer = parseInt(btn.dataset.ships);
+      document.querySelectorAll('.cfg-ship-btn').forEach(b => {
+        b.classList.remove('btn-primary', 'active');
+        b.classList.add('btn-outline');
+      });
+      btn.classList.remove('btn-outline');
+      btn.classList.add('btn-primary', 'active');
+      tempShipsPerPlayer = parseInt(btn.dataset.val, 10);
     });
   });
 
   document.getElementById('btnSaveConfig').addEventListener('click', () => {
+    const shipMode = document.getElementById('cfgShipConfigMode') ? document.getElementById('cfgShipConfigMode').value : 'mix34';
+    const turnOrder = document.getElementById('cfgTurnOrderMode') ? document.getElementById('cfgTurnOrderMode').value : 'random';
     dispatchHostAction('host:update_config', {
       playerCount: tempPlayerCount,
       shipsPerPlayer: tempShipsPerPlayer,
+      shipConfigMode: shipMode,
+      turnOrderMode: turnOrder,
     });
     closeConfigModal();
   });

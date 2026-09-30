@@ -394,14 +394,14 @@ function startPlacementPhase(gameState) {
     }
   });
 
-  return true;
+  return gameState;
 }
 
 /**
  * Khởi động giai đoạn chiến đấu (BATTLE)
  */
 function startBattlePhase(gameState, manualOrder = null) {
-  if (gameState.phase !== 'PLACEMENT' && gameState.phase !== 'LOBBY') return false;
+  if (gameState.phase !== 'PLACEMENT' && gameState.phase !== 'LOBBY') return gameState;
 
   gameState.teams.forEach(team => {
     if (!team.fleet || team.fleet.length === 0) {
@@ -429,7 +429,7 @@ function startBattlePhase(gameState, manualOrder = null) {
   gameState.turnStartTime = Date.now();
   gameState.lastShotResult = null;
 
-  return true;
+  return gameState;
 }
 
 /**
@@ -901,9 +901,7 @@ function undoLastShot(gameState) {
   gameState.turnNumber = Math.max(1, gameState.turnNumber - 1);
   gameState.turnTimeRemaining = gameState.config.turnDuration || 60;
   gameState.turnStartTime = Date.now();
-  gameState.lastShotResult = gameState.shotsHistory[gameState.shotsHistory.length - 1] || null;
-
-  return true;
+  return gameState;
 }
 
 /**
