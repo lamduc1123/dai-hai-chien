@@ -3,42 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>⚓ ĐẠI HẢI CHIẾN - Trung Tâm Điều Hành Trận Đấu</title>
+  <title>⚓ ĐẠI HẢI CHIẾN - Trung Tâm Điều Hành Hải Quân</title>
   <link rel="stylesheet" href="css/naval-light.css">
   <style>
-    :root {
-      --bg-primary: #0a1128;
-      --bg-secondary: #001f54;
-      --accent-cyan: #00b4d8;
-      --accent-blue: #0077b6;
-      --accent-gold: #ffb703;
-      --accent-green: #2ec4b6;
-      --accent-red: #e63946;
-      --text-light: #f8f9fa;
-      --text-muted: #94a3b8;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
     body {
       min-height: 100vh;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: radial-gradient(circle at 50% 20%, #0d1b2a 0%, #050a14 100%);
-      color: var(--text-light);
+      background: linear-gradient(180deg, #f0f7ff 0%, #e0f2fe 100%);
+      color: var(--navy-dark);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 30px 16px;
+      padding: 36px 16px;
     }
 
     .portal-container {
       width: 100%;
-      max-width: 1080px;
+      max-width: 1100px;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
@@ -56,31 +37,32 @@
       gap: 8px;
       padding: 6px 16px;
       border-radius: 9999px;
-      background: rgba(0, 180, 216, 0.12);
-      border: 1px solid rgba(0, 180, 216, 0.4);
-      color: var(--accent-cyan);
+      background: #e0f2fe;
+      border: 1px solid #7dd3fc;
+      color: #0284c7;
       font-size: 0.85rem;
       font-weight: 800;
-      letter-spacing: 2px;
+      letter-spacing: 1.5px;
       text-transform: uppercase;
       margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.12);
     }
 
     .portal-title {
       font-size: 2.8rem;
       font-weight: 900;
-      letter-spacing: 2px;
+      letter-spacing: 1px;
       text-transform: uppercase;
-      background: linear-gradient(135deg, #ffffff 20%, #90e0ef 60%, #00b4d8 100%);
+      background: linear-gradient(135deg, #001f54 0%, #0284c7 60%, #0284c7 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .portal-subtitle {
-      font-size: 1.1rem;
-      color: var(--text-muted);
-      max-width: 720px;
+      font-size: 1.05rem;
+      color: #475569;
+      max-width: 760px;
       margin: 0 auto;
       line-height: 1.6;
     }
@@ -92,9 +74,9 @@
     }
 
     .role-card {
-      background: rgba(15, 23, 42, 0.75);
-      border: 1px solid rgba(0, 180, 216, 0.25);
-      border-radius: 18px;
+      background: #ffffff;
+      border: 1px solid var(--border-ocean);
+      border-radius: 16px;
       padding: 28px 20px;
       text-align: center;
       text-decoration: none;
@@ -103,7 +85,7 @@
       flex-direction: column;
       align-items: center;
       gap: 16px;
-      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 16px rgba(2, 132, 199, 0.08);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       overflow: hidden;
@@ -116,15 +98,14 @@
       left: 0;
       right: 0;
       height: 4px;
-      background: var(--card-accent, #00b4d8);
-      opacity: 0.8;
+      background: var(--card-accent, #0284c7);
       transition: height 0.3s;
     }
 
     .role-card:hover {
-      transform: translateY(-6px);
-      border-color: var(--card-accent, #00b4d8);
-      box-shadow: 0 16px 36px rgba(0, 180, 216, 0.25);
+      transform: translateY(-5px);
+      border-color: var(--card-accent, #0284c7);
+      box-shadow: 0 14px 32px rgba(2, 132, 199, 0.16);
     }
 
     .role-card:hover::before {
@@ -134,18 +115,18 @@
     .role-icon {
       font-size: 3.2rem;
       line-height: 1;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
 
     .role-name {
-      font-size: 1.35rem;
+      font-size: 1.3rem;
       font-weight: 800;
-      color: #ffffff;
+      color: var(--navy-dark);
     }
 
     .role-desc {
-      font-size: 0.9rem;
-      color: var(--text-muted);
+      font-size: 0.88rem;
+      color: #64748b;
       line-height: 1.5;
       flex: 1;
     }
@@ -154,19 +135,19 @@
       width: 100%;
       padding: 10px 16px;
       border-radius: 10px;
-      font-weight: 700;
-      font-size: 0.92rem;
+      font-weight: 800;
+      font-size: 0.9rem;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       border: none;
       cursor: pointer;
-      background: var(--card-accent, #00b4d8);
-      color: #050a14;
+      background: var(--card-accent, #0284c7);
+      color: #ffffff;
       transition: opacity 0.2s;
     }
 
     .role-card:hover .role-btn {
-      opacity: 0.95;
+      opacity: 0.92;
     }
 
     .system-status-bar {
@@ -175,11 +156,12 @@
       justify-content: center;
       gap: 20px;
       padding: 14px 20px;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: #ffffff;
+      border: 1px solid var(--border-ocean);
       border-radius: 12px;
       font-size: 0.88rem;
-      color: var(--text-muted);
+      color: #334155;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
 
     .status-item {
@@ -193,12 +175,12 @@
       height: 8px;
       border-radius: 50%;
       background: #10b981;
-      box-shadow: 0 0 8px #10b981;
+      box-shadow: 0 0 6px #10b981;
     }
 
     @media (max-width: 768px) {
       .portal-title {
-        font-size: 2.2rem;
+        font-size: 2.1rem;
       }
       .portal-grid {
         grid-template-columns: 1fr;
@@ -215,14 +197,14 @@
       <h1 class="portal-title">⚓ ĐẠI HẢI CHIẾN</h1>
       <p class="portal-subtitle">
         Trò chơi hạm đội hải chiến nhiều người chơi (2 - 8 Đội). Bản đồ hải đồ mở rộng 400 ô (20 Cột A-T × 20 Hàng 1-20). 
-        Đếm ngược 60s mỗi lượt, Kỹ năng Radar 3x3 & Tên lửa Chữ Thập (+). Đồng bộ thời gian thực qua Google Firebase.
+        Đếm ngược 60s mỗi lượt, Kỹ năng Radar 3x3 & Tên lửa Chữ Thập (+). Đồng bộ thời gian thực qua Google Firebase Realtime Database.
       </p>
     </header>
 
     <div class="portal-grid">
       
       <!-- Card 1: MC Host -->
-      <a href="host.html" class="role-card" style="--card-accent: #00b4d8;">
+      <a href="host.html" class="role-card" style="--card-accent: #0284c7;">
         <div class="role-icon">🎛️</div>
         <div class="role-name">Chỉ Huy MC (Host)</div>
         <div class="role-desc">
@@ -232,33 +214,33 @@
       </a>
 
       <!-- Card 2: Người Chơi Điện Thoại -->
-      <a href="join.html" class="role-card" style="--card-accent: #10b981;">
+      <a href="join.html" class="role-card" style="--card-accent: #059669;">
         <div class="role-icon">📱</div>
         <div class="role-name">Điện Thoại Người Chơi</div>
         <div class="role-desc">
           Giao diện tác chiến điện thoại: Chọn ô bằng chạm hoặc nhập tọa độ nhanh (VD: B14), sử dụng Radar 3x3 và Tên lửa Chữ Thập (+).
         </div>
-        <button class="role-btn">Tham Gia Thi Đấu ➔</button>
+        <button class="role-btn" style="background: #059669;">Tham Gia Thi Đấu ➔</button>
       </a>
 
       <!-- Card 3: Máy Chiếu Hội Trường -->
-      <a href="screen.html" class="role-card" style="--card-accent: #ffb703;">
+      <a href="screen.html" class="role-card" style="--card-accent: #d97706;">
         <div class="role-icon">📺</div>
         <div class="role-name">Máy Chiếu Khán Giả</div>
         <div class="role-desc">
           Giao diện toàn cảnh 16:9 sắc nét cho máy chiếu hội trường: Đếm ngược 60s, Bảng xếp hạng Live, tuyệt đối không lộ vị trí tàu ẩn.
         </div>
-        <button class="role-btn">Mở Màn Hình Lớn ➔</button>
+        <button class="role-btn" style="background: #d97706;">Mở Màn Hình Lớn ➔</button>
       </a>
 
       <!-- Card 4: Solo Bot Demo -->
-      <a href="demo.html" class="role-card" style="--card-accent: #a855f7;">
+      <a href="demo.html" class="role-card" style="--card-accent: #7c3aed;">
         <div class="role-icon">🎮</div>
         <div class="role-name">Chơi Thử Solo (AI)</div>
         <div class="role-desc">
           Chế độ tập luyện nhanh 1 mình: Trải nghiệm dàn trận chiến hạm và so tài bắn pháo cùng Bot AI thông minh mà không cần kết nối mạng.
         </div>
-        <button class="role-btn">Chơi Luyện Tập ➔</button>
+        <button class="role-btn" style="background: #7c3aed;">Chơi Luyện Tập ➔</button>
       </a>
 
     </div>
