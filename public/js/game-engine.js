@@ -2,11 +2,26 @@
 // Logic xử lý Đại Hải Đồ 20x20 (400 ô), phân vùng 2-8 người chơi, đếm ngược 60s, kỹ năng Radar 3x3 & Tên lửa Chữ Thập (+)
 
 (() => {
-const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T']; // 20 cột (A -> T)
-const ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]; // 20 hàng (1 -> 20)
-const GRID_WIDTH = COLS.length;  // 20
-const GRID_HEIGHT = ROWS.length; // 20
-const TOTAL_CELLS = GRID_WIDTH * GRID_HEIGHT; // 400 ô
+const ALL_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+let COLS = ALL_LETTERS.slice(0, 20); // Mặc định 20 cột (A -> T)
+let ROWS = Array.from({ length: 20 }, (_, i) => i + 1); // Mặc định 20 hàng (1 -> 20)
+let GRID_WIDTH = COLS.length;  // 20
+let GRID_HEIGHT = ROWS.length; // 20
+let TOTAL_CELLS = GRID_WIDTH * GRID_HEIGHT; // 400 ô
+
+/**
+ * Cập nhật kích thước hải đồ động (Trục ngang X: Cột A..Z, Trục dọc Y: Hàng 1..26)
+ */
+function setGridDimensions(colsCount = 20, rowsCount = 20) {
+  const c = Math.min(Math.max(8, parseInt(colsCount, 10) || 20), ALL_LETTERS.length);
+  const r = Math.min(Math.max(8, parseInt(rowsCount, 10) || 20), 26);
+  COLS = ALL_LETTERS.slice(0, c);
+  ROWS = Array.from({ length: r }, (_, i) => i + 1);
+  GRID_WIDTH = COLS.length;
+  GRID_HEIGHT = ROWS.length;
+  TOTAL_CELLS = GRID_WIDTH * GRID_HEIGHT;
+  return { COLS, ROWS, GRID_WIDTH, GRID_HEIGHT, TOTAL_CELLS };
+}
 
 // 8 Đội chơi với màu sắc và linh vật hải quân đặc trưng
 const DEFAULT_TEAMS = [
@@ -28,27 +43,28 @@ function coordToKey(col, row) {
 }
 
 /**
- * Phân tích key 'A1' hoặc 'T20' thành object { col, row, colIdx, rowIdx }
+ * Phân tích key 'A1' hoặc 'Z26' thành object { col, row, colIdx, rowIdx }
  */
-function parseKey(key) {
+function parseKey(key, customCols = COLS, customRows = ROWS) {
   if (!key || typeof key !== 'string') return null;
-  const match = key.trim().toUpperCase().match(/^([A-T])(20|1[0-9]|[1-9])$/);
+  const match = key.trim().toUpperCase().match(/^([A-Z])([0-9]{1,2})$/);
   if (!match) return null;
   const col = match[1];
   const row = parseInt(match[2], 10);
-  const colIdx = COLS.indexOf(col);
-  const rowIdx = row - 1;
+  const colIdx = customCols.indexOf(col);
+  const rowIdx = customRows.indexOf(row);
+  if (colIdx === -1 || rowIdx === -1) return null;
   return { col, row, colIdx, rowIdx };
 }
 
 /**
  * Kiểm tra tính hợp lệ của tọa độ
  */
-function isValidCoord(colOrKey, row = null) {
+function isValidCoord(colOrKey, row = null, customCols = COLS, customRows = ROWS) {
   if (row === null || row === undefined) {
-    return parseKey(colOrKey) !== null;
+    return parseKey(colOrKey, customCols, customRows) !== null;
   }
-  return COLS.includes(colOrKey) && ROWS.includes(row);
+  return customCols.includes(colOrKey) && customRows.includes(row);
 }
 
 /**
@@ -69,56 +85,66 @@ function getShipLengths(shipCount = 2, shipConfigMode = 'mix34') {
 }
 
 /**
- * Thuật toán phân vùng thông minh trên hải đồ 20x20 (400 ô):
- * Chia đại dương 20x20 thành N phân vùng độc lập, không chồng lấn cho N người chơi (2 -> 8 người).
+ * Thuật toán phân vùng thông minh trên hải đồ theo kích thước động:
+ * Chia đại dương thành N phân vùng độc lập, không chồng lấn cho N người chơi (2 -> 8 người).
  */
-function allocatePlayerZones(playerCount = 4) {
+function allocatePlayerZones(playerCount = 4, colsCount = COLS.length, rowsCount = ROWS.length) {
   const count = Math.min(Math.max(2, playerCount), 8);
   const zones = {};
   let sectors = [];
 
+  const midCol = Math.floor(colsCount / 2);
+  const midRow = Math.floor(rowsCount / 2);
+
   if (count === 2) {
-    // 2 người: Nửa trái (A..J) và Nửa phải (K..T), toàn bộ 20 hàng (10x20 = 200 ô)
+    // 2 người: Nửa trái và Nửa phải
     sectors = [
-      { colStartIdx: 0, colEndIdx: 9, rowStartIdx: 0, rowEndIdx: 19 },   // A..J, 1..20
-      { colStartIdx: 10, colEndIdx: 19, rowStartIdx: 0, rowEndIdx: 19 }, // K..T, 1..20
+      { colStartIdx: 0, colEndIdx: midCol - 1, rowStartIdx: 0, rowEndIdx: rowsCount - 1 },
+      { colStartIdx: midCol, colEndIdx: colsCount - 1, rowStartIdx: 0, rowEndIdx: rowsCount - 1 },
     ];
   } else if (count === 3) {
-    // 3 người: 3 dải dọc (7, 7, 6 cột x 20 hàng)
+    // 3 người: 3 dải dọc
+    const w1 = Math.floor(colsCount / 3);
+    const w2 = Math.floor((colsCount * 2) / 3);
     sectors = [
-      { colStartIdx: 0, colEndIdx: 6, rowStartIdx: 0, rowEndIdx: 19 },   // A..G, 1..20
-      { colStartIdx: 7, colEndIdx: 13, rowStartIdx: 0, rowEndIdx: 19 },  // H..N, 1..20
-      { colStartIdx: 14, colEndIdx: 19, rowStartIdx: 0, rowEndIdx: 19 }, // O..T, 1..20
+      { colStartIdx: 0, colEndIdx: w1 - 1, rowStartIdx: 0, rowEndIdx: rowsCount - 1 },
+      { colStartIdx: w1, colEndIdx: w2 - 1, rowStartIdx: 0, rowEndIdx: rowsCount - 1 },
+      { colStartIdx: w2, colEndIdx: colsCount - 1, rowStartIdx: 0, rowEndIdx: rowsCount - 1 },
     ];
   } else if (count === 4) {
-    // 4 người: 4 góc phần tư đối xứng (10 cột x 10 hàng = 100 ô mỗi đội)
+    // 4 người: 4 góc phần tư đối xứng
     sectors = [
-      { colStartIdx: 0, colEndIdx: 9, rowStartIdx: 0, rowEndIdx: 9 },     // Tây Bắc: A..J, 1..10
-      { colStartIdx: 10, colEndIdx: 19, rowStartIdx: 0, rowEndIdx: 9 },   // Đông Bắc: K..T, 1..10
-      { colStartIdx: 0, colEndIdx: 9, rowStartIdx: 10, rowEndIdx: 19 },   // Tây Nam: A..J, 11..20
-      { colStartIdx: 10, colEndIdx: 19, rowStartIdx: 10, rowEndIdx: 19 }, // Đông Nam: K..T, 11..20
+      { colStartIdx: 0, colEndIdx: midCol - 1, rowStartIdx: 0, rowEndIdx: midRow - 1 },
+      { colStartIdx: midCol, colEndIdx: colsCount - 1, rowStartIdx: 0, rowEndIdx: midRow - 1 },
+      { colStartIdx: 0, colEndIdx: midCol - 1, rowStartIdx: midRow, rowEndIdx: rowsCount - 1 },
+      { colStartIdx: midCol, colEndIdx: colsCount - 1, rowStartIdx: midRow, rowEndIdx: rowsCount - 1 },
     ];
   } else if (count === 5 || count === 6) {
-    // 5-6 người: 2 hàng x 3 cột (mỗi vùng ~7 cột x 10 hàng = 60-70 ô)
+    // 5-6 người: 2 hàng x 3 cột
+    const w1 = Math.floor(colsCount / 3);
+    const w2 = Math.floor((colsCount * 2) / 3);
     sectors = [
-      { colStartIdx: 0, colEndIdx: 6, rowStartIdx: 0, rowEndIdx: 9 },     // A..G, 1..10
-      { colStartIdx: 7, colEndIdx: 13, rowStartIdx: 0, rowEndIdx: 9 },    // H..N, 1..10
-      { colStartIdx: 14, colEndIdx: 19, rowStartIdx: 0, rowEndIdx: 9 },   // O..T, 1..10
-      { colStartIdx: 0, colEndIdx: 6, rowStartIdx: 10, rowEndIdx: 19 },   // A..G, 11..20
-      { colStartIdx: 7, colEndIdx: 13, rowStartIdx: 10, rowEndIdx: 19 },  // H..N, 11..20
-      { colStartIdx: 14, colEndIdx: 19, rowStartIdx: 10, rowEndIdx: 19 }, // O..T, 11..20
+      { colStartIdx: 0, colEndIdx: w1 - 1, rowStartIdx: 0, rowEndIdx: midRow - 1 },
+      { colStartIdx: w1, colEndIdx: w2 - 1, rowStartIdx: 0, rowEndIdx: midRow - 1 },
+      { colStartIdx: w2, colEndIdx: colsCount - 1, rowStartIdx: 0, rowEndIdx: midRow - 1 },
+      { colStartIdx: 0, colEndIdx: w1 - 1, rowStartIdx: midRow, rowEndIdx: rowsCount - 1 },
+      { colStartIdx: w1, colEndIdx: w2 - 1, rowStartIdx: midRow, rowEndIdx: rowsCount - 1 },
+      { colStartIdx: w2, colEndIdx: colsCount - 1, rowStartIdx: midRow, rowEndIdx: rowsCount - 1 },
     ];
   } else {
-    // 7-8 người: 2 hàng x 4 cột (mỗi vùng 5 cột x 10 hàng = 50 ô)
+    // 7-8 người: 2 hàng x 4 cột
+    const w1 = Math.floor(colsCount / 4);
+    const w2 = Math.floor((colsCount * 2) / 4);
+    const w3 = Math.floor((colsCount * 3) / 4);
     sectors = [
-      { colStartIdx: 0, colEndIdx: 4, rowStartIdx: 0, rowEndIdx: 9 },     // A..E, 1..10
-      { colStartIdx: 5, colEndIdx: 9, rowStartIdx: 0, rowEndIdx: 9 },     // F..J, 1..10
-      { colStartIdx: 10, colEndIdx: 14, rowStartIdx: 0, rowEndIdx: 9 },   // K..O, 1..10
-      { colStartIdx: 15, colEndIdx: 19, rowStartIdx: 0, rowEndIdx: 9 },   // P..T, 1..10
-      { colStartIdx: 0, colEndIdx: 4, rowStartIdx: 10, rowEndIdx: 19 },   // A..E, 11..20
-      { colStartIdx: 5, colEndIdx: 9, rowStartIdx: 10, rowEndIdx: 19 },   // F..J, 11..20
-      { colStartIdx: 10, colEndIdx: 14, rowStartIdx: 10, rowEndIdx: 19 }, // K..O, 11..20
-      { colStartIdx: 15, colEndIdx: 19, rowStartIdx: 10, rowEndIdx: 19 }, // P..T, 11..20
+      { colStartIdx: 0, colEndIdx: w1 - 1, rowStartIdx: 0, rowEndIdx: midRow - 1 },
+      { colStartIdx: w1, colEndIdx: w2 - 1, rowStartIdx: 0, rowEndIdx: midRow - 1 },
+      { colStartIdx: w2, colEndIdx: w3 - 1, rowStartIdx: 0, rowEndIdx: midRow - 1 },
+      { colStartIdx: w3, colEndIdx: colsCount - 1, rowStartIdx: 0, rowEndIdx: midRow - 1 },
+      { colStartIdx: 0, colEndIdx: w1 - 1, rowStartIdx: midRow, rowEndIdx: rowsCount - 1 },
+      { colStartIdx: w1, colEndIdx: w2 - 1, rowStartIdx: midRow, rowEndIdx: rowsCount - 1 },
+      { colStartIdx: w2, colEndIdx: w3 - 1, rowStartIdx: midRow, rowEndIdx: rowsCount - 1 },
+      { colStartIdx: w3, colEndIdx: colsCount - 1, rowStartIdx: midRow, rowEndIdx: rowsCount - 1 },
     ];
   }
 
@@ -343,6 +369,10 @@ function validateCustomFleet(fleet, expectedLengths = [4, 3], existingEnemyCells
  * Khởi tạo trạng thái phòng đấu hoàn chỉnh
  */
 function createInitialGameState(options = {}) {
+  const gridCols = Math.min(Math.max(8, parseInt(options.gridCols, 10) || 20), ALL_LETTERS.length);
+  const gridRows = Math.min(Math.max(8, parseInt(options.gridRows, 10) || 20), 26);
+  setGridDimensions(gridCols, gridRows);
+
   const playerCount = Math.min(Math.max(2, options.playerCount || 4), 8);
   const shipsPerPlayer = Math.min(Math.max(1, options.shipsPerPlayer || 2), 5);
   const shipConfigMode = options.shipConfigMode || 'mix34';
@@ -350,7 +380,7 @@ function createInitialGameState(options = {}) {
   const turnOrderMode = options.turnOrderMode || 'random';
   const turnDuration = options.turnDuration || 60; // 60s mỗi lượt
 
-  const zones = allocatePlayerZones(playerCount);
+  const zones = allocatePlayerZones(playerCount, gridCols, gridRows);
   const teams = [];
 
   for (let i = 0; i < playerCount; i++) {
@@ -388,13 +418,15 @@ function createInitialGameState(options = {}) {
   return {
     phase: 'LOBBY', // 'LOBBY' -> 'PLACEMENT' -> 'BATTLE' -> 'FINISHED'
     grid: {
-      cols: COLS,
-      rows: ROWS,
+      cols: [...COLS],
+      rows: [...ROWS],
       width: GRID_WIDTH,
       height: GRID_HEIGHT,
       totalCells: TOTAL_CELLS,
     },
     config: {
+      gridCols: GRID_WIDTH,
+      gridRows: GRID_HEIGHT,
       playerCount,
       shipsPerPlayer,
       shipConfigMode,
@@ -1098,11 +1130,13 @@ function getPlayerState(gameState, teamId) {
 }
 
 const engineExports = {
-  COLS,
-  ROWS,
-  GRID_WIDTH,
-  GRID_HEIGHT,
-  TOTAL_CELLS,
+  ALL_LETTERS,
+  setGridDimensions,
+  get COLS() { return COLS; },
+  get ROWS() { return ROWS; },
+  get GRID_WIDTH() { return GRID_WIDTH; },
+  get GRID_HEIGHT() { return GRID_HEIGHT; },
+  get TOTAL_CELLS() { return TOTAL_CELLS; },
   DEFAULT_TEAMS,
   coordToKey,
   parseKey,

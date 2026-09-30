@@ -3,8 +3,9 @@
 // Hải đồ 20x20 (400 ô), Đếm ngược 60s, Kỹ năng Radar 3x3 & Tên lửa Chữ Thập (+), Bảng xếp hạng Live
 
 (() => {
-const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'];
-const ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+const ALL_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+let COLS = ALL_LETTERS.slice(0, 20);
+let ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
 
 let socket = null;
 let currentRoomId = null;
@@ -26,6 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initEvents();
   loadNetworkAndQR();
   startScreenTurnTicker();
+
+  window.addEventListener('resize', fitProjectorGridToScreen);
 });
 
 function initFirebase() {
@@ -76,8 +79,43 @@ function initSocket() {
   }
 }
 
+function fitProjectorGridToScreen() {
+  const container = document.getElementById('projOceanGrid');
+  const wrapper = container ? container.parentElement : null;
+  if (!wrapper || !container) return;
+
+  const numCols = COLS.length;
+  const numRows = ROWS.length;
+  if (!numCols || !numRows) return;
+
+  const rect = wrapper.getBoundingClientRect();
+  const pad = 8;
+  const availW = Math.max(100, rect.width - pad);
+  const availH = Math.max(100, rect.height - pad);
+
+  const headerColW = Math.max(18, Math.min(26, Math.floor(availW / (numCols + 1))));
+  const headerRowH = Math.max(16, Math.min(24, Math.floor(availH / (numRows + 1))));
+  const gap = 2;
+
+  const remainingW = availW - headerColW - (numCols * gap);
+  const remainingH = availH - headerRowH - (numRows * gap);
+
+  let cellSize = Math.floor(Math.min(remainingW / numCols, remainingH / numRows));
+  cellSize = Math.max(8, cellSize);
+
+  container.style.gridTemplateColumns = `${headerColW}px repeat(${numCols}, ${cellSize}px)`;
+  container.style.gridTemplateRows = `${headerRowH}px repeat(${numRows}, ${cellSize}px)`;
+  container.style.width = `${headerColW + numCols * cellSize + numCols * gap}px`;
+  container.style.height = `${headerRowH + numRows * cellSize + numRows * gap}px`;
+
+  const fontSize = Math.max(7, Math.min(14, Math.floor(cellSize * 0.42)));
+  container.style.setProperty('--cell-size', `${cellSize}px`);
+  container.style.setProperty('--cell-font-size', `${fontSize}px`);
+}
+
 function initGrid() {
   const container = document.getElementById('projOceanGrid');
+  if (!container) return;
   container.innerHTML = '';
 
   const corner = document.createElement('div');
@@ -110,15 +148,32 @@ function initGrid() {
       container.appendChild(cell);
     }
   }
+
+  fitProjectorGridToScreen();
 }
 
 function renderScreenState(state) {
   if (!state) return;
   currentScreenState = state;
 
+  if (state.grid && state.grid.cols && state.grid.rows) {
+    if (state.grid.cols.length !== COLS.length || state.grid.rows.length !== ROWS.length) {
+      COLS = [...state.grid.cols];
+      ROWS = [...state.grid.rows];
+      initGrid();
+    }
+  } else if (state.config && state.config.gridCols && state.config.gridRows) {
+    if (state.config.gridCols !== COLS.length || state.config.gridRows !== ROWS.length) {
+      COLS = ALL_LETTERS.slice(0, state.config.gridCols);
+      ROWS = Array.from({ length: state.config.gridRows }, (_, i) => i + 1);
+      initGrid();
+    }
+  }
+
   updateProjectorPhase(state);
   renderProjectorOceanMap(state);
   renderProjectorSurvivalBar(state);
+  fitProjectorGridToScreen();
 }
 
 function updateProjectorPhase(state) {

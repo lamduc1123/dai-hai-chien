@@ -4,8 +4,9 @@
 // Bản đồ 20x20 (400 ô), Đếm ngược 60s, Kỹ năng Radar 3x3 & Tên lửa Chữ Thập (+)
 
 (() => {
-const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'];
-const ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+const ALL_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+let COLS = ALL_LETTERS.slice(0, 20);
+let ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
 
 let socket = null;
 let currentRoomId = 'PHONG-01';
@@ -17,6 +18,8 @@ let turnTickerInterval = null;
 
 let tempPlayerCount = 4;
 let tempShipsPerPlayer = 2;
+let tempGridCols = 20;
+let tempGridRows = 20;
 
 document.addEventListener('DOMContentLoaded', () => {
   soundManager = new SoundManager();
@@ -32,12 +35,22 @@ document.addEventListener('DOMContentLoaded', () => {
   initSocket();
   loadNetworkAndQR();
   startTurnTicker();
+
+  window.addEventListener('resize', fitOceanGridToScreen);
+  if (window.ResizeObserver) {
+    const wrapper = document.querySelector('.ocean-map-wrapper');
+    if (wrapper) {
+      new ResizeObserver(() => fitOceanGridToScreen()).observe(wrapper);
+    }
+  }
 });
 
 // Khởi tạo GameEngine trực tiếp trong trình duyệt (Chạy mượt trên GitHub Pages / Firebase)
 function initStandaloneEngine() {
   if (window.GameEngine) {
     currentHostState = window.GameEngine.createInitialGameState({
+      gridCols: tempGridCols,
+      gridRows: tempGridRows,
       playerCount: tempPlayerCount,
       shipsPerPlayer: tempShipsPerPlayer,
     });
@@ -172,19 +185,27 @@ function handleLocalHostAction(actionType, payload) {
     commitLocalState();
   } else if (actionType === 'host:reset') {
     currentHostState = window.GameEngine.createInitialGameState({
+      gridCols: (currentHostState.config && currentHostState.config.gridCols) || tempGridCols,
+      gridRows: (currentHostState.config && currentHostState.config.gridRows) || tempGridRows,
       playerCount: currentHostState.config.playerCount,
       shipsPerPlayer: currentHostState.config.shipsPerPlayer,
+      shipConfigMode: currentHostState.config.shipConfigMode,
+      turnOrderMode: currentHostState.config.turnOrderMode,
     });
     addLogItem('🔄 Phòng đấu đã được đặt lại về Sảnh Chờ.', 'miss');
     commitLocalState();
   } else if (actionType === 'host:update_config') {
+    tempGridCols = payload.gridCols || tempGridCols;
+    tempGridRows = payload.gridRows || tempGridRows;
     currentHostState = window.GameEngine.createInitialGameState({
+      gridCols: tempGridCols,
+      gridRows: tempGridRows,
       playerCount: payload.playerCount || tempPlayerCount,
       shipsPerPlayer: payload.shipsPerPlayer || tempShipsPerPlayer,
       shipConfigMode: payload.shipConfigMode || 'mix34',
       turnOrderMode: payload.turnOrderMode || 'random',
     });
-    addLogItem(`⚙️ Đã cập nhật cấu hình: ${currentHostState.config.playerCount} Đội, ${currentHostState.config.shipsPerPlayer} tàu/đội`, 'hit');
+    addLogItem(`⚙️ Cập nhật cấu hình: Hải đồ ${tempGridCols}×${tempGridRows} (${tempGridCols * tempGridRows} ô), ${currentHostState.config.playerCount} Đội, ${currentHostState.config.shipsPerPlayer} tàu/đội`, 'hit');
     commitLocalState();
   }
 }
@@ -427,8 +448,67 @@ function startTurnTicker() {
   }, 1000);
 }
 
+function fitOceanGridToScreen() {
+  const wrapper = document.querySelector('.ocean-map-wrapper');
+  const grid = document.getElementById('oceanMapGrid');
+  if (!wrapper || !grid) return;
+
+  const numCols = COLS.length;
+  const numRows = ROWS.length;
+  if (!numCols || !numRows) return;
+
+  const rect = wrapper.getBoundingClientRect();
+  const pad = 6;
+  const availW = Math.max(100, rect.width - pad);
+  const availH = Math.max(100, rect.height - pad);
+
+  // Kích thước header: cột số hàng bên trái & hàng chữ cột bên trên
+  const headerColW = Math.max(16, Math.min(24, Math.floor(availW / (numCols + 1))));
+  const headerRowH = Math.max(14, Math.min(22, Math.floor(availH / (numRows + 1))));
+  const gap = 2;
+
+  // Diện tích khả dụng dành cho các ô hải đồ
+  const remainingW = availW - headerColW - (numCols * gap);
+  const remainingH = availH - headerRowH - (numRows * gap);
+
+  const cellW = remainingW / numCols;
+  const cellH = remainingH / numRows;
+
+  // Ô vuông hoàn hảo fit khít cả chiều ngang và chiều dọc
+  let cellSize = Math.floor(Math.min(cellW, cellH));
+  cellSize = Math.max(8, cellSize);
+
+  grid.style.gridTemplateColumns = `${headerColW}px repeat(${numCols}, ${cellSize}px)`;
+  grid.style.gridTemplateRows = `${headerRowH}px repeat(${numRows}, ${cellSize}px)`;
+  grid.style.width = `${headerColW + numCols * cellSize + numCols * gap}px`;
+  grid.style.height = `${headerRowH + numRows * cellSize + numRows * gap}px`;
+
+  const fontSize = Math.max(7, Math.min(13, Math.floor(cellSize * 0.42)));
+  grid.style.setProperty('--cell-size', `${cellSize}px`);
+  grid.style.setProperty('--cell-font-size', `${fontSize}px`);
+
+  const corner = grid.querySelector('.ocean-header-corner');
+  if (corner) {
+    corner.style.width = `${headerColW}px`;
+    corner.style.height = `${headerRowH}px`;
+  }
+
+  grid.querySelectorAll('.ocean-col-header').forEach(el => {
+    el.style.width = `${cellSize}px`;
+    el.style.height = `${headerRowH}px`;
+    el.style.fontSize = `${Math.max(7, Math.min(12, Math.floor(cellSize * 0.45)))}px`;
+  });
+
+  grid.querySelectorAll('.ocean-row-header').forEach(el => {
+    el.style.width = `${headerColW}px`;
+    el.style.height = `${cellSize}px`;
+    el.style.fontSize = `${Math.max(7, Math.min(12, Math.floor(cellSize * 0.45)))}px`;
+  });
+}
+
 function initGrid() {
   const container = document.getElementById('oceanMapGrid');
+  if (!container) return;
   container.innerHTML = '';
 
   const corner = document.createElement('div');
@@ -483,16 +563,47 @@ function initGrid() {
       container.appendChild(cell);
     }
   }
+
+  fitOceanGridToScreen();
 }
 
 function renderHostState(state) {
   if (!state) return;
   currentHostState = state;
 
+  // Đồng bộ kích thước lưới hải đồ nếu có thay đổi từ state / host
+  if (state.grid && state.grid.cols && state.grid.rows) {
+    if (state.grid.cols.length !== COLS.length || state.grid.rows.length !== ROWS.length) {
+      COLS = [...state.grid.cols];
+      ROWS = [...state.grid.rows];
+      tempGridCols = COLS.length;
+      tempGridRows = ROWS.length;
+      initGrid();
+    }
+  } else if (state.config && state.config.gridCols && state.config.gridRows) {
+    if (state.config.gridCols !== COLS.length || state.config.gridRows !== ROWS.length) {
+      COLS = ALL_LETTERS.slice(0, state.config.gridCols);
+      ROWS = Array.from({ length: state.config.gridRows }, (_, i) => i + 1);
+      tempGridCols = COLS.length;
+      tempGridRows = ROWS.length;
+      initGrid();
+    }
+  }
+
+  // Cập nhật tiêu đề hải đồ
+  const titleEl = document.getElementById('oceanMapTitleText');
+  if (titleEl) {
+    const total = COLS.length * ROWS.length;
+    const lastCol = COLS[COLS.length - 1];
+    const lastRow = ROWS[ROWS.length - 1];
+    titleEl.textContent = `🗺️ ĐẠI HẢI ĐỒ ${total} Ô (A-${lastCol} × 1-${lastRow})`;
+  }
+
   updatePhaseAndControls(state);
   renderTeamsRoster(state);
   renderOceanMap(state);
   updateStats(state);
+  fitOceanGridToScreen();
 }
 
 function updatePhaseAndControls(state) {
@@ -869,6 +980,45 @@ function initEventListeners() {
     });
   }
 
+  // Nút đổi kích thước nhanh trên thanh tiêu đề
+  on('btnQuickGridSetup', openConfigModal);
+
+  // Chọn diện tích hải đồ (Presets)
+  document.querySelectorAll('.cfg-grid-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tempGridCols = parseInt(btn.dataset.cols, 10);
+      tempGridRows = parseInt(btn.dataset.rows, 10);
+      const colsInput = document.getElementById('cfgGridColsInput');
+      const rowsInput = document.getElementById('cfgGridRowsInput');
+      if (colsInput) colsInput.value = tempGridCols;
+      if (rowsInput) rowsInput.value = tempGridRows;
+      updateGridConfigBadge();
+    });
+  });
+
+  // Nhập số lượng ô 2 trục bằng tay
+  const colsInput = document.getElementById('cfgGridColsInput');
+  if (colsInput) {
+    colsInput.addEventListener('input', () => {
+      let val = parseInt(colsInput.value, 10);
+      if (!isNaN(val) && val >= 8 && val <= 26) {
+        tempGridCols = val;
+        updateGridConfigBadge();
+      }
+    });
+  }
+
+  const rowsInput = document.getElementById('cfgGridRowsInput');
+  if (rowsInput) {
+    rowsInput.addEventListener('input', () => {
+      let val = parseInt(rowsInput.value, 10);
+      if (!isNaN(val) && val >= 8 && val <= 26) {
+        tempGridRows = val;
+        updateGridConfigBadge();
+      }
+    });
+  }
+
   // Chọn số lượng đội (2 -> 8)
   document.querySelectorAll('.cfg-player-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -898,7 +1048,18 @@ function initEventListeners() {
   on('btnSaveConfig', () => {
     const shipMode = document.getElementById('cfgShipConfigMode') ? document.getElementById('cfgShipConfigMode').value : 'mix34';
     const turnOrder = document.getElementById('cfgTurnOrderMode') ? document.getElementById('cfgTurnOrderMode').value : 'random';
+    const cInput = document.getElementById('cfgGridColsInput');
+    const rInput = document.getElementById('cfgGridRowsInput');
+    if (cInput) {
+      tempGridCols = Math.min(26, Math.max(8, parseInt(cInput.value, 10) || 20));
+    }
+    if (rInput) {
+      tempGridRows = Math.min(26, Math.max(8, parseInt(rInput.value, 10) || 20));
+    }
+
     dispatchHostAction('host:update_config', {
+      gridCols: tempGridCols,
+      gridRows: tempGridRows,
       playerCount: tempPlayerCount,
       shipsPerPlayer: tempShipsPerPlayer,
       shipConfigMode: shipMode,
@@ -1026,11 +1187,35 @@ function closeQRModal() {
   if (m) m.classList.remove('active');
 }
 
+function updateGridConfigBadge() {
+  const badge = document.getElementById('cfgTotalCellsBadge');
+  if (badge) {
+    badge.textContent = `${tempGridCols * tempGridRows} Ô (${tempGridCols} × ${tempGridRows})`;
+  }
+  document.querySelectorAll('.cfg-grid-preset').forEach(btn => {
+    const c = parseInt(btn.dataset.cols, 10);
+    const r = parseInt(btn.dataset.rows, 10);
+    if (c === tempGridCols && r === tempGridRows) {
+      btn.classList.add('btn-primary', 'active');
+      btn.classList.remove('btn-outline');
+    } else {
+      btn.classList.remove('btn-primary', 'active');
+      btn.classList.add('btn-outline');
+    }
+  });
+}
+
 function openConfigModal() {
   if (currentHostState && currentHostState.phase !== 'LOBBY') {
-    alert('Chỉ có thể điều chỉnh cấu hình khi đang ở Sảnh Chờ!');
+    alert('Chỉ có thể điều chỉnh cấu hình khi đang ở Sảnh Chờ! Nếu muốn đổi diện tích hải đồ, vui lòng bấm nút "🔄 Đặt Lại" để về Sảnh Chờ trước.');
     return;
   }
+  const colsInput = document.getElementById('cfgGridColsInput');
+  const rowsInput = document.getElementById('cfgGridRowsInput');
+  if (colsInput) colsInput.value = tempGridCols;
+  if (rowsInput) rowsInput.value = tempGridRows;
+  updateGridConfigBadge();
+
   document.getElementById('modalConfig').classList.add('active');
 }
 

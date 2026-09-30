@@ -87,6 +87,8 @@ function updateRoomConfig(roomId, newConfig = {}) {
 
   const currentOpts = room.gameState.config;
   const updatedOpts = {
+    gridCols: newConfig.gridCols !== undefined ? newConfig.gridCols : currentOpts.gridCols,
+    gridRows: newConfig.gridRows !== undefined ? newConfig.gridRows : currentOpts.gridRows,
     playerCount: newConfig.playerCount !== undefined ? newConfig.playerCount : currentOpts.playerCount,
     shipsPerPlayer: newConfig.shipsPerPlayer !== undefined ? newConfig.shipsPerPlayer : currentOpts.shipsPerPlayer,
     shipConfigMode: newConfig.shipConfigMode || currentOpts.shipConfigMode,

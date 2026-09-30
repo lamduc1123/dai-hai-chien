@@ -6,64 +6,83 @@
   <title>⚓ Chỉ Huy Trưởng - Đại Hải Chiến 400 Ô (A-T × 1-20)</title>
   <link rel="stylesheet" href="css/naval-light.css">
   <style>
-    body {
+    html, body {
       background: #f0f7ff;
       margin: 0;
       padding: 0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden; /* Tuyệt đối không cuộn toàn trang */
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     }
 
     .host-wrapper {
       width: 100%;
-      max-width: 100%;
-      padding: 8px 14px;
+      height: 100vh;
+      max-height: 100vh;
+      padding: 4px 8px;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      flex: 1;
+      gap: 4px;
+      overflow: hidden;
     }
 
     .header-bar-compact {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 14px;
+      padding: 3px 8px;
       background: #ffffff;
-      border-radius: 10px;
+      border-radius: 8px;
       border: 1px solid var(--border-ocean);
       box-shadow: var(--shadow-sm);
-      flex-wrap: wrap;
-      gap: 8px;
+      flex-shrink: 0;
+      gap: 6px;
     }
 
-    /* Thanh hạm đội sinh tồn nằm ngang trên đầu */
+    /* Thanh trạng thái tiến độ & đếm ngược tinh gọn */
+    .status-bar-compact {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #ffffff;
+      padding: 3px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border-ocean);
+      box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
+      gap: 6px;
+    }
+
+    /* Thanh hạm đội sinh tồn nằm ngang trên đầu (Siêu gọn) */
     .teams-roster-horizontal {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 4px;
       width: 100%;
+      flex-shrink: 0;
     }
 
     .team-roster-card {
-      padding: 8px 12px;
-      border-radius: 8px;
+      padding: 3px 8px;
+      border-radius: 6px;
       background: #ffffff;
-      border: 2px solid var(--border-ocean);
+      border: 1.5px solid var(--border-ocean);
       display: flex;
       align-items: center;
       justify-content: space-between;
       transition: all 0.2s ease;
       box-shadow: var(--shadow-sm);
+      min-height: 32px;
+      box-sizing: border-box;
     }
 
     .team-roster-card.active-turn {
       border-color: #0284c7;
-      box-shadow: 0 0 14px rgba(2, 132, 199, 0.4);
+      box-shadow: 0 0 10px rgba(2, 132, 199, 0.4);
       background: #f0f9ff;
-      transform: translateY(-1px);
     }
 
     .team-roster-card.eliminated {
@@ -73,39 +92,82 @@
       filter: grayscale(1);
     }
 
-    /* Hải đồ full trang chiều ngang */
+    /* Hải đồ chiếm trọn phần diện tích còn lại của khung hình */
     .ocean-section-full {
       background: #ffffff;
-      border-radius: 12px;
+      border-radius: 8px;
       border: 1px solid var(--border-ocean);
-      padding: 10px 14px;
+      padding: 4px 8px;
       display: flex;
       flex-direction: column;
       flex: 1;
+      min-height: 0;
       box-shadow: var(--shadow-sm);
-      gap: 8px;
+      gap: 3px;
+      overflow: hidden;
     }
 
     .ocean-map-wrapper {
       width: 100%;
-      overflow: auto;
-      max-height: 72vh;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden; /* Không cho phép cuộn, hải đồ tự fit */
       display: flex;
       justify-content: center;
-      align-items: flex-start;
+      align-items: center;
       background: #f8fafc;
-      border-radius: 8px;
-      padding: 8px;
+      border-radius: 6px;
+      padding: 4px;
       border: 1px solid var(--border-ocean);
+      box-sizing: border-box;
     }
 
     .ocean-grid {
       display: grid;
-      grid-template-columns: 28px repeat(20, minmax(24px, 42px));
-      grid-template-rows: 24px repeat(20, minmax(24px, 42px));
       gap: 2px;
       user-select: none;
-      margin: 0 auto;
+      margin: auto;
+      box-sizing: border-box;
+      width: fit-content;
+      height: fit-content;
+    }
+
+    .ocean-header-corner {
+      background: #f1f5f9;
+      border-radius: 3px;
+    }
+
+    .ocean-col-header, .ocean-row-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: var(--navy-dark);
+      background: #e0f2fe;
+      border-radius: 3px;
+      user-select: none;
+      box-sizing: border-box;
+    }
+
+    .ocean-cell {
+      position: relative;
+      background: var(--cell-water);
+      border: 1px solid var(--cell-water-border);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-sizing: border-box;
+      font-size: var(--cell-font-size, 10px);
+      transition: background 0.12s ease, border-color 0.12s ease;
+    }
+
+    .cfg-grid-preset {
+      padding: 3px 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      border-radius: 6px;
     }
   </style>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
@@ -123,48 +185,48 @@
 
     <!-- Thanh điều khiển trên cùng (Tinh gọn) -->
     <header class="header-bar-compact">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 1.5rem;">⚓</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.3rem;">⚓</span>
         <div>
-          <h1 style="font-size: 1.15rem; font-weight: 900; color: var(--navy-dark); letter-spacing: 0.5px; margin: 0;">
+          <h1 style="font-size: 1rem; font-weight: 900; color: var(--navy-dark); letter-spacing: 0.3px; margin: 0; line-height: 1.1;">
             ĐẠI HẢI CHIẾN: CHỈ HUY HẢI QUÂN
           </h1>
-          <div style="display: flex; align-items: center; gap: 6px; margin-top: 1px;">
-            <span class="badge badge-live" style="font-size: 0.7rem; padding: 2px 6px;">MC LIVE</span>
-            <span style="font-size: 0.8rem; color: var(--text-muted);">Mã: <b id="roomCodeText" style="color: var(--navy-primary);">------</b></span>
-            <span id="phaseBadge" class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.7rem; padding: 2px 6px;">SẢNH CHỜ</span>
+          <div style="display: flex; align-items: center; gap: 5px; margin-top: 1px;">
+            <span class="badge badge-live" style="font-size: 0.65rem; padding: 1px 5px;">MC LIVE</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Mã: <b id="roomCodeText" style="color: var(--navy-primary);">------</b></span>
+            <span id="phaseBadge" class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.65rem; padding: 1px 5px;">SẢNH CHỜ</span>
           </div>
         </div>
       </div>
 
       <!-- Nhóm nút chức năng nhỏ gọn -->
-      <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-        <button id="btnOpenFirebaseModal" class="btn btn-outline" style="padding: 5px 9px; font-size: 0.8rem; border-color: #f59e0b; color: #d97706;" title="Cài đặt kết nối Google Firebase Cloud">🔥 Firebase</button>
-        <button id="btnOpenConfig" class="btn btn-outline" style="padding: 5px 9px; font-size: 0.8rem;" title="Thiết lập số người chơi và số tàu">⚙️ Cài Đặt</button>
-        <button id="btnAddBot" class="btn btn-outline" style="padding: 5px 9px; font-size: 0.8rem; border-color: #0284c7; color: #0284c7;" title="Thêm 1 máy tự động">🤖 +1 Bot</button>
-        <button id="btnFillBots" class="btn btn-outline" style="padding: 5px 9px; font-size: 0.8rem; border-color: #059669; color: #059669;" title="Lấp đầy các đội trống bằng máy">🤖 Đầy Bot</button>
-        <button id="btnOpenQR" class="btn btn-primary" style="padding: 5px 12px; font-size: 0.8rem;" title="Mã QR cho người chơi quét">📱 Mã QR</button>
-        <a href="screen.html" target="_blank" class="btn btn-outline" style="padding: 5px 9px; font-size: 0.8rem;" title="Mở Màn Hình Trình Chiếu Máy Chiếu">📺 Máy Chiếu</a>
-        <button id="btnSoundToggle" class="btn btn-outline" style="padding: 5px 9px; font-size: 0.8rem;" title="Bật/Tắt âm thanh">🔊 Âm Thanh</button>
-        <button id="btnResetGame" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;" title="Đặt lại ván mới">🔄 Đặt Lại</button>
+      <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+        <button id="btnOpenFirebaseModal" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem; border-color: #f59e0b; color: #d97706;" title="Cài đặt kết nối Google Firebase Cloud">🔥 Firebase</button>
+        <button id="btnOpenConfig" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem;" title="Thiết lập kích thước hải đồ, số đội và số tàu">⚙️ Cài Đặt</button>
+        <button id="btnAddBot" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem; border-color: #0284c7; color: #0284c7;" title="Thêm 1 máy tự động">🤖 +1 Bot</button>
+        <button id="btnFillBots" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem; border-color: #059669; color: #059669;" title="Lấp đầy các đội trống bằng máy">🤖 Đầy Bot</button>
+        <button id="btnOpenQR" class="btn btn-primary" style="padding: 3px 10px; font-size: 0.75rem;" title="Mã QR cho người chơi quét">📱 Mã QR</button>
+        <a href="screen.html" target="_blank" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem;" title="Mở Màn Hình Trình Chiếu Máy Chiếu">📺 Máy Chiếu</a>
+        <button id="btnSoundToggle" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem;" title="Bật/Tắt âm thanh">🔊 Âm Thanh</button>
+        <button id="btnResetGame" class="btn btn-danger" style="padding: 3px 9px; font-size: 0.75rem;" title="Đặt lại ván mới">🔄 Đặt Lại</button>
       </div>
     </header>
 
-    <!-- Thanh hiển thị trạng thái, đếm ngược và nút chuyển bước -->
-    <div style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-ocean); box-shadow: var(--shadow-sm); flex-wrap: wrap; gap: 8px;">
-      <div style="display: flex; align-items: center; gap: 16px;">
+    <!-- Thanh hiển thị trạng thái, đếm ngược và nút chuyển bước (Siêu gọn) -->
+    <div class="status-bar-compact">
+      <div style="display: flex; align-items: center; gap: 12px;">
         <div>
-          <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Tiến độ</div>
-          <div id="statusProgressText" style="font-size: 1.05rem; font-weight: 900; color: var(--navy-dark);">0/4 Đội Sẵn Sàng</div>
+          <div style="font-size: 0.62rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Tiến độ</div>
+          <div id="statusProgressText" style="font-size: 0.92rem; font-weight: 900; color: var(--navy-dark); line-height: 1.1;">0/4 Đội Sẵn Sàng</div>
         </div>
-        <div style="width: 1px; height: 26px; background: var(--border-ocean);"></div>
+        <div style="width: 1px; height: 20px; background: var(--border-ocean);"></div>
         <div>
-          <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Lượt Khai Hỏa</div>
-          <div id="statusTurnText" style="font-size: 1.05rem; font-weight: 900; color: #0284c7;">Chờ Khởi Động</div>
+          <div style="font-size: 0.62rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Lượt Khai Hỏa</div>
+          <div id="statusTurnText" style="font-size: 0.92rem; font-weight: 900; color: #0284c7; line-height: 1.1;">Chờ Khởi Động</div>
         </div>
-        <div id="turnTimerWrapper" style="display: none; align-items: center; gap: 6px;">
-          <div style="width: 1px; height: 26px; background: var(--border-ocean); margin-right: 6px;"></div>
-          <div id="turnTimerBadge" class="turn-timer-badge" style="padding: 4px 10px; font-size: 0.85rem;">
+        <div id="turnTimerWrapper" style="display: none; align-items: center; gap: 4px;">
+          <div style="width: 1px; height: 20px; background: var(--border-ocean); margin-right: 4px;"></div>
+          <div id="turnTimerBadge" class="turn-timer-badge" style="padding: 2px 8px; font-size: 0.78rem;">
             <span>⏱️</span>
             <span id="turnTimerText">60s</span>
           </div>
@@ -172,17 +234,17 @@
       </div>
 
       <!-- Nút hành động theo từng giai đoạn -->
-      <div id="actionButtonsContainer" style="display: flex; align-items: center; gap: 8px;">
-        <button id="btnStartPlacement" class="btn btn-primary" style="padding: 8px 16px; font-weight: 800; font-size: 0.9rem;">
+      <div id="actionButtonsContainer" style="display: flex; align-items: center; gap: 6px;">
+        <button id="btnStartPlacement" class="btn btn-primary" style="padding: 5px 12px; font-weight: 800; font-size: 0.82rem;">
           🗺️ BƯỚC 1: BẮT ĐẦU DÀN TRẬN
         </button>
-        <button id="btnStartBattle" class="btn btn-success" style="display: none; padding: 8px 16px; font-weight: 800; font-size: 0.9rem;">
+        <button id="btnStartBattle" class="btn btn-success" style="display: none; padding: 5px 12px; font-weight: 800; font-size: 0.82rem;">
           ⚔️ BƯỚC 2: BẮT ĐẦU CHIẾN ĐẤU
         </button>
-        <button id="btnManualTurn" class="btn btn-outline" style="display: none; padding: 6px 12px; font-size: 0.85rem;" title="Chuyển lượt cho người kế tiếp">
+        <button id="btnManualTurn" class="btn btn-outline" style="display: none; padding: 4px 9px; font-size: 0.78rem;" title="Chuyển lượt cho người kế tiếp">
           ⏩ Chuyển Lượt
         </button>
-        <button id="btnUndo" class="btn btn-outline" style="display: none; padding: 6px 12px; font-size: 0.85rem;" title="Hủy lượt bắn vừa rồi">
+        <button id="btnUndo" class="btn btn-outline" style="display: none; padding: 4px 9px; font-size: 0.78rem;" title="Hủy lượt bắn vừa rồi">
           ⏪ Hoàn Tác
         </button>
       </div>
@@ -193,42 +255,45 @@
       <!-- Render tự động bởi host.js -->
     </div>
 
-    <!-- ĐẠI HẢI ĐỒ 400 Ô (A-T × 1-20) FULL TRANG CHIỀU NGANG -->
+    <!-- ĐẠI HẢI ĐỒ TRỌN VẸN 1 KHUNG HÌNH (A-T × 1-20 hoặc TÙY BIẾN) -->
     <main class="ocean-section-full">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <h2 style="font-size: 1rem; font-weight: 800; color: var(--navy-dark); margin: 0;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h2 id="oceanMapTitleText" style="font-size: 0.92rem; font-weight: 800; color: var(--navy-dark); margin: 0;">
             🗺️ ĐẠI HẢI ĐỒ 400 Ô (A-T × 1-20)
           </h2>
-          <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text-muted); font-size: 0.8rem; background: #f1f5f9; padding: 3px 8px; border-radius: 6px;">
-            <input type="checkbox" id="chkShowSecretShips"> 👁️ Xem vị trí tàu ẩn (Chỉ MC)
+          <button id="btnQuickGridSetup" class="btn btn-outline" style="padding: 2px 7px; font-size: 0.72rem; border-color: #0284c7; color: #0284c7; font-weight: 700;" title="Thiết lập số lượng ô 2 trục của hải đồ">
+            📐 Đổi Kích Thước
+          </button>
+          <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-muted); font-size: 0.75rem; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">
+            <input type="checkbox" id="chkShowSecretShips"> 👁️ Tàu ẩn (MC)
           </label>
         </div>
 
         <!-- MC Nhập Tọa Độ Bắn Nhanh & Kỹ Năng -->
-        <div id="hostQuickFireBar" style="display: none; align-items: center; gap: 6px;">
-          <span style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark);">🎯 TỌA ĐỘ:</span>
-          <input type="text" id="inputHostCoord" placeholder="B14" maxlength="4" style="width: 60px; padding: 4px 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 800; text-transform: uppercase; text-align: center; font-size: 0.85rem;">
-          <button id="btnHostFireCoord" class="btn btn-primary" style="padding: 5px 10px; font-size: 0.8rem;">🚀 Bắn</button>
-          <button id="btnHostRadarCoord" class="btn btn-outline" style="border-color: #0284c7; color: #0284c7; padding: 5px 8px; font-size: 0.8rem;">📡 Radar</button>
-          <button id="btnHostCrossfireCoord" class="btn btn-outline" style="border-color: #ea580c; color: #ea580c; padding: 5px 8px; font-size: 0.8rem;">💥 Chữ Thập</button>
+        <div id="hostQuickFireBar" style="display: none; align-items: center; gap: 5px;">
+          <span style="font-size: 0.75rem; font-weight: 800; color: var(--navy-dark);">🎯 TỌA ĐỘ:</span>
+          <input type="text" id="inputHostCoord" placeholder="B14" maxlength="4" style="width: 54px; padding: 3px 5px; border-radius: 5px; border: 1px solid #cbd5e1; font-weight: 800; text-transform: uppercase; text-align: center; font-size: 0.8rem;">
+          <button id="btnHostFireCoord" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.75rem;">🚀 Bắn</button>
+          <button id="btnHostRadarCoord" class="btn btn-outline" style="border-color: #0284c7; color: #0284c7; padding: 4px 6px; font-size: 0.75rem;">📡 Radar</button>
+          <button id="btnHostCrossfireCoord" class="btn btn-outline" style="border-color: #ea580c; color: #ea580c; padding: 4px 6px; font-size: 0.75rem;">💥 Chữ Thập</button>
         </div>
       </div>
 
-      <!-- Khung lưới hải đồ full width -->
+      <!-- Khung lưới hải đồ tự co giãn fit 100% không cuộn -->
       <div class="ocean-map-wrapper">
         <div id="oceanMapGrid" class="ocean-grid">
           <!-- Render bằng host.js -->
         </div>
       </div>
 
-      <!-- Thống kê nhanh footer -->
-      <div style="display: flex; justify-content: space-around; align-items: center; padding: 6px 10px; background: #f8fafc; border-radius: 6px; font-size: 0.8rem; color: var(--text-muted); border: 1px solid var(--border-ocean); flex-wrap: wrap; gap: 6px;">
+      <!-- Thống kê nhanh footer (Siêu gọn) -->
+      <div style="display: flex; justify-content: space-around; align-items: center; padding: 2px 8px; background: #f8fafc; border-radius: 4px; font-size: 0.72rem; color: var(--text-muted); border: 1px solid var(--border-ocean); flex-wrap: wrap; gap: 4px; flex-shrink: 0;">
         <div>🌊 <b>Trượt:</b> <span id="statMissCount">0</span></div>
         <div>💥 <b>Trúng:</b> <span id="statHitCount">0</span></div>
         <div>☠️ <b>Chìm:</b> <span id="statSunkCount">0</span></div>
         <div>🎯 <b>Tổng bắn:</b> <span id="statTotalShots">0</span></div>
-        <div style="font-size: 0.75rem; color: #64748b;">💡 Tàu chiến 3-4 ô hiển thị liền khối nguyên bản</div>
+        <div style="font-size: 0.7rem; color: #64748b;">💡 Tự động khớp trọn vẹn màn hình, không cuộn</div>
       </div>
     </main>
 
@@ -236,10 +301,46 @@
 
   <!-- Hộp thoại Cài Đặt Game -->
   <div id="modalConfig" class="modal-overlay">
-    <div class="modal-content">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--navy-dark);">⚙️ THIẾT LẬP THÔNG SỐ TRẬN ĐẤU</h3>
-        <button id="btnCloseConfig" class="btn btn-outline" style="padding: 4px 8px;">✕</button>
+    <div class="modal-content" style="max-width: 520px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--navy-dark); margin: 0;">⚙️ THIẾT LẬP THÔNG SỐ TRẬN ĐẤU</h3>
+        <button id="btnCloseConfig" class="btn btn-outline" style="padding: 3px 8px;">✕</button>
+      </div>
+
+      <!-- Mục thiết lập diện tích hải đồ 2 trục -->
+      <div class="form-group" style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <label class="form-label" style="font-weight: 800; color: var(--navy-dark); margin: 0; font-size: 0.88rem;">
+            📐 DIỆN TÍCH HẢI ĐỒ (TRỤC NGANG X × TRỤC DỌC Y):
+          </label>
+          <span id="cfgTotalCellsBadge" class="badge" style="background: #0284c7; color: #ffffff; font-size: 0.78rem; padding: 2px 8px; font-weight: 800;">
+            400 Ô (20 × 20)
+          </span>
+        </div>
+        
+        <!-- Các lựa chọn nhanh -->
+        <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn btn-outline cfg-grid-preset" data-cols="10" data-rows="10">10 × 10 (100 ô)</button>
+          <button type="button" class="btn btn-outline cfg-grid-preset" data-cols="12" data-rows="12">12 × 12 (144 ô)</button>
+          <button type="button" class="btn btn-outline cfg-grid-preset" data-cols="15" data-rows="15">15 × 15 (225 ô)</button>
+          <button type="button" class="btn btn-primary cfg-grid-preset active" data-cols="20" data-rows="20">20 × 20 (400 ô - Chuẩn)</button>
+        </div>
+
+        <!-- Nhập số lượng ô của 2 trục -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="flex: 1;">
+            <span style="font-size: 0.72rem; color: #64748b; font-weight: 700;">Trục Ngang X (Cột A..Z, 8-26):</span>
+            <input type="number" id="cfgGridColsInput" min="8" max="26" value="20" class="form-control" style="padding: 4px 8px; font-size: 0.85rem; font-weight: bold; text-align: center;">
+          </div>
+          <span style="font-size: 1.1rem; font-weight: 900; color: #0284c7; margin-top: 14px;">×</span>
+          <div style="flex: 1;">
+            <span style="font-size: 0.72rem; color: #64748b; font-weight: 700;">Trục Dọc Y (Hàng 1..26, 8-26):</span>
+            <input type="number" id="cfgGridRowsInput" min="8" max="26" value="20" class="form-control" style="padding: 4px 8px; font-size: 0.85rem; font-weight: bold; text-align: center;">
+          </div>
+        </div>
+        <div style="font-size: 0.7rem; color: #0369a1; margin-top: 5px;">
+          💡 Tự động tối ưu diện tích hải đồ, đảm bảo hiển thị trọn vẹn 1 khung hình, không cuộn trang.
+        </div>
       </div>
 
       <div class="form-group">

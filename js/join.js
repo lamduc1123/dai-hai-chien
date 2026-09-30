@@ -3,8 +3,9 @@
 // Hỗ trợ chọn ô bằng chạm trực tiếp hoặc nhập tọa độ nhanh (VD: B14)
 
 (() => {
-const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'];
-const ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+const ALL_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+let COLS = ALL_LETTERS.slice(0, 20);
+let ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
 
 let socket = null;
 let currentRoomId = 'PHONG-01';
@@ -126,6 +127,18 @@ function initSocket() {
 function updatePlayerUI(state) {
   if (!state) return;
   myPlayerState = state;
+
+  // Cập nhật kích thước hải đồ động nếu có
+  if (state.grid && state.grid.cols && state.grid.rows) {
+    if (state.grid.cols.length !== COLS.length || state.grid.rows.length !== ROWS.length) {
+      COLS = [...state.grid.cols];
+      ROWS = [...state.grid.rows];
+      const pGrid = document.getElementById('placementGrid');
+      const bGrid = document.getElementById('battleOceanGrid');
+      if (pGrid) buildGridInContainer(pGrid, handlePlacementCellClick);
+      if (bGrid) buildGridInContainer(bGrid, handleBattleCellClick);
+    }
+  }
 
   const myTeam = state.myTeam;
   if (myTeam) {
@@ -539,6 +552,8 @@ function renderMyFleetStatus(myTeam) {
 
 function buildGridInContainer(container, onClickCell) {
   container.innerHTML = '';
+  container.style.gridTemplateColumns = `26px repeat(${COLS.length}, minmax(22px, 1fr))`;
+  container.style.gridTemplateRows = `22px repeat(${ROWS.length}, minmax(22px, 1fr))`;
 
   const corner = document.createElement('div');
   corner.className = 'ocean-header-corner';
