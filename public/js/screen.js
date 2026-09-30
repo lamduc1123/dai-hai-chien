@@ -2,6 +2,7 @@
 // Logic hiển thị Màn hình lớn máy chiếu (TV / Projector) thuần Tiếng Việt 100%
 // Hải đồ 20x20 (400 ô), Đếm ngược 60s, Kỹ năng Radar 3x3 & Tên lửa Chữ Thập (+), Bảng xếp hạng Live
 
+(() => {
 const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'];
 const ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
@@ -383,3 +384,4 @@ async function loadNetworkAndQR() {
   const imgEl = document.getElementById('projQrImg');
   if (imgEl) imgEl.src = qrImageUrl;
 }
+})();

@@ -2,6 +2,7 @@
 // Chế độ Luyện Tập Solo: Bạn vs 3 Bot AI trên Đại Hải Đồ 400 Ô (20x20)
 // 100% Client-side bằng GameEngine, không phụ thuộc server, đồng bộ hoàn hảo Theme Sáng Navy
 
+(() => {
 const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'];
 const ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
@@ -570,3 +571,4 @@ function initEvents() {
     gridEl.style.transform = `scale(1)`;
   });
 }
+})();

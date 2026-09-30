@@ -1,6 +1,7 @@
 // src/game-engine.js
 // Logic xử lý Đại Hải Đồ 20x20 (400 ô), phân vùng 2-8 người chơi, đếm ngược 60s, kỹ năng Radar 3x3 & Tên lửa Chữ Thập (+)
 
+(() => {
 const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T']; // 20 cột (A -> T)
 const ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]; // 20 hàng (1 -> 20)
 const GRID_WIDTH = COLS.length;  // 20
@@ -1073,3 +1074,4 @@ if (typeof module !== 'undefined' && module.exports) {
 if (typeof window !== 'undefined') {
   window.GameEngine = engineExports;
 }
+})();
