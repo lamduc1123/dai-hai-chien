@@ -3,90 +3,119 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📺 Đại Hải Đồ Trình Chiếu Máy Chiếu - 200 Ô</title>
+  <title>📺 Đại Hải Đồ Trình Chiếu Máy Chiếu - 400 Ô (A-T × 1-20)</title>
   <link rel="stylesheet" href="css/naval-light.css">
   <style>
     body {
       background: #f0f7ff;
       overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
 
     .projector-container {
       display: flex;
       flex-direction: column;
       height: 100vh;
-      padding: 12px 16px;
-      gap: 12px;
+      padding: 10px 16px;
+      gap: 10px;
       max-width: 1920px;
       margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .projector-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 24px;
+      padding: 10px 20px;
       background: #ffffff;
       border-radius: 12px;
       border: 1px solid var(--border-ocean);
       box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
     }
 
-    .projector-main {
-      flex: 1;
+    /* Thanh Hạm Đội Sinh Tồn nằm ngang */
+    .proj-survival-bar {
       display: grid;
-      grid-template-columns: 1fr 340px;
-      gap: 16px;
-      min-height: 0;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      width: 100%;
+      flex-shrink: 0;
     }
 
+    .proj-team-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      border-radius: 10px;
+      background: #ffffff;
+      border: 2px solid var(--border-ocean);
+      transition: all 0.25s ease;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .proj-team-card.active-turn {
+      border-color: #0284c7;
+      background: #f0f9ff;
+      box-shadow: 0 0 16px rgba(2, 132, 199, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .proj-team-card.eliminated {
+      opacity: 0.45;
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      filter: grayscale(1);
+    }
+
+    /* Khung Hải đồ toàn màn hình máy chiếu */
     .projector-map-box {
       background: #ffffff;
       border-radius: 14px;
       border: 1px solid var(--border-ocean);
-      padding: 14px;
+      padding: 10px 14px;
       display: flex;
       flex-direction: column;
       box-shadow: var(--shadow-md);
+      flex: 1;
+      min-height: 0;
+      gap: 8px;
     }
 
-    .projector-side-box {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .team-badge-row {
+    .ocean-map-wrapper {
+      flex: 1;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
+      justify-content: center;
+      overflow: auto;
+      background: #f8fafc;
       border-radius: 10px;
-      background: #ffffff;
+      padding: 8px;
       border: 1px solid var(--border-ocean);
-      transition: all 0.2s ease;
     }
 
-    .team-badge-row.active {
-      border-color: #0284c7;
-      background: #f0f9ff;
-      box-shadow: 0 0 12px rgba(2, 132, 199, 0.35);
-      transform: scale(1.02);
-    }
-
-    .team-badge-row.eliminated {
-      opacity: 0.45;
-      background: #f1f5f9;
-      filter: grayscale(1);
+    .ocean-grid {
+      display: grid;
+      grid-template-columns: 28px repeat(20, minmax(24px, 42px));
+      grid-template-rows: 24px repeat(20, minmax(24px, 42px));
+      gap: 2px;
+      user-select: none;
+      margin: 0 auto;
     }
 
     .fullscreen-btn {
       cursor: pointer;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       padding: 6px 12px;
       border-radius: 8px;
       background: #f8fafc;
       border: 1px solid var(--border-ocean);
+      font-weight: 700;
     }
   </style>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
@@ -107,12 +136,12 @@
       <div style="display: flex; align-items: center; gap: 14px;">
         <span style="font-size: 2rem;">⚓</span>
         <div>
-          <h1 style="font-size: 1.4rem; font-weight: 900; color: var(--navy-dark); letter-spacing: 0.5px;">
-            ĐẠI HẢI CHIẾN: TRANH ĐOẠT ĐẠI DƯƠNG
+          <h1 style="font-size: 1.35rem; font-weight: 900; color: var(--navy-dark); letter-spacing: 0.5px; margin: 0;">
+            ĐẠI HẢI CHIẾN: ĐẠI DƯƠNG SINH TỒN
           </h1>
           <div style="display: flex; align-items: center; gap: 10px; margin-top: 2px;">
             <span class="badge badge-live">TRỰC TIẾP 16:9</span>
-            <span style="font-size: 0.9rem; color: var(--text-muted);">Phòng: <b id="projRoomCode" style="color: var(--navy-primary);">------</b></span>
+            <span style="font-size: 0.85rem; color: var(--text-muted);">Phòng: <b id="projRoomCode" style="color: var(--navy-primary);">------</b></span>
             <span id="projPhaseBadge" class="badge" style="background: #e0f2fe; color: #0284c7;">SẢNH CHỜ</span>
           </div>
         </div>
@@ -120,74 +149,56 @@
 
       <!-- Khung hiển thị lượt bắn hiện tại & Đếm ngược 60s -->
       <div style="display: flex; align-items: center; gap: 12px;">
-        <div id="projTurnBanner" style="display: flex; align-items: center; gap: 10px; padding: 8px 20px; border-radius: 12px; background: #f0f9ff; border: 2px solid #0284c7;">
+        <div id="projTurnBanner" style="display: flex; align-items: center; gap: 10px; padding: 6px 18px; border-radius: 12px; background: #f0f9ff; border: 2px solid #0284c7;">
           <span style="font-size: 1.2rem;">🎯</span>
-          <span id="projTurnText" style="font-size: 1.25rem; font-weight: 900; color: var(--navy-dark);">
+          <span id="projTurnText" style="font-size: 1.15rem; font-weight: 900; color: var(--navy-dark);">
             CHỜ KHỞI ĐỘNG
           </span>
         </div>
-        <div id="projTurnTimerBadge" class="turn-timer-badge" style="font-size: 1.25rem; padding: 8px 18px;">
+        <div id="projTurnTimerBadge" class="turn-timer-badge" style="font-size: 1.15rem; padding: 6px 16px;">
           <span>⏱️</span>
           <span id="projTurnTimerText">60s</span>
         </div>
       </div>
 
-      <!-- Nút chức năng máy chiếu -->
+      <!-- QR Thu nhỏ & Nút chức năng -->
       <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border-ocean);">
+          <img id="projQrImg" src="" alt="QR" style="width: 38px; height: 38px; border-radius: 4px; cursor: pointer;" title="Bấm xem QR lớn">
+          <div style="font-size: 0.72rem; line-height: 1.2;">
+            <div style="font-weight: 800; color: var(--navy-dark);">📱 QUÉT VÀO</div>
+            <div id="projQrUrl" style="color: var(--navy-primary); font-size: 0.68rem; font-weight: bold;"></div>
+          </div>
+        </div>
         <button id="btnToggleSound" class="fullscreen-btn" title="Bật/Tắt âm thanh">🔊</button>
         <button id="btnFullscreen" class="fullscreen-btn" title="Toàn màn hình">⛶ F11</button>
       </div>
     </header>
 
-    <!-- Khu vực trình chiếu chính -->
-    <main class="projector-main">
-      
-      <!-- Cột trái: Đại Hải Đồ 400 ô -->
-      <section class="projector-map-box">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--navy-dark);">
-            🗺️ HẢI ĐỒ TÁC CHIẾN 400 Ô (A-T × 1-20)
-          </h2>
-          <div style="font-size: 0.85rem; color: var(--text-muted);">
-            Lưới bảo mật cấp cao (Ẩn tuyệt đối vị trí tàu chưa chìm)
-          </div>
+    <!-- Thanh Hạm Đội Sinh Tồn (Ngang, không tính điểm, tập trung số tàu sống) -->
+    <div id="projSurvivalBar" class="proj-survival-bar">
+      <!-- Render tự động bởi screen.js -->
+    </div>
+
+    <!-- Khu vực Hải Đồ 400 Ô Chiếm Trọn Màn Hình Máy Chiếu -->
+    <main class="projector-map-box">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: var(--navy-dark); display: flex; align-items: center; gap: 8px;">
+          <span>🗺️ ĐẠI HẢI ĐỒ TÁC CHIẾN 400 Ô (A-T × 1-20)</span>
         </div>
-
-        <!-- Banner thông báo kỹ năng Radar / Crossfire -->
-        <div id="projSkillBanner" style="display: none; padding: 10px 16px; border-radius: 8px; font-weight: 800; text-align: center; margin-bottom: 8px; font-size: 1rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);"></div>
-
-        <div class="ocean-map-wrapper" style="flex: 1; display: flex; align-items: center; justify-content: center;">
-          <div id="projOceanGrid" class="ocean-grid" style="width: 100%;">
-            <!-- Render bằng screen.js -->
-          </div>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">
+          Bảo mật tối đa • 🌊 Bắn trượt | 💥 Bắn trúng | ☠️ Bắn chìm
         </div>
-      </section>
+      </div>
 
-      <!-- Cột phải: Sinh lực hạm đội, Bảng xếp hạng & QR -->
-      <aside class="projector-side-box">
-        
-        <div class="glass-panel" style="padding: 14px; flex: 1; display: flex; flex-direction: column;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <h3 style="font-size: 1rem; font-weight: 800; color: var(--navy-dark);">
-              🛡️ BẢNG XẾP HẠNG HẠM ĐỘI
-            </h3>
-            <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.75rem;">LIVE</span>
-          </div>
-          <div id="projTeamsList" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto;">
-            <!-- Render tự động -->
-          </div>
+      <!-- Banner thông báo kỹ năng Radar / Crossfire -->
+      <div id="projSkillBanner" style="display: none; padding: 8px 16px; border-radius: 8px; font-weight: 800; text-align: center; font-size: 1rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);"></div>
+
+      <div class="ocean-map-wrapper">
+        <div id="projOceanGrid" class="ocean-grid">
+          <!-- Render bằng screen.js -->
         </div>
-
-        <div class="glass-panel" style="padding: 14px; text-align: center;">
-          <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-bottom: 6px;">
-            📱 QUÉT ĐỂ THAM GIA
-          </div>
-          <img id="projQrImg" src="" alt="Mã QR" style="width: 140px; height: 140px; border-radius: 8px; border: 1px solid var(--border-ocean); margin: 0 auto; display: block;">
-          <div id="projQrUrl" style="font-size: 0.75rem; color: var(--navy-primary); margin-top: 6px; font-weight: bold; word-break: break-all;"></div>
-        </div>
-
-      </aside>
-
+      </div>
     </main>
 
   </div>

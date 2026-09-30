@@ -15,13 +15,13 @@
     }
 
     .demo-container {
-      max-width: 1440px;
+      max-width: 1600px;
       margin: 0 auto;
-      padding: 12px 16px;
+      padding: 10px 16px;
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       flex: 1;
     }
 
@@ -29,26 +29,82 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 20px;
+      padding: 10px 18px;
       background: #ffffff;
       border-radius: 12px;
       border: 1px solid var(--border-ocean);
       box-shadow: var(--shadow-sm);
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 10px;
     }
 
-    .demo-layout {
+    /* Thanh hạm đội sinh tồn nằm ngang */
+    .survival-fleet-bar {
       display: grid;
-      grid-template-columns: 1fr 340px;
-      gap: 14px;
-      flex: 1;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      width: 100%;
     }
 
-    @media (max-width: 1024px) {
-      .demo-layout {
-        grid-template-columns: 1fr;
-      }
+    .survival-team-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #ffffff;
+      border-radius: 10px;
+      border: 2px solid var(--border-ocean);
+      transition: all 0.25s ease;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .survival-team-card.active-turn {
+      border-color: #0284c7;
+      background: #f0f9ff;
+      box-shadow: 0 0 14px rgba(2, 132, 199, 0.35);
+      transform: translateY(-2px);
+    }
+
+    .survival-team-card.eliminated {
+      opacity: 0.5;
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      filter: grayscale(1);
+    }
+
+    /* Khung bản đồ toàn màn hình */
+    .demo-ocean-section {
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid var(--border-ocean);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .ocean-map-wrapper {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow: auto;
+      max-height: 74vh;
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 10px;
+      border: 1px solid var(--border-ocean);
+    }
+
+    .ocean-grid {
+      display: grid;
+      grid-template-columns: 28px repeat(20, minmax(24px, 38px));
+      grid-template-rows: 24px repeat(20, minmax(24px, 38px));
+      gap: 2px;
+      user-select: none;
+      margin: 0 auto;
     }
   </style>
   <script src="js/game-engine.js"></script>
@@ -63,13 +119,13 @@
       <div style="display: flex; align-items: center; gap: 12px;">
         <span style="font-size: 1.8rem;">⚓</span>
         <div>
-          <h1 style="font-size: 1.25rem; font-weight: 900; color: var(--navy-dark); letter-spacing: 0.5px;">
-            ĐẠI HẢI CHIẾN: CHẾ ĐỘ LUYỆN TẬP SOLO
+          <h1 style="font-size: 1.25rem; font-weight: 900; color: var(--navy-dark); letter-spacing: 0.5px; margin: 0;">
+            ĐẠI HẢI CHIẾN: CHẾ ĐỘ TẬP TRẬN SINH TỒN
           </h1>
           <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
-            <span class="badge" style="background: #e0f2fe; color: #0284c7; font-weight: 800;">🎮 BẠN vs 3 BOT AI</span>
-            <span class="badge" style="background: #f1f5f9; color: #475569;">🗺️ 400 Ô (A-T × 1-20)</span>
-            <span id="demoPhaseBadge" class="badge" style="background: #fef3c7; color: #d97706;">CHIẾN ĐẤU</span>
+            <span class="badge" style="background: #e0f2fe; color: #0284c7; font-weight: 800;">🎮 1 BẠN vs 3 BOT AI</span>
+            <span class="badge" style="background: #f1f5f9; color: #475569;">🗺️ ĐẠI HẢI ĐỒ 400 Ô (A-T × 1-20)</span>
+            <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 800;">🏆 BATTLE ROYALE</span>
           </div>
         </div>
       </div>
@@ -94,87 +150,65 @@
       </div>
     </header>
 
-    <!-- Bố cục tác chiến -->
-    <main class="demo-layout">
+    <!-- Thanh Hạm Đội Sinh Tồn (Loại bỏ tính điểm, chỉ hiển thị số tàu sống sót) -->
+    <div id="demoSurvivalBar" class="survival-fleet-bar">
+      <!-- Render tự động bởi demo.js -->
+    </div>
+
+    <!-- Khu vực Hải Đồ 400 Ô Tập Trung 100% -->
+    <main class="demo-ocean-section">
       
-      <!-- Cột trái: Hải đồ 400 ô & Điều khiển tác chiến -->
-      <section class="glass-panel" style="padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+      <!-- Thanh chọn kỹ năng, Nhập tọa độ & Thao tác nhanh -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 8px 12px; background: #f8fafc; border-radius: 10px; border: 1px solid var(--border-ocean);">
         
-        <!-- Thanh chọn kỹ năng & Nhập tọa độ -->
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px; background: #f8fafc; border-radius: 10px; border: 1px solid var(--border-ocean);">
-          
-          <!-- Kỹ năng -->
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark);">⚔️ VŨ KHÍ:</span>
-            <button id="btnModeNormal" class="btn btn-primary" style="padding: 6px 10px; font-size: 0.8rem;">🎯 Bắn Thường</button>
-            <button id="btnModeRadar" class="btn btn-outline" style="padding: 6px 10px; font-size: 0.8rem; border-color: #0284c7; color: #0284c7;">
-              📡 Radar 3x3 (<span id="radarCountText">2/2</span>)
-            </button>
-            <button id="btnModeCrossfire" class="btn btn-outline" style="padding: 6px 10px; font-size: 0.8rem; border-color: #ea580c; color: #ea580c;">
-              🚀 Chữ Thập (+) (<span id="crossfireCountText">1/1</span>)
-            </button>
-          </div>
-
-          <!-- Nhập tọa độ -->
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark);">🎯 TỌA ĐỘ:</span>
-            <input type="text" id="inputDemoCoord" placeholder="VD: B14" maxlength="4" style="width: 75px; padding: 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 800; text-align: center; text-transform: uppercase;">
-            <button id="btnDemoFire" class="btn btn-danger" style="padding: 6px 14px; font-weight: 800;">🚀 KHAI HỎA</button>
-          </div>
-
-          <!-- Zoom -->
-          <div style="display: flex; gap: 4px;">
-            <button id="btnZoomIn" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.75rem;">🔍+</button>
-            <button id="btnZoomOut" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.75rem;">🔍-</button>
-            <button id="btnZoomReset" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.75rem;">🔄</button>
-          </div>
+        <!-- Kỹ năng tác chiến -->
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <span style="font-size: 0.82rem; font-weight: 800; color: var(--navy-dark);">⚔️ VŨ KHÍ:</span>
+          <button id="btnModeNormal" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;">🎯 Bắn Thường</button>
+          <button id="btnModeRadar" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem; border-color: #0284c7; color: #0284c7;">
+            📡 Quét Radar 3x3 (<span id="radarCountText">2/2</span>)
+          </button>
+          <button id="btnModeCrossfire" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem; border-color: #ea580c; color: #ea580c;">
+            🚀 Bắn Chữ Thập (+) (<span id="crossfireCountText">1/1</span>)
+          </button>
         </div>
 
-        <!-- Banner thông báo kỹ năng -->
-        <div id="demoSkillBanner" style="display: none; padding: 8px 14px; border-radius: 8px; font-weight: 800; text-align: center; font-size: 0.9rem;"></div>
-
-        <!-- Hải đồ 400 ô -->
-        <div class="ocean-map-wrapper" style="flex: 1; overflow: auto; max-height: 65vh;">
-          <div id="demoOceanGrid" class="ocean-grid" style="transition: transform 0.2s ease; transform-origin: top left;">
-            <!-- Render bằng demo.js -->
-          </div>
-        </div>
-      </section>
-
-      <!-- Cột phải: Hạm đội của bạn, Bảng xếp hạng & Nhật ký -->
-      <aside style="display: flex; flex-direction: column; gap: 12px;">
-        
-        <!-- Hạm đội của bạn -->
-        <div class="glass-panel" style="padding: 12px;">
-          <div style="font-size: 0.85rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 8px;">
-            🛡️ HẠM ĐỘI CỦA BẠN (HẢI ƯNG):
-          </div>
-          <div id="myFleetList" class="my-fleet-status">
-            <!-- Render tự động -->
-          </div>
+        <!-- Nhập tọa độ bàn phím & Khai hỏa -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 0.82rem; font-weight: 800; color: var(--navy-dark);">🎯 TỌA ĐỘ:</span>
+          <input type="text" id="inputDemoCoord" placeholder="VD: B14" maxlength="4" style="width: 80px; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 800; text-align: center; text-transform: uppercase; font-size: 0.95rem;">
+          <button id="btnDemoFire" class="btn btn-danger" style="padding: 6px 16px; font-weight: 800; font-size: 0.9rem;">🚀 KHAI HỎA</button>
         </div>
 
-        <!-- Bảng xếp hạng 4 Đội -->
-        <div class="glass-panel" style="padding: 12px;">
-          <div style="font-size: 0.85rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 8px;">
-            🏆 BẢNG XẾP HẠNG TRỰC TIẾP:
-          </div>
-          <div id="demoLeaderboard" style="display: flex; flex-direction: column; gap: 6px;">
-            <!-- Render tự động -->
-          </div>
+        <!-- Hướng dẫn & Zoom -->
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 0.78rem; color: #64748b;">(Chạm ô hoặc gõ tọa độ)</span>
+          <button id="btnZoomIn" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.75rem;" title="Phóng to">🔍+</button>
+          <button id="btnZoomOut" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.75rem;" title="Thu nhỏ">🔍-</button>
+          <button id="btnZoomReset" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.75rem;" title="Kích thước chuẩn">🔄</button>
         </div>
+      </div>
 
-        <!-- Nhật ký chiến sự -->
-        <div class="glass-panel" style="padding: 12px; flex: 1; display: flex; flex-direction: column;">
-          <div style="font-size: 0.85rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 8px;">
-            📜 NHẬT KÝ TÁC CHIẾN:
-          </div>
-          <div id="demoCombatLog" style="flex: 1; overflow-y: auto; max-height: 220px; display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem;">
-            <!-- Log items -->
-          </div>
+      <!-- Banner thông báo kết quả Radar / Kỹ năng -->
+      <div id="demoSkillBanner" style="display: none; padding: 8px 14px; border-radius: 8px; font-weight: 800; text-align: center; font-size: 0.95rem; box-shadow: var(--shadow-sm);"></div>
+
+      <!-- Hải đồ 400 ô (20x20) Toàn màn hình -->
+      <div class="ocean-map-wrapper">
+        <div id="demoOceanGrid" class="ocean-grid" style="transition: transform 0.2s ease; transform-origin: top center;">
+          <!-- Render tự động bởi demo.js -->
         </div>
+      </div>
 
-      </aside>
+      <!-- Trạng thái tàu hạm đội của bạn (thu nhỏ thanh footer hải đồ) -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: #f8fafc; border-radius: 8px; font-size: 0.85rem; border: 1px solid var(--border-ocean); flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-weight: 800; color: var(--navy-dark);">🛡️ Hạm Đội Của Bạn:</span>
+          <div id="myFleetList" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+        </div>
+        <div style="font-size: 0.8rem; color: #64748b;">
+          💡 Chú thích: 🚢 Tàu của bạn | 🌊 Bắn trượt | 💥 Bắn trúng | ☠️ Bắn chìm
+        </div>
+      </div>
 
     </main>
 

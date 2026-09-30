@@ -212,28 +212,28 @@
     <section id="viewPlacement" class="glass-panel" style="display: none; padding: 14px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
         <div>
-          <h2 style="font-size: 1rem; font-weight: 800; color: var(--navy-dark);">🗺️ DÀN TRẬN CHIẾN HẠM</h2>
-          <div id="placementZoneHint" style="font-size: 0.75rem; color: var(--navy-primary); font-weight: bold;">
-            Vùng triển khai của bạn: ...
+          <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--navy-dark); margin: 0;">🗺️ DÀN TRẬN CHIẾN HẠM</h2>
+          <div id="placementZoneHint" style="font-size: 0.8rem; color: var(--navy-primary); font-weight: bold; margin-top: 2px;">
+            Hải phận của bạn: ...
           </div>
         </div>
-        <button id="btnAutoPlace" class="btn btn-outline" style="font-size: 0.8rem; padding: 6px 12px;">
+        <button id="btnAutoPlace" class="btn btn-primary" style="font-size: 0.85rem; padding: 8px 14px; font-weight: bold; background: #0284c7;">
           🎲 Xếp Tự Động
         </button>
       </div>
 
-      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
-        Hạm đội của bạn sẽ được bảo mật tuyệt đối. Bạn có thể bấm "Xếp Tự Động" để dàn trận nhanh chóng.
-      </p>
+      <div style="background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 0.8rem; color: #0369a1;">
+        💡 <b>Hướng dẫn</b>: Bấm <b>"🎲 Xếp Tự Động"</b> để hệ thống bố trí chiến hạm vào hải phận của bạn, sau đó bấm <b>"Khóa Hạm Đội"</b> để hoàn tất.
+      </div>
 
-      <div class="ocean-map-wrapper">
-        <div id="placementGrid" class="ocean-grid">
+      <div class="ocean-map-wrapper" style="overflow: auto; max-height: 480px; border: 1px solid var(--border-ocean); border-radius: 8px; background: #ffffff;">
+        <div id="placementGrid" class="ocean-grid" style="transition: transform 0.2s;">
           <!-- Render bằng join.js -->
         </div>
       </div>
 
       <div style="margin-top: 14px;">
-        <button id="btnLockFleet" class="btn btn-success btn-large" style="width: 100%;">
+        <button id="btnLockFleet" class="btn btn-success btn-large" style="width: 100%; font-size: 1rem;">
           🔒 KHÓA HẠM ĐỘI & SẴN SÀNG
         </button>
       </div>

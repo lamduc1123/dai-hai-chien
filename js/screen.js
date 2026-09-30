@@ -118,7 +118,7 @@ function renderScreenState(state) {
 
   updateProjectorPhase(state);
   renderProjectorOceanMap(state);
-  renderProjectorLeaderboard(state);
+  renderProjectorSurvivalBar(state);
 }
 
 function updateProjectorPhase(state) {
@@ -185,53 +185,41 @@ function renderProjectorOceanMap(state) {
   }
 }
 
-function renderProjectorLeaderboard(state) {
-  const container = document.getElementById('projTeamsList');
+function renderProjectorSurvivalBar(state) {
+  const container = document.getElementById('projSurvivalBar') || document.getElementById('projTeamsList');
   if (!container || !state.teams) return;
 
   container.innerHTML = '';
 
-  // Xếp hạng: còn sống lên trước, sau đó theo điểm giảm dần, sau đó theo số tàu còn lại
-  const sortedTeams = [...state.teams].sort((a, b) => {
-    if (a.isEliminated !== b.isEliminated) return a.isEliminated ? 1 : -1;
-    if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
-    return (b.shipsRemaining || 0) - (a.shipsRemaining || 0);
-  });
-
-  sortedTeams.forEach((team, idx) => {
+  state.teams.forEach(team => {
     const isCurrentTurn = state.phase === 'BATTLE' && state.currentTurnTeamId === team.id;
     const card = document.createElement('div');
-    card.className = `proj-team-card ${team.isEliminated ? 'eliminated' : ''}`;
+    card.className = `proj-team-card ${isCurrentTurn ? 'active-turn' : ''} ${team.isEliminated ? 'eliminated' : ''}`;
     if (isCurrentTurn) {
       card.style.borderColor = team.colorHex;
-      card.style.background = `${team.colorHex}12`;
-      card.style.boxShadow = `0 0 14px ${team.colorHex}55`;
+      card.style.background = `${team.colorHex}18`;
+      card.style.boxShadow = `0 0 16px ${team.colorHex}66`;
     }
-
-    const rankBadge = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `#${idx + 1}`));
 
     let statusText = '';
     if (team.isEliminated) {
-      statusText = '<span style="color: #dc2626; font-weight: bold;">☠️ ĐÃ BỊ CHÌM</span>';
+      statusText = '<span style="color: #dc2626; font-weight: 800; font-size: 0.85rem;">☠️ ĐÃ CHÌM</span>';
     } else {
-      statusText = `<span style="font-weight: 800; color: #0284c7;">❤️ Còn ${team.shipsRemaining} tàu</span>`;
+      statusText = `<span style="font-weight: 800; color: #15803d; font-size: 0.85rem;">❤️ Còn ${team.shipsRemaining}/${state.config ? state.config.shipsPerPlayer : 2} tàu</span>`;
     }
 
     card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 1.1rem; font-weight: 900;">${rankBadge}</span>
-          <span style="font-size: 1.25rem;">${team.icon}</span>
-          <div>
-            <div style="font-weight: 800; color: ${team.colorHex}; font-size: 0.95rem;">${team.name}</div>
-            <div style="font-size: 0.72rem; color: #64748b;">Điểm: <b>${team.score || 0}</b></div>
-          </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.4rem;">${team.icon}</span>
+        <div>
+          <div style="font-weight: 800; color: ${team.colorHex}; font-size: 0.95rem;">${team.name}</div>
+          <div style="font-size: 0.72rem; color: #64748b;">${team.isBot ? '🤖 AI Máy' : (team.playerName || 'Đang chờ')}</div>
         </div>
-        <div style="text-align: right;">
-          ${statusText}
-          <div style="font-size: 0.68rem; color: #64748b; margin-top: 2px;">
-            📡 ${team.radarScansRemaining ?? 2}/2 • 🚀 ${team.crossfireRemaining ?? 1}/1
-          </div>
+      </div>
+      <div style="text-align: right;">
+        <div>${statusText}</div>
+        <div style="font-size: 0.7rem; color: #0284c7; margin-top: 2px;">
+          📡 ${team.radarScansRemaining ?? 2}/2 • 🚀 ${team.crossfireRemaining ?? 1}/1
         </div>
       </div>
     `;

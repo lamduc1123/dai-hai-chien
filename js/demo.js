@@ -300,7 +300,7 @@ function renderAll() {
   renderTurnHeader();
   renderOceanGrid();
   renderMyFleet();
-  renderLeaderboard();
+  renderSurvivalBar();
   updateWeaponCounts();
 }
 
@@ -367,51 +367,64 @@ function renderMyFleet() {
   myTeam.fleet.forEach(ship => {
     const isSunk = ship.isSunk;
     const hits = ship.hits ? ship.hits.length : 0;
-    const card = document.createElement('div');
-    card.className = `ship-status-card ${isSunk ? 'sunk' : ''}`;
-    card.innerHTML = `
-      <div style="font-weight: 800;">${isSunk ? '☠️' : '🚢'} ${ship.name}</div>
-      <div style="font-size: 0.75rem; color: ${isSunk ? '#dc2626' : '#0284c7'};">
-        ${isSunk ? 'Đã bị bắn chìm' : `Sinh lực: ${ship.size - hits}/${ship.size}`}
-      </div>
+    const badge = document.createElement('div');
+    badge.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: ${isSunk ? '#fee2e2' : '#e0f2fe'};
+      color: ${isSunk ? '#dc2626' : '#0369a1'};
+      border: 1px solid ${isSunk ? '#fca5a5' : '#bae6fd'};
     `;
-    container.appendChild(card);
+    badge.innerHTML = `
+      <span>${isSunk ? '☠️' : '🚢'}</span>
+      <span>${ship.name}: ${isSunk ? 'Đã chìm' : `${ship.size - hits}/${ship.size} HP`}</span>
+    `;
+    container.appendChild(badge);
   });
 }
 
-function renderLeaderboard() {
-  const container = document.getElementById('demoLeaderboard');
-  if (!container) return;
+function renderSurvivalBar() {
+  const container = document.getElementById('demoSurvivalBar');
+  if (!container || !gameState) return;
 
   container.innerHTML = '';
-  const sorted = [...gameState.teams].sort((a, b) => {
-    if (a.isEliminated !== b.isEliminated) return a.isEliminated ? 1 : -1;
-    return (b.score || 0) - (a.score || 0);
-  });
-
-  sorted.forEach((t, idx) => {
+  gameState.teams.forEach(t => {
     const isTurn = gameState.currentTurnTeamId === t.id;
+    const isMe = t.id === myTeamId;
     const card = document.createElement('div');
-    card.className = 'team-roster-card';
+    card.className = `survival-team-card ${isTurn ? 'active-turn' : ''} ${t.isEliminated ? 'eliminated' : ''}`;
     if (isTurn) {
       card.style.borderColor = t.colorHex;
-      card.style.background = `${t.colorHex}11`;
     }
-    if (t.isEliminated) card.classList.add('eliminated');
 
-    const medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `#${idx + 1}`));
+    const shipStatus = t.isEliminated
+      ? '<span style="color: #dc2626; font-weight: 800;">☠️ ĐÃ CHÌM</span>'
+      : `<span style="color: #16a34a; font-weight: 800;">❤️ Còn ${t.shipsRemaining}/${gameState.config.shipsPerPlayer || 2} tàu</span>`;
+
     card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <span>${medal}</span>
-          <span>${t.icon}</span>
-          <b style="color: ${t.colorHex}; font-size: 0.85rem;">${t.id === myTeamId ? 'Bạn (Hải Ưng)' : t.name}</b>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.4rem;">${t.icon}</span>
+        <div>
+          <div style="font-weight: 800; font-size: 0.9rem; color: ${t.colorHex};">
+            ${isMe ? 'Bạn (Hải Ưng)' : t.name}
+          </div>
+          <div style="font-size: 0.72rem; color: #64748b;">
+            ${t.isBot ? '🤖 AI Máy' : '👤 Chỉ Huy'}
+          </div>
         </div>
-        <div style="font-size: 0.8rem; font-weight: 800; color: #0284c7;">${t.score || 0} đ</div>
       </div>
-      <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: #64748b; margin-top: 4px;">
-        <span>${t.isEliminated ? '☠️ Đã chìm' : `❤️ Còn ${t.shipsRemaining} tàu`}</span>
-        <span>📡 ${t.radarScansRemaining ?? 2}/2 • 🚀 ${t.crossfireRemaining ?? 1}/1</span>
+      <div style="text-align: right;">
+        <div style="font-size: 0.85rem;">${shipStatus}</div>
+        ${isMe && !t.isEliminated ? `
+          <div style="font-size: 0.72rem; color: #0284c7; margin-top: 2px;">
+            📡 ${t.radarScansRemaining ?? 2}/2 • 🚀 ${t.crossfireRemaining ?? 1}/1
+          </div>
+        ` : ''}
       </div>
     `;
     container.appendChild(card);

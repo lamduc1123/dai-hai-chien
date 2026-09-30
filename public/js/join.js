@@ -159,19 +159,30 @@ function updatePlayerUI(state) {
     }
   }
 
-  // Điều phối View theo Phase
+  // Điều phối View theo Phase & Tình trạng chọn đội
   const viewLobby = document.getElementById('viewLobby');
   const viewPlacement = document.getElementById('viewPlacement');
   const viewBattle = document.getElementById('viewBattle');
   const viewFinished = document.getElementById('viewFinished');
 
+  // NẾU NGƯỜI CHƠI CHƯA CHỌN ĐỘI -> LUÔN HIỂN THỊ MÀN HÌNH CHỌN ĐỘI ĐẦU TIÊN
+  if (!myTeamId || !myTeam) {
+    viewLobby.style.display = 'block';
+    viewPlacement.style.display = 'none';
+    viewBattle.style.display = 'none';
+    viewFinished.style.display = 'none';
+    renderTeamSlots(state.teamsOverview || DEFAULT_TEAMS_FALLBACK);
+    return;
+  }
+
+  // ĐÃ CÓ ĐỘI -> HIỂN THỊ THEO GIAI ĐOẠN TRẬN ĐẤU
   if (state.phase === 'LOBBY') {
     viewLobby.style.display = 'block';
     viewPlacement.style.display = 'none';
     viewBattle.style.display = 'none';
     viewFinished.style.display = 'none';
-
-    renderTeamSlots(state.teamsOverview || []);
+    document.getElementById('btnJoinTeam').style.display = 'none';
+    document.getElementById('waitingRoomState').style.display = 'block';
   } else if (state.phase === 'PLACEMENT') {
     viewLobby.style.display = 'none';
     viewPlacement.style.display = 'block';
@@ -196,42 +207,54 @@ function updatePlayerUI(state) {
       const isWinnerMe = myTeam && state.winner.id === myTeam.id;
       document.getElementById('winnerAnnounceText').innerHTML = isWinnerMe
         ? '🎉 XIN CHÚC MỪNG! HẠM ĐỘI CỦA BẠN ĐÃ CHIẾN THẮNG QUÁN QUÂN!'
-        : `🏆 ĐỘI CHIẾN THẮNG: <b>${state.winner.name}</b>`;
+        : `🏆 HẠM ĐỘI SINH TỒN CUỐI CÙNG: <b>${state.winner.name}</b>`;
     }
   }
 }
 
 function renderTeamSlots(teams) {
   const container = document.getElementById('teamSlotsContainer');
-  if (!container || myTeamId) return;
+  if (!container) return;
 
   container.innerHTML = '';
   teams.forEach(t => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `slot-btn ${selectedSlotId === t.id ? 'selected' : ''}`;
-    if (t.isConnected && (!myPlayerState || !myPlayerState.myTeam || myPlayerState.myTeam.id !== t.id)) {
+    
+    // Nếu là bot hoặc chưa có ai kết nối thì có thể chọn
+    const canSelect = !t.isConnected || (myTeamId && myTeamId === t.id) || t.isBot;
+    if (!canSelect) {
       btn.classList.add('taken');
       btn.disabled = true;
     }
 
+    let statusLabel = '🟢 Vị trí trống (Bấm chọn)';
+    if (t.isConnected && (!myTeamId || myTeamId !== t.id)) {
+      statusLabel = '👤 Đã có chỉ huy khác';
+    } else if (t.isBot) {
+      statusLabel = '🤖 Máy tự động (Bấm nhận đội)';
+    } else if (myTeamId === t.id) {
+      statusLabel = '⭐ Đội của bạn';
+    }
+
     btn.innerHTML = `
-      <span style="font-size: 1.2rem;">${t.icon}</span>
+      <span style="font-size: 1.3rem;">${t.icon}</span>
       <div style="flex: 1; text-align: left;">
         <div style="font-weight: 800; color: ${t.colorHex}; font-size: 0.95rem;">${t.name}</div>
-        <div style="font-size: 0.75rem; color: #64748b;">
-          ${t.isConnected ? '👤 Đã có chỉ huy' : (t.isBot ? '🤖 Máy tự động' : '🟢 Vị trí trống')}
-        </div>
+        <div style="font-size: 0.75rem; color: #64748b;">${statusLabel}</div>
       </div>
       <div>
         ${selectedSlotId === t.id ? '<span style="color: var(--navy-primary); font-weight: bold;">✓ ĐÃ CHỌN</span>' : ''}
       </div>
     `;
 
-    btn.addEventListener('click', () => {
-      selectedSlotId = t.id;
-      renderTeamSlots(teams);
-    });
+    if (canSelect) {
+      btn.addEventListener('click', () => {
+        selectedSlotId = t.id;
+        renderTeamSlots(teams);
+      });
+    }
 
     container.appendChild(btn);
   });
@@ -239,37 +262,64 @@ function renderTeamSlots(teams) {
 
 function renderPlacementView(state) {
   const myTeam = state.myTeam;
-  if (!myTeam || !myTeam.zone) return;
+  if (!myTeam) return;
+
+  // Đảm bảo myTeam có hải phận
+  if (!myTeam.zone && window.GameEngine) {
+    const pCount = (state.config && state.config.playerCount) || 4;
+    const allZones = window.GameEngine.allocatePlayerZones(pCount);
+    myTeam.zone = allZones[myTeam.id] || allZones[1];
+  }
 
   const hint = document.getElementById('placementZoneHint');
-  if (hint) {
+  if (hint && myTeam.zone) {
     hint.textContent = `Hải phận của bạn: Cột ${myTeam.zone.colStart}-${myTeam.zone.colEnd}, Hàng ${myTeam.zone.rowStart}-${myTeam.zone.rowEnd}`;
+  }
+
+  // Tự động sinh hạm đội ban đầu nếu chưa có tàu
+  const shipLengths = (state.config && state.config.shipLengths) || [4, 3];
+  if ((!myTeam.fleet || myTeam.fleet.length === 0) && myTeam.zone && window.GameEngine) {
+    myTeam.fleet = window.GameEngine.generateRandomFleetInZone(myTeam.zone, shipLengths);
   }
 
   const container = document.getElementById('placementGrid');
   if (container.children.length === 0) {
-    buildGridInContainer(container);
+    buildGridInContainer(container, (key) => {
+      // Chạm vào ô trong hải phận để sắp xếp lại tàu
+      if (myTeam.zone && myTeam.zone.cells && myTeam.zone.cells.includes(key)) {
+        if (!myTeam.isFleetLocked && window.GameEngine) {
+          myTeam.fleet = window.GameEngine.generateRandomFleetInZone(myTeam.zone, shipLengths);
+          renderPlacementView(state);
+        }
+      }
+    });
   }
 
-  const zoneSet = new Set(myTeam.zone.cells);
+  const zoneSet = myTeam.zone ? new Set(myTeam.zone.cells) : new Set();
   const shipSet = new Set();
   if (myTeam.fleet) {
-    myTeam.fleet.forEach(s => s.cells.forEach(k => shipSet.add(k)));
+    myTeam.fleet.forEach(s => {
+      if (s.cells) s.cells.forEach(k => shipSet.add(k));
+    });
   }
 
   container.querySelectorAll('.ocean-cell').forEach(c => {
     const k = c.dataset.key;
     c.className = 'ocean-cell';
     c.style.backgroundColor = '';
+    c.style.borderColor = '';
 
     if (zoneSet.has(k)) {
-      c.style.backgroundColor = `${myTeam.colorHex}18`;
-      c.style.borderColor = `${myTeam.colorHex}44`;
+      c.style.backgroundColor = `${myTeam.colorHex}22`;
+      c.style.borderColor = `${myTeam.colorHex}55`;
     }
 
     if (shipSet.has(k)) {
       c.classList.add('has-ship');
       c.style.borderColor = myTeam.colorHex;
+      c.innerHTML = '<span style="font-size: 0.75rem;">🚢</span>';
+    } else {
+      c.innerHTML = '';
     }
   });
 
@@ -283,6 +333,15 @@ function renderPlacementView(state) {
       btnLock.textContent = '🔒 KHÓA HẠM ĐỘI & SẴN SÀNG';
       btnLock.className = 'btn btn-success btn-large';
       btnLock.disabled = !myTeam.fleet || myTeam.fleet.length === 0;
+    }
+  }
+
+  // Cuộn vào trung tâm hải phận của đội mình
+  if (myTeam.zone && myTeam.zone.cells && myTeam.zone.cells.length > 0) {
+    const centerKey = myTeam.zone.cells[Math.floor(myTeam.zone.cells.length / 2)];
+    const centerCell = document.getElementById(`cell-${centerKey}`);
+    if (centerCell) {
+      centerCell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
     }
   }
 }

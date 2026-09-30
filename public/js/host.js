@@ -611,8 +611,6 @@ function renderTeamsRoster(state) {
         <span>📡 Radar: <b>${radarRemaining}/2</b></span>
         <span>•</span>
         <span>🚀 Chữ thập: <b>${crossRemaining}/1</b></span>
-        <span>•</span>
-        <span>⭐ Điểm: <b>${team.score || 0}</b></span>
       </div>
     `;
 
@@ -712,6 +710,7 @@ function handleShotAnimation(shot) {
 
 function addLogItem(text, type = 'normal') {
   const container = document.getElementById('combatLogContainer');
+  if (!container) return;
   const item = document.createElement('div');
   item.className = `log-item ${type}`;
   item.innerHTML = text;

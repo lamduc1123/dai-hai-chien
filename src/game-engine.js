@@ -315,11 +315,7 @@ function createInitialGameState(options = {}) {
       isReady: false,
       isFleetLocked: false,
       zone: {
-        colStart: teamZone.colStart,
-        colEnd: teamZone.colEnd,
-        rowStart: teamZone.rowStart,
-        rowEnd: teamZone.rowEnd,
-        cells: teamZone.cells,
+        ...teamZone,
       },
       fleet: [],
       shipsRemaining: shipsPerPlayer,
