@@ -23,6 +23,8 @@ const {
   lockTeamFleet,
   startBattle,
   handleShot,
+  handleRadar,
+  handleCrossfire,
   manualChangeTurn,
   undoShot,
   resetGame,
@@ -386,6 +388,34 @@ io.on('connection', (socket) => {
     }
 
     io.to(roomId).emit('battle:shot_fired', shotRes.shotRecord);
+    broadcastRoomState(room);
+  });
+
+  // 15b. Người chơi Quét Radar 3x3
+  socket.on('player:radar', ({ roomId, teamId, centerKey }) => {
+    const room = getRoom(roomId);
+    if (!room) return;
+
+    const radarRes = handleRadar(roomId, teamId, centerKey);
+    if (!radarRes.success) {
+      return socket.emit('player:fire_error', { error: radarRes.error });
+    }
+
+    io.to(roomId).emit('battle:shot_fired', radarRes.radarRecord);
+    broadcastRoomState(room);
+  });
+
+  // 15c. Người chơi Bắn Tên lửa Chữ Thập (+)
+  socket.on('player:crossfire', ({ roomId, teamId, centerKey }) => {
+    const room = getRoom(roomId);
+    if (!room) return;
+
+    const crossRes = handleCrossfire(roomId, teamId, centerKey);
+    if (!crossRes.success) {
+      return socket.emit('player:fire_error', { error: crossRes.error });
+    }
+
+    io.to(roomId).emit('battle:shot_fired', crossRes.crossfireRecord);
     broadcastRoomState(room);
   });
 

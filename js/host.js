@@ -1,9 +1,10 @@
 // public/js/host.js
 // Logic điều khiển trung tâm MC Host thuần Tiếng Việt 100%, tích hợp Bot AI kiểm thử
 // Hỗ trợ đồng thời: Máy chủ Socket.IO cục bộ & Chế độ Đám Mây GitHub Pages + Firebase RTDB
+// Bản đồ 20x20 (400 ô), Đếm ngược 60s, Kỹ năng Radar 3x3 & Tên lửa Chữ Thập (+)
 
 const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'];
-const ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
 let socket = null;
 let currentRoomId = 'PHONG-01';
@@ -11,6 +12,7 @@ let currentHostState = null;
 let soundManager = null;
 let showSecretShips = false;
 let botTurnTimer = null;
+let turnTickerInterval = null;
 
 let tempPlayerCount = 4;
 let tempShipsPerPlayer = 2;
@@ -28,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initStandaloneEngine();
   initSocket();
   loadNetworkAndQR();
+  startTurnTicker();
 });
 
 // Khởi tạo GameEngine trực tiếp trong trình duyệt (Chạy mượt trên GitHub Pages / Firebase)
@@ -121,7 +124,7 @@ function handleLocalHostAction(actionType, payload) {
       emptyTeam.isBot = true;
       emptyTeam.botName = `Bot Chiến Hạm ${emptyTeam.id}`;
       if (currentHostState.phase === 'PLACEMENT') {
-        emptyTeam.fleet = window.GameEngine.generateRandomFleetInZone(emptyTeam.zone, emptyTeam.fleetConfig);
+        emptyTeam.fleet = window.GameEngine.generateRandomFleetInZone(emptyTeam.zone, currentHostState.config.shipLengths);
         emptyTeam.isFleetLocked = true;
         emptyTeam.isReady = true;
       }
@@ -134,7 +137,7 @@ function handleLocalHostAction(actionType, payload) {
         t.isBot = true;
         t.botName = `Bot Chiến Hạm ${t.id}`;
         if (currentHostState.phase === 'PLACEMENT') {
-          t.fleet = window.GameEngine.generateRandomFleetInZone(t.zone, t.fleetConfig);
+          t.fleet = window.GameEngine.generateRandomFleetInZone(t.zone, currentHostState.config.shipLengths);
           t.isFleetLocked = true;
           t.isReady = true;
         }
@@ -155,6 +158,8 @@ function handleLocalHostAction(actionType, payload) {
     checkBotTurn();
   } else if (actionType === 'host:manual_turn') {
     currentHostState.currentTurnTeamId = payload.targetTeamId;
+    currentHostState.turnStartTime = Date.now();
+    currentHostState.turnTimeRemaining = 60;
     commitLocalState();
     checkBotTurn();
   } else if (actionType === 'host:undo') {
@@ -191,6 +196,10 @@ function handleIncomingFirebaseAction(action) {
   if (socket && socket.connected) {
     if (action.type === 'FIRE') {
       socket.emit('player:fire', { roomId: currentRoomId, teamId: action.teamId, targetKey: action.targetKey });
+    } else if (action.type === 'RADAR') {
+      socket.emit('player:radar', { roomId: currentRoomId, teamId: action.teamId, centerKey: action.centerKey });
+    } else if (action.type === 'CROSSFIRE') {
+      socket.emit('player:crossfire', { roomId: currentRoomId, teamId: action.teamId, centerKey: action.centerKey });
     } else if (action.type === 'JOIN') {
       socket.emit('player:join', { roomId: currentRoomId, teamId: action.teamId, playerName: action.playerName, deviceToken: action.deviceToken });
     } else if (action.type === 'READY') {
@@ -208,6 +217,10 @@ function handleIncomingFirebaseAction(action) {
 
   if (action.type === 'FIRE') {
     processLocalShot(action.teamId, action.targetKey);
+  } else if (action.type === 'RADAR') {
+    processLocalRadar(action.teamId, action.centerKey);
+  } else if (action.type === 'CROSSFIRE') {
+    processLocalCrossfire(action.teamId, action.centerKey);
   } else if (action.type === 'JOIN') {
     const team = currentHostState.teams.find(t => t.id === action.teamId);
     if (team) {
@@ -226,7 +239,7 @@ function handleIncomingFirebaseAction(action) {
   } else if (action.type === 'AUTO_PLACE') {
     const team = currentHostState.teams.find(t => t.id === action.teamId);
     if (team && currentHostState.phase === 'PLACEMENT') {
-      team.fleet = window.GameEngine.generateRandomFleetInZone(team.zone, team.fleetConfig);
+      team.fleet = window.GameEngine.generateRandomFleetInZone(team.zone, currentHostState.config.shipLengths);
       team.isFleetLocked = true;
       team.isReady = true;
       addLogItem(`⚓ [${team.name}] đã bố trí đội hình chiến hạm tự động!`, 'hit');
@@ -235,7 +248,7 @@ function handleIncomingFirebaseAction(action) {
   } else if (action.type === 'LOCK_FLEET') {
     const team = currentHostState.teams.find(t => t.id === action.teamId);
     if (team && currentHostState.phase === 'PLACEMENT') {
-      const valid = window.GameEngine.validateCustomFleet(action.fleet, team.zone, team.fleetConfig);
+      const valid = window.GameEngine.validateCustomFleet(action.fleet, team.zone, currentHostState.config.shipLengths);
       if (valid.valid) {
         team.fleet = action.fleet;
         team.isFleetLocked = true;
@@ -264,6 +277,74 @@ function processLocalShot(shooterTeamId, targetKey) {
   }
 }
 
+function processLocalRadar(shooterTeamId, centerKey) {
+  if (currentHostState.phase !== 'BATTLE' || currentHostState.phase === 'GAME_OVER') return;
+  const res = window.GameEngine.processRadarScan(currentHostState, shooterTeamId, centerKey);
+  if (res.success) {
+    handleRadarAnimation(res.radarRecord);
+    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId) {
+      window.firebaseSync.hostPublishShotEffect(currentRoomId, res.radarRecord);
+    }
+    commitLocalState();
+    checkBotTurn();
+  }
+}
+
+function processLocalCrossfire(shooterTeamId, centerKey) {
+  if (currentHostState.phase !== 'BATTLE' || currentHostState.phase === 'GAME_OVER') return;
+  const res = window.GameEngine.processCrossfire(currentHostState, shooterTeamId, centerKey);
+  if (res.success) {
+    handleCrossfireAnimation(res.crossfireRecord);
+    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId) {
+      window.firebaseSync.hostPublishShotEffect(currentRoomId, res.crossfireRecord);
+    }
+    commitLocalState();
+    checkBotTurn();
+  }
+}
+
+function handleRadarAnimation(radar) {
+  soundManager.playSonar();
+  radar.scannedCells.forEach(key => {
+    const cell = document.getElementById(`cell-${key}`);
+    if (cell) cell.classList.add('radar-sweep');
+  });
+
+  setTimeout(() => {
+    radar.scannedCells.forEach(key => {
+      const cell = document.getElementById(`cell-${key}`);
+      if (cell) cell.classList.remove('radar-sweep');
+    });
+
+    const shooterStr = `<b style="color: ${radar.shooterColor}">${radar.shooterName}</b>`;
+    if (radar.hasEnemyShip) {
+      soundManager.playAlarm();
+      addLogItem(`📡 ${shooterStr} quét Radar vùng <b>[${radar.centerKey}] (3x3)</b> ➔ ⚠️ PHÁT HIỆN ${radar.detectedCount} tọa độ có tàu địch!`, 'hit');
+    } else {
+      addLogItem(`📡 ${shooterStr} quét Radar vùng <b>[${radar.centerKey}] (3x3)</b> ➔ 🌊 Vùng biển an toàn, không có bóng dáng tàu địch!`, 'miss');
+    }
+  }, 1200);
+}
+
+function handleCrossfireAnimation(record) {
+  soundManager.playMissile();
+  record.targetKeys.forEach(key => {
+    const cell = document.getElementById(`cell-${key}`);
+    if (cell) cell.classList.add('crossfire-target');
+  });
+
+  setTimeout(() => {
+    record.targetKeys.forEach(key => {
+      const cell = document.getElementById(`cell-${key}`);
+      if (cell) cell.classList.remove('crossfire-target');
+    });
+
+    record.shots.forEach(shot => handleShotAnimation(shot));
+    const shooterStr = `<b style="color: ${record.shooterColor}">${record.shooterName}</b>`;
+    addLogItem(`🚀 ${shooterStr} phóng TÊN LỬA CHỮ THẬP (+) vào tâm <b>[${record.centerKey}]</b> công phá đồng loạt 5 ô!`, 'sunk');
+  }, 900);
+}
+
 function checkBotTurn() {
   if (botTurnTimer) clearTimeout(botTurnTimer);
   if (!currentHostState || currentHostState.phase !== 'BATTLE' || currentHostState.phase === 'GAME_OVER') return;
@@ -278,6 +359,52 @@ function checkBotTurn() {
       }
     }, 1600);
   }
+}
+
+// Bộ đếm thời gian 60s cho mỗi lượt chơi
+function startTurnTicker() {
+  if (turnTickerInterval) clearInterval(turnTickerInterval);
+  turnTickerInterval = setInterval(() => {
+    if (!currentHostState || currentHostState.phase !== 'BATTLE') {
+      const timerWrapper = document.getElementById('turnTimerWrapper');
+      if (timerWrapper) timerWrapper.style.display = 'none';
+      return;
+    }
+
+    const timerWrapper = document.getElementById('turnTimerWrapper');
+    const timerBadge = document.getElementById('turnTimerBadge');
+    const timerText = document.getElementById('turnTimerText');
+    if (timerWrapper) timerWrapper.style.display = 'flex';
+
+    const turnStart = currentHostState.turnStartTime || Date.now();
+    const elapsed = Math.floor((Date.now() - turnStart) / 1000);
+    const remaining = Math.max(0, 60 - elapsed);
+
+    if (timerText) timerText.textContent = `${remaining}s`;
+    if (timerBadge) {
+      if (remaining <= 10) {
+        timerBadge.classList.add('urgent');
+      } else {
+        timerBadge.classList.remove('urgent');
+      }
+    }
+
+    // Khi hết 60s
+    if (remaining === 0) {
+      addLogItem(`⏰ Đã hết 60s thời gian suy nghĩ! Pháo tự động khai hỏa!`, 'miss');
+      if (window.GameEngine) {
+        const timeoutRes = window.GameEngine.handleTurnTimeout(currentHostState);
+        if (timeoutRes && timeoutRes.shotRecord) {
+          handleShotAnimation(timeoutRes.shotRecord);
+          if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId) {
+            window.firebaseSync.hostPublishShotEffect(currentRoomId, timeoutRes.shotRecord);
+          }
+        }
+        commitLocalState();
+        checkBotTurn();
+      }
+    }
+  }, 1000);
 }
 
 function initGrid() {
@@ -314,14 +441,14 @@ function initGrid() {
       cell.dataset.row = rowNum;
       cell.title = `Tọa độ: ${colLetter}-${rowNum}`;
 
-      // Cho phép MC bấm bắn thay mặt đội đang có lượt (hỗ trợ điều phối linh hoạt)
+      // Cho phép MC bấm bắn thay mặt đội đang có lượt
       cell.addEventListener('click', () => {
         if (!currentHostState || currentHostState.phase !== 'BATTLE') return;
         const currentTeam = currentHostState.teams.find(t => t.id === currentHostState.currentTurnTeamId);
         if (!currentTeam || currentTeam.isEliminated) return;
 
         if (currentHostState.shotsMap && currentHostState.shotsMap[key]) {
-          return; // Ô đã bắn rồi
+          return;
         }
 
         if (confirm(`MC xác nhận khai hỏa vào ô [${key}] cho Đội ${currentTeam.name}?`)) {
@@ -356,6 +483,7 @@ function updatePhaseAndControls(state) {
   const btnUndo = document.getElementById('btnUndo');
   const statusTurnText = document.getElementById('statusTurnText');
   const statusProgressText = document.getElementById('statusProgressText');
+  const quickFireBar = document.getElementById('hostQuickFireBar');
 
   const readyCount = state.teams.filter(t => t.isReady).length;
   const lockedCount = state.teams.filter(t => t.isFleetLocked).length;
@@ -375,6 +503,7 @@ function updatePhaseAndControls(state) {
     btnStartBattle.style.display = 'none';
     btnManualTurn.style.display = 'none';
     btnUndo.style.display = 'none';
+    if (quickFireBar) quickFireBar.style.display = 'none';
   } else if (state.phase === 'PLACEMENT') {
     phaseBadge.textContent = 'DÀN TRẬN';
     phaseBadge.style.background = '#fef3c7';
@@ -387,6 +516,7 @@ function updatePhaseAndControls(state) {
     btnStartBattle.style.display = 'inline-flex';
     btnManualTurn.style.display = 'none';
     btnUndo.style.display = 'none';
+    if (quickFireBar) quickFireBar.style.display = 'none';
   } else if (state.phase === 'BATTLE') {
     phaseBadge.textContent = 'CHIẾN ĐẤU';
     phaseBadge.style.background = '#fee2e2';
@@ -404,7 +534,8 @@ function updatePhaseAndControls(state) {
     btnStartBattle.style.display = 'none';
     btnManualTurn.style.display = 'inline-flex';
     btnUndo.style.display = 'inline-flex';
-  } else if (state.phase === 'GAME_OVER') {
+    if (quickFireBar) quickFireBar.style.display = 'flex';
+  } else if (state.phase === 'GAME_OVER' || state.phase === 'FINISHED') {
     phaseBadge.textContent = 'KẾT THÚC';
     phaseBadge.style.background = '#dcfce7';
     phaseBadge.style.color = '#15803d';
@@ -418,6 +549,7 @@ function updatePhaseAndControls(state) {
     btnStartBattle.style.display = 'none';
     btnManualTurn.style.display = 'none';
     btnUndo.style.display = 'inline-flex';
+    if (quickFireBar) quickFireBar.style.display = 'none';
   }
 }
 
@@ -451,6 +583,9 @@ function renderTeamsRoster(state) {
       readyStatus = `❤️ Còn ${team.shipsRemaining} tàu`;
     }
 
+    const radarRemaining = team.radarScansRemaining ?? 2;
+    const crossRemaining = team.crossfireRemaining ?? 1;
+
     card.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <div style="display: flex; align-items: center; gap: 8px;">
@@ -466,6 +601,13 @@ function renderTeamsRoster(state) {
         <span style="color: #475569;">${team.isBot ? team.botName : (team.playerName || 'Trống')}</span>
         <span style="font-weight: 700; color: #0284c7;">${readyStatus}</span>
       </div>
+      <div style="display: flex; gap: 8px; margin-top: 6px; font-size: 0.72rem; color: #64748b; border-top: 1px dashed #e2e8f0; padding-top: 4px;">
+        <span>📡 Radar: <b>${radarRemaining}/2</b></span>
+        <span>•</span>
+        <span>🚀 Chữ thập: <b>${crossRemaining}/1</b></span>
+        <span>•</span>
+        <span>⭐ Điểm: <b>${team.score || 0}</b></span>
+      </div>
     `;
 
     container.appendChild(card);
@@ -473,37 +615,34 @@ function renderTeamsRoster(state) {
 }
 
 function renderOceanMap(state) {
-  // Xóa các trạng thái cũ trên bản đồ
   document.querySelectorAll('.ocean-cell').forEach(cell => {
     cell.className = 'ocean-cell';
     cell.innerHTML = '';
   });
 
-  // Tô màu các vùng hải phận phân bổ cho từng đội
+  // Tô màu hải phận
   if (state.teams) {
     state.teams.forEach(team => {
-      if (team.zone && team.zone.cols && team.zone.rows) {
-        team.zone.cols.forEach(col => {
-          team.zone.rows.forEach(row => {
-            const cell = document.getElementById(`cell-${col}${row}`);
-            if (cell) {
-              cell.style.background = `${team.colorHex}0c`;
-            }
-          });
+      if (team.zone && team.zone.cells) {
+        team.zone.cells.forEach(key => {
+          const cell = document.getElementById(`cell-${key}`);
+          if (cell) {
+            cell.style.background = `${team.colorHex}0c`;
+          }
         });
       }
     });
   }
 
-  // Hiển thị vị trí tàu ẩn nếu MC bật chế độ kiểm duyệt
+  // Hiển thị vị trí tàu ẩn nếu MC bật
   if (showSecretShips && state.teams) {
     state.teams.forEach(team => {
       if (team.fleet) {
         team.fleet.forEach(ship => {
-          ship.coordinates.forEach(key => {
+          ship.cells.forEach(key => {
             const cell = document.getElementById(`cell-${key}`);
-            if (cell && !cell.classList.contains('hit') && !cell.classList.contains('sunk')) {
-              cell.classList.add('secret-ship');
+            if (cell && !cell.classList.contains('shot-hit') && !cell.classList.contains('shot-sunk')) {
+              cell.classList.add('has-ship');
               cell.style.borderColor = team.colorHex;
             }
           });
@@ -519,17 +658,14 @@ function renderOceanMap(state) {
       const cell = document.getElementById(`cell-${key}`);
       if (!cell) continue;
 
-      cell.classList.remove('secret-ship');
+      cell.classList.remove('has-ship');
 
       if (shot.result === 'MISS') {
-        cell.classList.add('miss');
-        cell.innerHTML = '💧';
+        cell.classList.add('shot-miss');
       } else if (shot.result === 'HIT') {
-        cell.classList.add('hit');
-        cell.innerHTML = '🔥';
+        cell.classList.add('shot-hit');
       } else if (shot.result === 'SUNK') {
-        cell.classList.add('sunk');
-        cell.innerHTML = '💥';
+        cell.classList.add('shot-sunk');
       }
     }
   }
@@ -640,6 +776,42 @@ function initEventListeners() {
     }
   });
 
+  // MC Nhập Tọa Độ Nhanh
+  const inputHostCoord = document.getElementById('inputHostCoord');
+  const btnHostFireCoord = document.getElementById('btnHostFireCoord');
+  const btnHostRadarCoord = document.getElementById('btnHostRadarCoord');
+  const btnHostCrossfireCoord = document.getElementById('btnHostCrossfireCoord');
+
+  if (btnHostFireCoord) {
+    btnHostFireCoord.addEventListener('click', () => {
+      const val = inputHostCoord.value.trim().toUpperCase();
+      if (!val) { alert('Vui lòng nhập tọa độ! (VD: B14)'); return; }
+      if (!currentHostState || currentHostState.phase !== 'BATTLE') return;
+      processLocalShot(currentHostState.currentTurnTeamId, val);
+      inputHostCoord.value = '';
+    });
+  }
+
+  if (btnHostRadarCoord) {
+    btnHostRadarCoord.addEventListener('click', () => {
+      const val = inputHostCoord.value.trim().toUpperCase();
+      if (!val) { alert('Vui lòng nhập tọa độ tâm quét! (VD: B14)'); return; }
+      if (!currentHostState || currentHostState.phase !== 'BATTLE') return;
+      processLocalRadar(currentHostState.currentTurnTeamId, val);
+      inputHostCoord.value = '';
+    });
+  }
+
+  if (btnHostCrossfireCoord) {
+    btnHostCrossfireCoord.addEventListener('click', () => {
+      const val = inputHostCoord.value.trim().toUpperCase();
+      if (!val) { alert('Vui lòng nhập tọa độ tâm bắn chữ thập! (VD: B14)'); return; }
+      if (!currentHostState || currentHostState.phase !== 'BATTLE') return;
+      processLocalCrossfire(currentHostState.currentTurnTeamId, val);
+      inputHostCoord.value = '';
+    });
+  }
+
   // Xem vị trí tàu ẩn toggle
   document.getElementById('chkShowSecretShips').addEventListener('change', (e) => {
     showSecretShips = e.target.checked;
@@ -681,10 +853,10 @@ function initEventListeners() {
       btn.classList.add('active');
       tempPlayerCount = parseInt(btn.dataset.count);
       const desc = document.getElementById('configZoneDesc');
-      if (tempPlayerCount === 2) desc.textContent = '2 Hải phận riêng biệt (10x10 ô mỗi vùng)';
-      else if (tempPlayerCount === 4) desc.textContent = '4 Hải phận góc chiến trường (10x5 ô)';
-      else if (tempPlayerCount === 6) desc.textContent = '6 Hải phận tiêu chuẩn chiến hạm (6-7 cột x 5 hàng)';
-      else if (tempPlayerCount === 8) desc.textContent = '8 Hải phận nhỏ hẹp tốc chiến (5 cột x 5 hàng)';
+      if (tempPlayerCount === 2) desc.textContent = '2 Hải phận riêng biệt (10x20 ô = 200 ô mỗi vùng)';
+      else if (tempPlayerCount === 4) desc.textContent = '4 Hải phận góc chiến trường (10x10 ô = 100 ô)';
+      else if (tempPlayerCount === 6) desc.textContent = '6 Hải phận tiêu chuẩn chiến hạm (~7 cột x 10 hàng = 70 ô)';
+      else if (tempPlayerCount === 8) desc.textContent = '8 Hải phận chiến hạm (5 cột x 10 hàng = 50 ô)';
     });
   });
 
@@ -693,12 +865,6 @@ function initEventListeners() {
       document.querySelectorAll('#shipsSelectGrid .config-chip').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       tempShipsPerPlayer = parseInt(btn.dataset.ships);
-      const desc = document.getElementById('configShipsDesc');
-      if (tempShipsPerPlayer === 1) desc.textContent = 'Chiến hạm duy nhất: 1 Tàu tuần dương 4 ô (Tử chiến)';
-      else if (tempShipsPerPlayer === 2) desc.textContent = 'Chuẩn MC: 1 Tàu tuần dương 4 ô + 1 Tàu khu trục 3 ô';
-      else if (tempShipsPerPlayer === 3) desc.textContent = 'Đại chiến: 1 Tuần dương 4 ô + 2 Khu trục 3 ô';
-      else if (tempShipsPerPlayer === 4) desc.textContent = 'Hạm đội hùng hậu: 2 Tuần dương 4 ô + 2 Khu trục 3 ô';
-      else if (tempShipsPerPlayer === 5) desc.textContent = 'Chiến tranh tổng lực: 2 Tuần dương 4 ô + 3 Khu trục 3 ô';
     });
   });
 
@@ -775,9 +941,7 @@ async function loadNetworkAndQR() {
         joinUrl = data.joinUrl;
       }
     }
-  } catch (err) {
-    // Không có server Node.js, sử dụng link trình duyệt hiện tại
-  }
+  } catch (err) {}
 
   const miniUrlEl = document.getElementById('qrMiniUrl');
   const copyInputEl = document.getElementById('qrCopyUrlInput');

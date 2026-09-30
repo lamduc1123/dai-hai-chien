@@ -118,12 +118,18 @@
         </div>
       </div>
 
-      <!-- Khung hiển thị lượt bắn hiện tại -->
-      <div id="projTurnBanner" style="display: flex; align-items: center; gap: 10px; padding: 8px 20px; border-radius: 12px; background: #f0f9ff; border: 2px solid #0284c7;">
-        <span style="font-size: 1.2rem;">🎯</span>
-        <span id="projTurnText" style="font-size: 1.25rem; font-weight: 900; color: var(--navy-dark);">
-          CHỜ KHỞI ĐỘNG
-        </span>
+      <!-- Khung hiển thị lượt bắn hiện tại & Đếm ngược 60s -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div id="projTurnBanner" style="display: flex; align-items: center; gap: 10px; padding: 8px 20px; border-radius: 12px; background: #f0f9ff; border: 2px solid #0284c7;">
+          <span style="font-size: 1.2rem;">🎯</span>
+          <span id="projTurnText" style="font-size: 1.25rem; font-weight: 900; color: var(--navy-dark);">
+            CHỜ KHỞI ĐỘNG
+          </span>
+        </div>
+        <div id="projTurnTimerBadge" class="turn-timer-badge" style="font-size: 1.25rem; padding: 8px 18px;">
+          <span>⏱️</span>
+          <span id="projTurnTimerText">60s</span>
+        </div>
       </div>
 
       <!-- Nút chức năng máy chiếu -->
@@ -136,16 +142,19 @@
     <!-- Khu vực trình chiếu chính -->
     <main class="projector-main">
       
-      <!-- Cột trái: Đại Hải Đồ 200 ô -->
+      <!-- Cột trái: Đại Hải Đồ 400 ô -->
       <section class="projector-map-box">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--navy-dark);">
-            🗺️ HẢI ĐỒ TÁC CHIẾN 200 Ô (A-T × 1-10)
+            🗺️ HẢI ĐỒ TÁC CHIẾN 400 Ô (A-T × 1-20)
           </h2>
           <div style="font-size: 0.85rem; color: var(--text-muted);">
-            Lưới bảo mật cấp cao (Ẩn tuyệt đối vị trí tàu)
+            Lưới bảo mật cấp cao (Ẩn tuyệt đối vị trí tàu chưa chìm)
           </div>
         </div>
+
+        <!-- Banner thông báo kỹ năng Radar / Crossfire -->
+        <div id="projSkillBanner" style="display: none; padding: 10px 16px; border-radius: 8px; font-weight: 800; text-align: center; margin-bottom: 8px; font-size: 1rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);"></div>
 
         <div class="ocean-map-wrapper" style="flex: 1; display: flex; align-items: center; justify-content: center;">
           <div id="projOceanGrid" class="ocean-grid" style="width: 100%;">
@@ -154,13 +163,16 @@
         </div>
       </section>
 
-      <!-- Cột phải: Sinh lực hạm đội & QR -->
+      <!-- Cột phải: Sinh lực hạm đội, Bảng xếp hạng & QR -->
       <aside class="projector-side-box">
         
         <div class="glass-panel" style="padding: 14px; flex: 1; display: flex; flex-direction: column;">
-          <h3 style="font-size: 1rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 10px;">
-            🛡️ SINH LỰC HẠM ĐỘI
-          </h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3 style="font-size: 1rem; font-weight: 800; color: var(--navy-dark);">
+              🛡️ BẢNG XẾP HẠNG HẠM ĐỘI
+            </h3>
+            <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.75rem;">LIVE</span>
+          </div>
           <div id="projTeamsList" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto;">
             <!-- Render tự động -->
           </div>

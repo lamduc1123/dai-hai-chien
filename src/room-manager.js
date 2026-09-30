@@ -8,6 +8,8 @@ const {
   advanceTurn,
   calculateBotTarget,
   processShot,
+  processRadarScan,
+  processCrossfire,
   undoLastShot,
   generateRandomFleetInZone,
   validateCustomFleet,
@@ -271,6 +273,18 @@ function handleShot(roomId, teamId, targetKey) {
   return processShot(room.gameState, teamId, targetKey);
 }
 
+function handleRadar(roomId, teamId, centerKey) {
+  const room = getRoom(roomId);
+  if (!room) return { success: false, error: 'Phòng không tồn tại' };
+  return processRadarScan(room.gameState, teamId, centerKey);
+}
+
+function handleCrossfire(roomId, teamId, centerKey) {
+  const room = getRoom(roomId);
+  if (!room) return { success: false, error: 'Phòng không tồn tại' };
+  return processCrossfire(room.gameState, teamId, centerKey);
+}
+
 function manualChangeTurn(roomId, targetTeamId) {
   const room = getRoom(roomId);
   if (!room || room.gameState.phase !== 'BATTLE') return false;
@@ -372,6 +386,8 @@ module.exports = {
   lockTeamFleet,
   startBattle,
   handleShot,
+  handleRadar,
+  handleCrossfire,
   manualChangeTurn,
   undoShot,
   resetGame,

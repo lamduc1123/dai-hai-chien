@@ -242,30 +242,75 @@
     <!-- PHẦN 3: CHIẾN ĐẤU THỜI GIAN THỰC -->
     <section id="viewBattle" style="display: none; flex-direction: column; gap: 12px;">
       
-      <!-- Thông báo lượt bắn -->
+      <!-- Thông báo lượt bắn & Đếm ngược 60s -->
       <div id="turnBanner" class="turn-banner wait-turn">
         ⏳ ĐANG CHỜ ĐỐI THỦ KHAI HỎA...
       </div>
 
-      <!-- Hiển thị tọa độ nhắm bắn -->
-      <div class="target-readout">
-        <div>
-          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Mục Tiêu Đã Chọn:</div>
-          <div id="selectedTargetText" style="font-size: 0.85rem; color: var(--navy-dark); font-weight: bold;">Chạm 1 ô trên bản đồ</div>
+      <div id="mobileTimerRow" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #ffffff; border-radius: 8px; border: 1px solid var(--border-ocean);">
+        <div style="font-size: 0.85rem; font-weight: 800; color: var(--navy-dark);">
+          ⏱️ ĐẾM NGƯỢC LƯỢT SUY NGHĨ:
         </div>
-        <div id="selectedTargetDisplay" class="target-key-box">--</div>
+        <div id="mobileTurnTimer" class="turn-timer-badge">60s</div>
       </div>
 
-      <!-- Đại hải đồ chiến đấu 20x10 -->
+      <!-- KHO VŨ KHÍ & KỸ NĂNG CHIẾN THUẬT -->
+      <div class="glass-panel" style="padding: 10px; background: #ffffff;">
+        <div style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 6px;">
+          ⚔️ CHỌN LOẠI VŨ KHÍ / KỸ NĂNG:
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+          <button id="btnSkillNormal" type="button" class="btn btn-primary" style="padding: 8px 4px; font-size: 0.75rem; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span>🎯 BẮN THƯỜNG</span>
+            <span style="font-size: 0.65rem; opacity: 0.85;">1 Ô • Vô hạn</span>
+          </button>
+          <button id="btnSkillRadar" type="button" class="btn btn-outline" style="padding: 8px 4px; font-size: 0.75rem; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 2px; border-color: #0284c7; color: #0284c7;">
+            <span>📡 RADAR 3x3</span>
+            <span id="badgeRadarCount" style="font-size: 0.65rem; font-weight: 900; color: #0284c7;">Còn 2/2</span>
+          </button>
+          <button id="btnSkillCrossfire" type="button" class="btn btn-outline" style="padding: 8px 4px; font-size: 0.75rem; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 2px; border-color: #ea580c; color: #ea580c;">
+            <span>🚀 CHỮ THẬP (+)</span>
+            <span id="badgeCrossfireCount" style="font-size: 0.65rem; font-weight: 900; color: #ea580c;">Còn 1/1</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- CHỌN Ô BẰNG CÁCH NHẬP TỌA ĐỘ -->
+      <div class="glass-panel" style="padding: 10px; background: #ffffff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark);">🎯 NHẬP TỌA ĐỘ BẮN NHANH:</div>
+          <div id="selectedTargetDisplay" class="target-key-box" style="padding: 2px 10px; font-size: 1rem;">--</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="inputManualCoord" placeholder="Nhập VD: B14, D8, K20" maxlength="4" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 800; font-size: 1.05rem; text-transform: uppercase; text-align: center;">
+          <button id="btnApplyCoord" class="btn btn-outline" style="padding: 8px 14px; font-weight: 800; font-size: 0.85rem; border-color: #0284c7; color: #0284c7;">
+            XÁC NHẬN Ô
+          </button>
+        </div>
+        <div id="selectedTargetText" style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">
+          Chạm vào ô trên hải đồ hoặc nhập tọa độ ở trên
+        </div>
+      </div>
+
+      <!-- ĐIỀU KHIỂN ZOOM & ĐẠI HẢI ĐỒ 400 Ô -->
       <div class="glass-panel" style="padding: 10px;">
-        <div class="ocean-map-wrapper">
-          <div id="battleGrid" class="ocean-grid">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark);">🗺️ HẢI ĐỒ 400 Ô (A-T × 1-20)</span>
+          <div style="display: flex; gap: 4px;">
+            <button id="btnZoomIn" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.72rem;">🔍+ Phóng to</button>
+            <button id="btnZoomOut" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.72rem;">🔍- Thu nhỏ</button>
+            <button id="btnZoomReset" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.72rem;">🔄 Vừa màn</button>
+          </div>
+        </div>
+
+        <div class="ocean-map-wrapper" id="mobileMapWrapper" style="overflow: auto; max-height: 48vh; border: 1px solid #cbd5e1; border-radius: 6px;">
+          <div id="battleGrid" class="ocean-grid" style="transition: transform 0.2s ease; transform-origin: top left;">
             <!-- Render bằng join.js -->
           </div>
         </div>
       </div>
 
-      <!-- Nút Khai Hỏa lớn -->
+      <!-- Nút Hành Động Lớn (Khai Hỏa / Quét Radar / Bắn Chữ Thập) -->
       <button id="btnFire" class="btn btn-danger btn-large" disabled style="padding: 16px; font-size: 1.15rem; font-weight: 900; letter-spacing: 1px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);">
         🚀 KHAI HỎA TÊN LỬA!
       </button>
@@ -277,21 +322,6 @@
         </div>
         <div id="myFleetList" class="my-fleet-status">
           <!-- Render tự động -->
-        </div>
-      </div>
-
-      <!-- Kho vật phẩm & Vũ khí cá nhân -->
-      <div class="glass-panel" style="padding: 12px; background: #ffffff;">
-        <div style="font-size: 0.85rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 6px;">
-          🎒 KHO VẬT PHẨM & VŨ KHÍ:
-        </div>
-        <div style="display: flex; gap: 8px;">
-          <div style="flex: 1; padding: 8px; border: 1px dashed #94a3b8; border-radius: 8px; text-align: center; font-size: 0.75rem; color: #64748b;">
-            🛰️ Radar Trinh Sát<br><i>(Đang cập nhật)</i>
-          </div>
-          <div style="flex: 1; padding: 8px; border: 1px dashed #94a3b8; border-radius: 8px; text-align: center; font-size: 0.75rem; color: #64748b;">
-            💣 Thủy Lôi Bí Mật<br><i>(Đang cập nhật)</i>
-          </div>
         </div>
       </div>
 

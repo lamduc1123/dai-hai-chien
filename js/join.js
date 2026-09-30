@@ -1,18 +1,22 @@
 // public/js/join.js
-// Logic giao diện điện thoại người chơi: Tối giản, tập trung vào bản đồ, dàn trận và ngắm bắn
+// Logic giao diện điện thoại người chơi: Hải đồ 20x20 (400 ô), Đếm ngược 60s, Kỹ năng Radar 3x3 & Tên lửa Chữ Thập (+)
+// Hỗ trợ chọn ô bằng chạm trực tiếp hoặc nhập tọa độ nhanh (VD: B14)
 
 const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'];
-const ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
 let socket = null;
-let currentRoomId = null;
+let currentRoomId = 'PHONG-01';
 let myTeamId = null;
 let myDeviceToken = localStorage.getItem('dai_hai_chien_token') || null;
 let myPlayerState = null;
 let soundManager = null;
+let turnTickerInterval = null;
 
 let selectedSlotId = null;
 let selectedTargetKey = null;
+let currentWeaponMode = 'NORMAL'; // 'NORMAL', 'RADAR', 'CROSSFIRE'
+let currentZoomLevel = 1.0;
 
 document.addEventListener('DOMContentLoaded', () => {
   soundManager = new SoundManager();
@@ -23,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initSocket();
   initEventListeners();
+  startMobileTurnTicker();
 
   if (window.firebaseSync && window.firebaseSync.init() && currentRoomId) {
     window.firebaseSync.clientSubscribeState(currentRoomId, (roomState) => {
@@ -32,12 +37,37 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    window.firebaseSync.clientSubscribeShotEffect(currentRoomId, (shot) => {
-      if (shot.shooterTeamId === myTeamId) {
+    window.firebaseSync.clientSubscribeShotEffect(currentRoomId, (effect) => {
+      if (!effect) return;
+
+      if (effect.actionType === 'RADAR') {
+        soundManager.playSonar();
+        if (effect.shooterTeamId === myTeamId) {
+          if (effect.hasEnemyShip) {
+            soundManager.playAlarm();
+            alert(`📡 KẾT QUẢ RADAR: Phát hiện ${effect.detectedCount} vị trí tàu đối phương trong vùng 3x3 quanh [${effect.centerKey}]!`);
+          } else {
+            alert(`📡 KẾT QUẢ RADAR: Vùng biển quanh [${effect.centerKey}] an toàn, không có tín hiệu tàu!`);
+          }
+        }
+        return;
+      }
+
+      if (effect.actionType === 'CROSSFIRE') {
+        soundManager.playMissile();
+        if (effect.shooterTeamId === myTeamId) {
+          soundManager.playHit();
+        }
+        return;
+      }
+
+      // Phát bắn thường
+      if (effect.shooterTeamId === myTeamId) {
         soundManager.playMissile();
       }
-      if (shot.result === 'HIT' || shot.result === 'SUNK') {
+      if (effect.result === 'HIT' || effect.result === 'SUNK') {
         soundManager.playHit();
+        if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
       } else {
         soundManager.playMiss();
       }
@@ -46,46 +76,38 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initSocket() {
-  socket = io();
+  try {
+    socket = io({ timeout: 2500, reconnectionAttempts: 3 });
 
-  // Yêu cầu thông tin phòng ban đầu
-  if (currentRoomId) {
-    socket.emit('player:get_lobby_info', { roomId: currentRoomId });
+    if (currentRoomId) {
+      socket.emit('player:get_lobby_info', { roomId: currentRoomId });
+    }
+
+    socket.on('player:joined', (data) => {
+      myTeamId = data.teamId;
+      myDeviceToken = data.deviceToken;
+      localStorage.setItem('dai_hai_chien_token', myDeviceToken);
+
+      document.getElementById('btnJoinTeam').style.display = 'none';
+      document.getElementById('waitingRoomState').style.display = 'block';
+
+      updatePlayerUI(data.state);
+    });
+
+    socket.on('player:state_update', (state) => {
+      updatePlayerUI(state);
+    });
+
+    socket.on('player:join_error', (data) => {
+      alert(data.error || 'Không thể tham gia đội');
+    });
+
+    socket.on('player:fire_error', (data) => {
+      alert(data.error || 'Lỗi khai hỏa');
+    });
+  } catch (err) {
+    console.log('Chế độ Standalone Mobile');
   }
-
-  socket.on('player:joined', (data) => {
-    myTeamId = data.teamId;
-    myDeviceToken = data.deviceToken;
-    localStorage.setItem('dai_hai_chien_token', myDeviceToken);
-
-    document.getElementById('btnJoinTeam').style.display = 'none';
-    document.getElementById('waitingRoomState').style.display = 'block';
-
-    updatePlayerUI(data.state);
-  });
-
-  socket.on('player:state_update', (state) => {
-    updatePlayerUI(state);
-  });
-
-  socket.on('player:join_error', (data) => {
-    alert(data.error || 'Không thể tham gia đội');
-  });
-
-  socket.on('player:fire_error', (data) => {
-    alert(data.error || 'Lỗi khai hỏa');
-  });
-
-  socket.on('battle:shot_fired', (shot) => {
-    if (shot.shooterTeamId === myTeamId) {
-      soundManager.playMissile();
-    }
-    if (shot.result === 'HIT' || shot.result === 'SUNK') {
-      soundManager.playHit();
-    } else {
-      soundManager.playMiss();
-    }
-  });
 }
 
 function updatePlayerUI(state) {
@@ -94,7 +116,7 @@ function updatePlayerUI(state) {
 
   const myTeam = state.myTeam;
   if (myTeam) {
-    // Cập nhật Header
+    // Header
     document.getElementById('headerTeamTitle').textContent = myTeam.name;
     document.getElementById('headerTeamTitle').style.color = myTeam.colorHex;
     document.getElementById('headerSubTitle').textContent = `Chiến Hạm #${myTeam.id}`;
@@ -105,7 +127,13 @@ function updatePlayerUI(state) {
     badge.style.background = `${myTeam.colorHex}22`;
     badge.style.color = myTeam.colorHex;
 
-    // Nút Sẵn Sàng ở sảnh chờ
+    // Cập nhật số lượng kỹ năng
+    const badgeRadar = document.getElementById('badgeRadarCount');
+    const badgeCrossfire = document.getElementById('badgeCrossfireCount');
+    if (badgeRadar) badgeRadar.textContent = `Còn ${myTeam.radarScansRemaining ?? 2}/2`;
+    if (badgeCrossfire) badgeCrossfire.textContent = `Còn ${myTeam.crossfireRemaining ?? 1}/1`;
+
+    // Sẵn sàng button
     const btnReady = document.getElementById('btnToggleReady');
     if (btnReady) {
       if (myTeam.isReady) {
@@ -118,7 +146,7 @@ function updatePlayerUI(state) {
     }
   }
 
-  // 1. Điều phối View theo Phase
+  // Điều phối View theo Phase
   const viewLobby = document.getElementById('viewLobby');
   const viewPlacement = document.getElementById('viewPlacement');
   const viewBattle = document.getElementById('viewBattle');
@@ -145,7 +173,7 @@ function updatePlayerUI(state) {
     viewFinished.style.display = 'none';
 
     renderBattleView(state);
-  } else if (state.phase === 'FINISHED') {
+  } else if (state.phase === 'FINISHED' || state.phase === 'GAME_OVER') {
     viewLobby.style.display = 'none';
     viewPlacement.style.display = 'none';
     viewBattle.style.display = 'none';
@@ -176,9 +204,14 @@ function renderTeamSlots(teams) {
 
     btn.innerHTML = `
       <span style="font-size: 1.2rem;">${t.icon}</span>
-      <div style="flex: 1;">
-        <div style="font-weight: 800; color: ${t.colorHex};">${t.name}</div>
-        <div style="font-size: 0.75rem; color: var(--text-muted);">${t.isConnected ? 'Đã có người vào' : 'Đang trống (Chọn đội này)'}</div>
+      <div style="flex: 1; text-align: left;">
+        <div style="font-weight: 800; color: ${t.colorHex}; font-size: 0.95rem;">${t.name}</div>
+        <div style="font-size: 0.75rem; color: #64748b;">
+          ${t.isConnected ? '👤 Đã có chỉ huy' : (t.isBot ? '🤖 Máy tự động' : '🟢 Vị trí trống')}
+        </div>
+      </div>
+      <div>
+        ${selectedSlotId === t.id ? '<span style="color: var(--navy-primary); font-weight: bold;">✓ ĐÃ CHỌN</span>' : ''}
       </div>
     `;
 
@@ -191,71 +224,56 @@ function renderTeamSlots(teams) {
   });
 }
 
-/**
- * Render Giao diện Dàn Trận (Placement)
- */
 function renderPlacementView(state) {
   const myTeam = state.myTeam;
   if (!myTeam || !myTeam.zone) return;
 
-  document.getElementById('placementZoneHint').textContent =
-    `Vùng của bạn: [${myTeam.zone.colStart}${myTeam.zone.rowStart} - ${myTeam.zone.colEnd}${myTeam.zone.rowEnd}] (${myTeam.zone.cells.length} ô)`;
+  const hint = document.getElementById('placementZoneHint');
+  if (hint) {
+    hint.textContent = `Hải phận của bạn: Cột ${myTeam.zone.colStart}-${myTeam.zone.colEnd}, Hàng ${myTeam.zone.rowStart}-${myTeam.zone.rowEnd}`;
+  }
 
   const container = document.getElementById('placementGrid');
   if (container.children.length === 0) {
-    buildGridInContainer(container, (key) => {
-      // Khi bấm vào ô trong phân vùng
-      console.log('Chạm vào ô dàn trận:', key);
-    });
+    buildGridInContainer(container);
   }
 
-  // Highlight phân vùng được phép đặt tàu
   const zoneSet = new Set(myTeam.zone.cells);
-  const cells = container.querySelectorAll('.ocean-cell');
-  cells.forEach(c => {
+  const shipSet = new Set();
+  if (myTeam.fleet) {
+    myTeam.fleet.forEach(s => s.cells.forEach(k => shipSet.add(k)));
+  }
+
+  container.querySelectorAll('.ocean-cell').forEach(c => {
     const k = c.dataset.key;
     c.className = 'ocean-cell';
     c.style.backgroundColor = '';
-    c.style.borderColor = '';
 
     if (zoneSet.has(k)) {
-      c.classList.add('zone-highlight');
-      c.style.backgroundColor = `${myTeam.colorHex}20`;
-      c.style.borderColor = `${myTeam.colorHex}77`;
-    } else {
-      c.classList.add('disabled');
-      c.style.opacity = '0.35';
+      c.style.backgroundColor = `${myTeam.colorHex}18`;
+      c.style.borderColor = `${myTeam.colorHex}44`;
+    }
+
+    if (shipSet.has(k)) {
+      c.classList.add('has-ship');
+      c.style.borderColor = myTeam.colorHex;
     }
   });
 
-  // Hiển thị vị trí tàu đã xếp của mình
-  if (myTeam.fleet && myTeam.fleet.length > 0) {
-    myTeam.fleet.forEach(ship => {
-      ship.cells.forEach(k => {
-        const el = container.querySelector(`[data-key="${k}"]`);
-        if (el) {
-          el.classList.add('has-ship');
-          el.style.backgroundColor = myTeam.colorHex;
-          el.style.color = '#ffffff';
-        }
-      });
-    });
-  }
-
-  // Khóa nút nếu đã khóa hạm đội
   const btnLock = document.getElementById('btnLockFleet');
-  if (myTeam.isFleetLocked) {
-    btnLock.disabled = true;
-    btnLock.textContent = '🔒 ĐÃ KHÓA HẠM ĐỘI (CHỜ TRẬN ĐẤU BẮT ĐẦU)';
-  } else {
-    btnLock.disabled = false;
-    btnLock.textContent = '🔒 KHÓA HẠM ĐỘI & SẴN SÀNG';
+  if (btnLock) {
+    if (myTeam.isFleetLocked) {
+      btnLock.textContent = '🔒 ĐÃ KHÓA HẠM ĐỘI (CHỜ KHỞI TRANH)';
+      btnLock.className = 'btn btn-outline';
+      btnLock.disabled = true;
+    } else {
+      btnLock.textContent = '🔒 KHÓA HẠM ĐỘI & SẴN SÀNG';
+      btnLock.className = 'btn btn-success btn-large';
+      btnLock.disabled = !myTeam.fleet || myTeam.fleet.length === 0;
+    }
   }
 }
 
-/**
- * Render Giao diện Chiến Đấu (Battle)
- */
 function renderBattleView(state) {
   const myTeam = state.myTeam;
   const isMyTurn = state.isMyTurn;
@@ -274,8 +292,7 @@ function renderBattleView(state) {
 
   if (isMyTurn) {
     banner.className = 'turn-banner my-turn';
-    banner.textContent = '🚨 ĐẾN LƯỢT CHỈ HUY! HÃY CHỌN Ô ĐỂ KHAI HỎA!';
-    // Rung phản hồi haptic
+    banner.textContent = '🚨 ĐẾN LƯỢT CHỈ HUY! CHỌN Ô HOẶC NHẬP TỌA ĐỘ ĐỂ TÁC CHIẾN!';
     if (navigator.vibrate) {
       navigator.vibrate([150, 50, 150]);
     }
@@ -287,24 +304,31 @@ function renderBattleView(state) {
     btnFire.disabled = true;
   }
 
-  // Khởi tạo lưới chiến đấu nếu chưa có
+  // Khởi tạo lưới chiến đấu 20x20 nếu chưa có
   const container = document.getElementById('battleGrid');
   if (container.children.length === 0) {
     buildGridInContainer(container, (key) => {
-      onCellClickBattle(key);
+      selectTargetCoordinate(key);
     });
   }
 
-  // Cập nhật trạng thái ô
-  const cells = container.querySelectorAll('.ocean-cell');
-  cells.forEach(c => {
+  // Cập nhật trạng thái từng ô
+  updateGridCellVisuals(container, state, myTeam);
+
+  // Cập nhật danh sách tàu của mình
+  renderMyFleetStatus(myTeam);
+}
+
+function updateGridCellVisuals(container, state, myTeam) {
+  const targetHighlightSet = getTargetAreaHighlightKeys();
+
+  container.querySelectorAll('.ocean-cell').forEach(c => {
     const k = c.dataset.key;
     c.className = 'ocean-cell';
-    c.innerHTML = '';
     c.style.backgroundColor = '';
     c.style.borderColor = '';
 
-    // 1. Ô của tàu mình (chỉ mình nhìn thấy)
+    // Ô tàu mình
     if (myTeam && myTeam.fleet) {
       for (const ship of myTeam.fleet) {
         if (ship.cells.includes(k)) {
@@ -315,7 +339,7 @@ function renderBattleView(state) {
       }
     }
 
-    // 2. Ô đã bắn trên đại hải đồ
+    // Ô đã bắn
     if (state.shotsMap && state.shotsMap[k]) {
       const shot = state.shotsMap[k];
       if (shot.result === 'MISS') {
@@ -327,21 +351,73 @@ function renderBattleView(state) {
       }
     }
 
-    // 3. Ô đang được chọn
-    if (k === selectedTargetKey) {
-      c.classList.add('selected-target');
+    // Highlight phạm vi vũ khí đang chọn
+    if (targetHighlightSet.has(k)) {
+      if (currentWeaponMode === 'RADAR') {
+        c.classList.add('radar-sweep');
+      } else if (currentWeaponMode === 'CROSSFIRE') {
+        c.classList.add('crossfire-target');
+      } else {
+        c.classList.add('selected-target');
+      }
     }
   });
-
-  // Cập nhật danh sách tàu của mình
-  renderMyFleetStatus(myTeam);
 }
 
-function onCellClickBattle(key) {
+function getTargetAreaHighlightKeys() {
+  const set = new Set();
+  if (!selectedTargetKey) return set;
+
+  if (currentWeaponMode === 'NORMAL') {
+    set.add(selectedTargetKey);
+    return set;
+  }
+
+  const parsed = window.GameEngine ? window.GameEngine.parseKey(selectedTargetKey) : null;
+  if (!parsed) {
+    set.add(selectedTargetKey);
+    return set;
+  }
+
+  if (currentWeaponMode === 'RADAR') {
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const cIdx = parsed.colIdx + dc;
+        const rIdx = parsed.rowIdx + dr;
+        if (cIdx >= 0 && cIdx < COLS.length && rIdx >= 0 && rIdx < ROWS.length) {
+          set.add(`${COLS[cIdx]}${ROWS[rIdx]}`);
+        }
+      }
+    }
+    return set;
+  }
+
+  if (currentWeaponMode === 'CROSSFIRE') {
+    const deltas = [
+      { dc: 0, dr: 0 },
+      { dc: 0, dr: -1 },
+      { dc: 0, dr: 1 },
+      { dc: -1, dr: 0 },
+      { dc: 1, dr: 0 },
+    ];
+    for (const d of deltas) {
+      const cIdx = parsed.colIdx + d.dc;
+      const rIdx = parsed.rowIdx + d.dr;
+      if (cIdx >= 0 && cIdx < COLS.length && rIdx >= 0 && rIdx < ROWS.length) {
+        set.add(`${COLS[cIdx]}${ROWS[rIdx]}`);
+      }
+    }
+    return set;
+  }
+
+  set.add(selectedTargetKey);
+  return set;
+}
+
+function selectTargetCoordinate(key) {
   if (!myPlayerState || !myPlayerState.isMyTurn) return;
 
-  // Nếu ô này đã bị bắn rồi thì không chọn
-  if (myPlayerState.shotsMap && myPlayerState.shotsMap[key]) {
+  if (currentWeaponMode === 'NORMAL' && myPlayerState.shotsMap && myPlayerState.shotsMap[key]) {
     alert('Tọa độ này đã bị bắn trước đó! Hãy chọn ô khác.');
     return;
   }
@@ -351,15 +427,20 @@ function onCellClickBattle(key) {
   document.getElementById('selectedTargetText').textContent = `Tọa độ xác định: Cột ${key[0]}, Hàng ${key.substring(1)}`;
   document.getElementById('btnFire').disabled = false;
 
-  // Cập nhật highlight trên lưới
+  const inputManual = document.getElementById('inputManualCoord');
+  if (inputManual) inputManual.value = key;
+
+  // Cập nhật lại hình ảnh ô trên bản đồ
   const container = document.getElementById('battleGrid');
-  container.querySelectorAll('.ocean-cell').forEach(c => {
-    if (c.dataset.key === key) {
-      c.classList.add('selected-target');
-    } else {
-      c.classList.remove('selected-target');
-    }
-  });
+  if (container) {
+    updateGridCellVisuals(container, myPlayerState, myPlayerState.myTeam);
+  }
+
+  // Cuộn ô được chọn vào tầm nhìn trên điện thoại
+  const targetCell = document.getElementById(`cell-${key}`);
+  if (targetCell) {
+    targetCell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+  }
 }
 
 function renderMyFleetStatus(myTeam) {
@@ -386,12 +467,10 @@ function renderMyFleetStatus(myTeam) {
 function buildGridInContainer(container, onClickCell) {
   container.innerHTML = '';
 
-  // 1. Góc
   const corner = document.createElement('div');
   corner.className = 'ocean-header-corner';
   container.appendChild(corner);
 
-  // 2. Tiêu đề Cột
   for (let c = 0; c < COLS.length; c++) {
     const colHeader = document.createElement('div');
     colHeader.className = 'ocean-col-header';
@@ -399,7 +478,6 @@ function buildGridInContainer(container, onClickCell) {
     container.appendChild(colHeader);
   }
 
-  // 3. Hàng & Các ô
   for (let r = 0; r < ROWS.length; r++) {
     const rowNum = ROWS[r];
     const rowHeader = document.createElement('div');
@@ -413,15 +491,45 @@ function buildGridInContainer(container, onClickCell) {
 
       const cell = document.createElement('div');
       cell.className = 'ocean-cell';
+      cell.id = `cell-${key}`;
       cell.dataset.key = key;
+      cell.dataset.col = colLetter;
+      cell.dataset.row = rowNum;
+      cell.title = `Tọa độ: ${colLetter}-${rowNum}`;
 
-      cell.addEventListener('click', () => {
-        if (onClickCell) onClickCell(key);
-      });
+      if (onClickCell) {
+        cell.addEventListener('click', () => onClickCell(key));
+      }
 
       container.appendChild(cell);
     }
   }
+}
+
+// Bộ đếm thời gian 60s cho điện thoại
+function startMobileTurnTicker() {
+  if (turnTickerInterval) clearInterval(turnTickerInterval);
+  turnTickerInterval = setInterval(() => {
+    if (!myPlayerState || myPlayerState.phase !== 'BATTLE') return;
+
+    const timerBadge = document.getElementById('mobileTurnTimer');
+    if (!timerBadge) return;
+
+    const turnStart = myPlayerState.turnStartTime || Date.now();
+    const elapsed = Math.floor((Date.now() - turnStart) / 1000);
+    const remaining = Math.max(0, 60 - elapsed);
+
+    timerBadge.textContent = `${remaining}s`;
+
+    if (remaining <= 10) {
+      timerBadge.classList.add('urgent');
+      if (myPlayerState.isMyTurn && remaining > 0 && navigator.vibrate) {
+        navigator.vibrate(60);
+      }
+    } else {
+      timerBadge.classList.remove('urgent');
+    }
+  }, 1000);
 }
 
 function initEventListeners() {
@@ -462,7 +570,9 @@ function initEventListeners() {
   // Nút Sẵn Sàng (Lobby)
   document.getElementById('btnToggleReady').addEventListener('click', () => {
     if (!currentRoomId || !myTeamId) return;
-    socket.emit('player:ready', { roomId: currentRoomId, teamId: myTeamId });
+    if (socket && socket.connected) {
+      socket.emit('player:ready', { roomId: currentRoomId, teamId: myTeamId });
+    }
     if (window.firebaseSync && window.firebaseSync.isReady) {
       window.firebaseSync.clientSendAction(currentRoomId, { type: 'READY', teamId: myTeamId });
     }
@@ -471,7 +581,9 @@ function initEventListeners() {
   // Nút Xếp Tàu Tự Động (Placement)
   document.getElementById('btnAutoPlace').addEventListener('click', () => {
     if (!currentRoomId || !myTeamId) return;
-    socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
+    if (socket && socket.connected) {
+      socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
+    }
     if (window.firebaseSync && window.firebaseSync.isReady) {
       window.firebaseSync.clientSendAction(currentRoomId, { type: 'AUTO_PLACE', teamId: myTeamId });
     }
@@ -479,48 +591,181 @@ function initEventListeners() {
 
   // Nút Khóa Hạm Đội (Placement)
   document.getElementById('btnLockFleet').addEventListener('click', () => {
-    if (!currentRoomId || !myTeamId) return;
-    if (!myPlayerState || !myPlayerState.myTeam || !myPlayerState.myTeam.fleet || myPlayerState.myTeam.fleet.length === 0) {
-      socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
+    if (!currentRoomId || !myTeamId || !myPlayerState || !myPlayerState.myTeam) return;
+    const fleet = myPlayerState.myTeam.fleet;
+    if (!fleet || fleet.length === 0) {
+      if (socket && socket.connected) {
+        socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
+      }
       if (window.firebaseSync && window.firebaseSync.isReady) {
         window.firebaseSync.clientSendAction(currentRoomId, { type: 'AUTO_PLACE', teamId: myTeamId });
       }
-    } else {
-      socket.emit('player:lock_fleet', {
-        roomId: currentRoomId,
+      return;
+    }
+
+    if (socket && socket.connected) {
+      socket.emit('player:lock_fleet', { roomId: currentRoomId, teamId: myTeamId, fleet });
+    }
+    if (window.firebaseSync && window.firebaseSync.isReady) {
+      window.firebaseSync.clientSendAction(currentRoomId, {
+        type: 'LOCK_FLEET',
         teamId: myTeamId,
-        fleet: myPlayerState.myTeam.fleet,
+        fleet,
       });
-      if (window.firebaseSync && window.firebaseSync.isReady) {
-        window.firebaseSync.clientSendAction(currentRoomId, {
-          type: 'LOCK_FLEET',
-          teamId: myTeamId,
-          fleet: myPlayerState.myTeam.fleet,
-        });
-      }
     }
   });
 
-  // Nút Khai Hỏa (Battle)
-  document.getElementById('btnFire').addEventListener('click', () => {
-    if (!currentRoomId || !myTeamId || !selectedTargetKey) return;
-    socket.emit('player:fire', {
-      roomId: currentRoomId,
-      teamId: myTeamId,
-      targetKey: selectedTargetKey,
-    });
+  // Nút Kỹ Năng / Vũ Khí
+  const btnSkillNormal = document.getElementById('btnSkillNormal');
+  const btnSkillRadar = document.getElementById('btnSkillRadar');
+  const btnSkillCrossfire = document.getElementById('btnSkillCrossfire');
+  const btnFire = document.getElementById('btnFire');
 
-    if (window.firebaseSync && window.firebaseSync.isReady) {
-      window.firebaseSync.clientSendAction(currentRoomId, {
-        type: 'FIRE',
-        teamId: myTeamId,
-        targetKey: selectedTargetKey,
-      });
+  function updateSkillButtonsUI() {
+    btnSkillNormal.className = currentWeaponMode === 'NORMAL' ? 'btn btn-primary' : 'btn btn-outline';
+    btnSkillRadar.className = currentWeaponMode === 'RADAR' ? 'btn btn-primary' : 'btn btn-outline';
+    btnSkillCrossfire.className = currentWeaponMode === 'CROSSFIRE' ? 'btn btn-primary' : 'btn btn-outline';
+
+    if (currentWeaponMode === 'NORMAL') {
+      btnFire.textContent = '🚀 KHAI HỎA TÊN LỬA!';
+      btnFire.style.background = '#dc2626';
+    } else if (currentWeaponMode === 'RADAR') {
+      btnFire.textContent = '📡 BẮT ĐẦU QUÉT RADAR 3x3!';
+      btnFire.style.background = '#0284c7';
+    } else if (currentWeaponMode === 'CROSSFIRE') {
+      btnFire.textContent = '💥 BẮN TÊN LỬA CHỮ THẬP (+)!';
+      btnFire.style.background = '#ea580c';
+    }
+
+    const container = document.getElementById('battleGrid');
+    if (container && myPlayerState) {
+      updateGridCellVisuals(container, myPlayerState, myPlayerState.myTeam);
+    }
+  }
+
+  btnSkillNormal.addEventListener('click', () => {
+    currentWeaponMode = 'NORMAL';
+    updateSkillButtonsUI();
+  });
+
+  btnSkillRadar.addEventListener('click', () => {
+    if (myPlayerState && myPlayerState.myTeam && (myPlayerState.myTeam.radarScansRemaining || 0) <= 0) {
+      alert('Bạn đã hết lượt quét Radar!');
+      return;
+    }
+    currentWeaponMode = 'RADAR';
+    updateSkillButtonsUI();
+  });
+
+  btnSkillCrossfire.addEventListener('click', () => {
+    if (myPlayerState && myPlayerState.myTeam && (myPlayerState.myTeam.crossfireRemaining || 0) <= 0) {
+      alert('Bạn đã hết lượt bắn Tên lửa Chữ Thập!');
+      return;
+    }
+    currentWeaponMode = 'CROSSFIRE';
+    updateSkillButtonsUI();
+  });
+
+  // Nhập Tọa Độ Nhanh
+  const inputManual = document.getElementById('inputManualCoord');
+  const btnApply = document.getElementById('btnApplyCoord');
+
+  function applyManualInput() {
+    const val = inputManual.value.trim().toUpperCase();
+    if (!val) { alert('Vui lòng nhập tọa độ! (VD: B14, D8, K20)'); return; }
+
+    const parsed = window.GameEngine ? window.GameEngine.parseKey(val) : null;
+    if (!parsed) {
+      alert(`Tọa độ [${val}] không hợp lệ! Tọa độ gồm Cột A-T và Hàng 1-20 (VD: A1, K15, T20).`);
+      return;
+    }
+
+    selectTargetCoordinate(val);
+  }
+
+  btnApply.addEventListener('click', applyManualInput);
+  inputManual.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      applyManualInput();
+    }
+  });
+
+  // Điều khiển Zoom
+  const battleGrid = document.getElementById('battleGrid');
+  document.getElementById('btnZoomIn').addEventListener('click', () => {
+    currentZoomLevel = Math.min(2.0, currentZoomLevel + 0.25);
+    battleGrid.style.transform = `scale(${currentZoomLevel})`;
+  });
+
+  document.getElementById('btnZoomOut').addEventListener('click', () => {
+    currentZoomLevel = Math.max(0.65, currentZoomLevel - 0.25);
+    battleGrid.style.transform = `scale(${currentZoomLevel})`;
+  });
+
+  document.getElementById('btnZoomReset').addEventListener('click', () => {
+    currentZoomLevel = 1.0;
+    battleGrid.style.transform = `scale(1)`;
+  });
+
+  // Nút Khai Hỏa Lớn (Tác Chiến)
+  btnFire.addEventListener('click', () => {
+    if (!selectedTargetKey || !currentRoomId || !myTeamId) return;
+
+    if (currentWeaponMode === 'RADAR') {
+      if (socket && socket.connected) {
+        socket.emit('player:radar', {
+          roomId: currentRoomId,
+          teamId: myTeamId,
+          centerKey: selectedTargetKey,
+        });
+      }
+      if (window.firebaseSync && window.firebaseSync.isReady) {
+        window.firebaseSync.clientSendAction(currentRoomId, {
+          type: 'RADAR',
+          teamId: myTeamId,
+          centerKey: selectedTargetKey,
+        });
+      }
+      currentWeaponMode = 'NORMAL';
+      updateSkillButtonsUI();
+    } else if (currentWeaponMode === 'CROSSFIRE') {
+      if (socket && socket.connected) {
+        socket.emit('player:crossfire', {
+          roomId: currentRoomId,
+          teamId: myTeamId,
+          centerKey: selectedTargetKey,
+        });
+      }
+      if (window.firebaseSync && window.firebaseSync.isReady) {
+        window.firebaseSync.clientSendAction(currentRoomId, {
+          type: 'CROSSFIRE',
+          teamId: myTeamId,
+          centerKey: selectedTargetKey,
+        });
+      }
+      currentWeaponMode = 'NORMAL';
+      updateSkillButtonsUI();
+    } else {
+      // Bắn thường
+      if (socket && socket.connected) {
+        socket.emit('player:fire', {
+          roomId: currentRoomId,
+          teamId: myTeamId,
+          targetKey: selectedTargetKey,
+        });
+      }
+      if (window.firebaseSync && window.firebaseSync.isReady) {
+        window.firebaseSync.clientSendAction(currentRoomId, {
+          type: 'FIRE',
+          teamId: myTeamId,
+          targetKey: selectedTargetKey,
+        });
+      }
     }
 
     selectedTargetKey = null;
     document.getElementById('selectedTargetDisplay').textContent = '--';
-    document.getElementById('btnFire').disabled = true;
+    btnFire.disabled = true;
   });
 }
 
@@ -542,14 +787,20 @@ function buildPlayerStateFromRoomState(roomState, targetTeamId) {
       isFleetLocked: t.isFleetLocked,
       shipsRemaining: t.shipsRemaining,
       score: t.score,
+      radarScansRemaining: t.radarScansRemaining ?? 2,
+      crossfireRemaining: t.crossfireRemaining ?? 1,
       isEliminated: t.isEliminated,
     })),
     turnOrder: roomState.turnOrder || [],
     currentTurnTeamId: roomState.currentTurnTeamId,
     turnNumber: roomState.turnNumber,
+    turnTimeRemaining: roomState.turnTimeRemaining || 60,
+    turnStartTime: roomState.turnStartTime || Date.now(),
     isMyTurn: roomState.currentTurnTeamId === targetTeamId && myTeam && !myTeam.isEliminated && roomState.phase === 'BATTLE',
     shotsMap: roomState.shotsMap || {},
     lastShotResult: roomState.lastShotResult,
+    lastRadarRecord: roomState.lastRadarRecord,
+    lastCrossfireRecord: roomState.lastCrossfireRecord,
     winner: roomState.winner,
   };
 }

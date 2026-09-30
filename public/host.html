@@ -159,6 +159,16 @@
         <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Lượt Khai Hỏa Hiện Tại</div>
         <div id="statusTurnText" style="font-size: 1.2rem; font-weight: 900; color: #0284c7;">Chờ Khởi Động</div>
       </div>
+      <div id="turnTimerWrapper" style="display: none; align-items: center; gap: 8px;">
+        <div style="width: 1px; height: 32px; background: var(--border-ocean); margin-right: 12px;"></div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Đếm Ngược Lượt</div>
+          <div id="turnTimerBadge" class="turn-timer-badge">
+            <span>⏱️</span>
+            <span id="turnTimerText">60s</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Nút hành động theo từng giai đoạn -->
@@ -192,17 +202,26 @@
       </div>
     </aside>
 
-    <!-- Cột giữa: Đại Hải Đồ 200 ô (20x10) -->
+    <!-- Cột giữa: Đại Hải Đồ 400 ô (20x20) -->
     <section class="glass-panel" style="padding: 16px; display: flex; flex-direction: column;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
         <h2 style="font-size: 1.05rem; font-weight: 800; color: var(--navy-dark); display: flex; align-items: center; gap: 8px;">
-          <span>🗺️ ĐẠI HẢI ĐỒ 200 Ô (A-T × 1-10)</span>
+          <span>🗺️ ĐẠI HẢI ĐỒ 400 Ô (A-T × 1-20)</span>
         </h2>
         <div style="display: flex; align-items: center; gap: 12px; font-size: 0.85rem;">
           <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted);">
             <input type="checkbox" id="chkShowSecretShips"> 👁️ Xem vị trí tàu ẩn (Chỉ MC)
           </label>
         </div>
+      </div>
+
+      <!-- MC Nhập Tọa Độ Bắn Nhanh & Kỹ Năng -->
+      <div id="hostQuickFireBar" style="display: none; align-items: center; gap: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border-ocean); margin-bottom: 10px; flex-wrap: wrap;">
+        <span style="font-size: 0.85rem; font-weight: 800; color: var(--navy-dark);">🎯 Nhập Tọa Độ Nhanh:</span>
+        <input type="text" id="inputHostCoord" placeholder="VD: B14" maxlength="4" style="width: 80px; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 800; text-transform: uppercase; text-align: center; font-size: 0.95rem;">
+        <button id="btnHostFireCoord" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;">🚀 Bắn Ô Này</button>
+        <button id="btnHostRadarCoord" class="btn btn-outline" style="border-color: #0284c7; color: #0284c7; padding: 6px 10px; font-size: 0.85rem;" title="Quét vùng 3x3 quanh tọa độ">📡 Quét Radar 3x3</button>
+        <button id="btnHostCrossfireCoord" class="btn btn-outline" style="border-color: #ea580c; color: #ea580c; padding: 6px 10px; font-size: 0.85rem;" title="Bắn 5 ô chữ thập quanh tọa độ">💥 Bắn Chữ Thập (+)</button>
       </div>
 
       <!-- Khung lưới hải đồ -->
