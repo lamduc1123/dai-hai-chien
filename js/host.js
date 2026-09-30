@@ -505,8 +505,9 @@ function updatePhaseAndControls(state) {
   const statusProgressText = document.getElementById('statusProgressText');
   const quickFireBar = document.getElementById('hostQuickFireBar');
 
-  const readyCount = state.teams.filter(t => t.isReady).length;
-  const lockedCount = state.teams.filter(t => t.isFleetLocked).length;
+  const totalCount = state.teams ? state.teams.length : 0;
+  const readyCount = state.teams ? state.teams.filter(t => t.isReady).length : 0;
+  const lockedCount = state.teams ? state.teams.filter(t => t.isFleetLocked).length : 0;
   const pLabel = document.getElementById('playerCountLabel');
   if (pLabel) pLabel.textContent = `${totalCount} Đội`;
 
