@@ -315,14 +315,92 @@ body {
   font-size: 0.95rem;
 }
 
+/* Multi-cell Seamless Warship Styling (3-4 cells unified) */
 .ocean-cell.has-ship {
-  background: #bfdbfe;
-  border-color: #60a5fa;
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%) !important;
+  border-color: #64748b !important;
+  color: #ffffff;
+  position: relative;
+  z-index: 2;
+  box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.2), 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
-.ocean-cell.has-ship::before {
+/* Horizontal Warship Parts */
+.ocean-cell.ship-bow-h {
+  border-radius: 14px 0 0 14px !important;
+  border-right: none !important;
+}
+.ocean-cell.ship-bow-h::before {
+  content: '◄';
+  font-size: 0.65rem;
+  color: #94a3b8;
+  opacity: 0.8;
+}
+
+.ocean-cell.ship-mid-h {
+  border-radius: 0 !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+.ocean-cell.ship-mid-h::before {
+  content: '⚓';
+  font-size: 0.7rem;
+  color: #cbd5e1;
+  opacity: 0.9;
+}
+
+.ocean-cell.ship-stern-h {
+  border-radius: 0 12px 12px 0 !important;
+  border-left: none !important;
+}
+.ocean-cell.ship-stern-h::before {
+  content: '═';
+  font-size: 0.75rem;
+  color: #94a3b8;
+  opacity: 0.7;
+}
+
+/* Vertical Warship Parts */
+.ocean-cell.ship-bow-v {
+  border-radius: 14px 14px 0 0 !important;
+  border-bottom: none !important;
+}
+.ocean-cell.ship-bow-v::before {
+  content: '▲';
+  font-size: 0.65rem;
+  color: #94a3b8;
+  opacity: 0.8;
+}
+
+.ocean-cell.ship-mid-v {
+  border-radius: 0 !important;
+  border-top: none !important;
+  border-bottom: none !important;
+}
+.ocean-cell.ship-mid-v::before {
+  content: '⚓';
+  font-size: 0.7rem;
+  color: #cbd5e1;
+  opacity: 0.9;
+}
+
+.ocean-cell.ship-stern-v {
+  border-radius: 0 0 12px 12px !important;
+  border-top: none !important;
+}
+.ocean-cell.ship-stern-v::before {
+  content: '║';
+  font-size: 0.75rem;
+  color: #94a3b8;
+  opacity: 0.7;
+}
+
+.ocean-cell.ship-single {
+  border-radius: 8px !important;
+}
+.ocean-cell.ship-single::before {
   content: '🚢';
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .ocean-cell.zone-highlight {

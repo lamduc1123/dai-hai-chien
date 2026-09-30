@@ -165,9 +165,30 @@ function renderProjectorOceanMap(state) {
   document.querySelectorAll('#projOceanGrid .ocean-cell').forEach(c => {
     c.className = 'ocean-cell';
     c.innerHTML = '';
+    c.style.borderColor = '';
   });
 
-  // Hiển thị lịch sử bắn
+  // Hiển thị các chiến hạm đã chìm hoàn toàn dạng liền khối
+  if (state.teams) {
+    state.teams.forEach(team => {
+      if (team.fleet) {
+        team.fleet.forEach(ship => {
+          if (ship.isSunk) {
+            ship.cells.forEach(key => {
+              const cell = document.getElementById(`proj-cell-${key}`);
+              if (!cell) return;
+              const partClass = window.GameEngine.getShipPartClass(ship, key);
+              cell.classList.add('has-ship', 'shot-sunk');
+              if (partClass) cell.classList.add(partClass);
+              cell.style.borderColor = team.colorHex;
+            });
+          }
+        });
+      }
+    });
+  }
+
+  // Hiển thị lịch sử bắn khác
   if (state.shotsMap) {
     for (const key in state.shotsMap) {
       const shot = state.shotsMap[key];
@@ -175,11 +196,9 @@ function renderProjectorOceanMap(state) {
       if (!cell) continue;
 
       if (shot.result === 'MISS') {
-        cell.classList.add('shot-miss');
-      } else if (shot.result === 'HIT') {
-        cell.classList.add('shot-hit');
-      } else if (shot.result === 'SUNK') {
-        cell.classList.add('shot-sunk');
+        cell.className = 'ocean-cell shot-miss';
+      } else if (shot.result === 'HIT' && !cell.classList.contains('has-ship')) {
+        cell.className = 'ocean-cell shot-hit';
       }
     }
   }

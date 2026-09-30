@@ -245,7 +245,13 @@ function handleIncomingFirebaseAction(action) {
   } else if (action.type === 'AUTO_PLACE') {
     const team = currentHostState.teams.find(t => t.id === action.teamId);
     if (team && currentHostState.phase === 'PLACEMENT') {
-      team.fleet = window.GameEngine.generateRandomFleetInZone(team.zone, currentHostState.config.shipLengths);
+      const enemyCells = new Set();
+      currentHostState.teams.forEach(other => {
+        if (other.id !== team.id && other.fleet) {
+          other.fleet.forEach(s => s.cells && s.cells.forEach(k => enemyCells.add(k)));
+        }
+      });
+      team.fleet = window.GameEngine.generateRandomFleetOpenOcean(currentHostState.config.shipLengths, enemyCells);
       team.isFleetLocked = true;
       team.isReady = true;
       addLogItem(`⚓ [${team.name}] đã bố trí đội hình chiến hạm tự động!`, 'hit');
@@ -254,13 +260,21 @@ function handleIncomingFirebaseAction(action) {
   } else if (action.type === 'LOCK_FLEET') {
     const team = currentHostState.teams.find(t => t.id === action.teamId);
     if (team && currentHostState.phase === 'PLACEMENT') {
-      const valid = window.GameEngine.validateCustomFleet(action.fleet, team.zone, currentHostState.config.shipLengths);
+      const enemyCells = new Set();
+      currentHostState.teams.forEach(other => {
+        if (other.id !== team.id && other.fleet) {
+          other.fleet.forEach(s => s.cells && s.cells.forEach(k => enemyCells.add(k)));
+        }
+      });
+      const valid = window.GameEngine.validateCustomFleet(action.fleet, currentHostState.config.shipLengths, enemyCells);
       if (valid.valid) {
         team.fleet = action.fleet;
         team.isFleetLocked = true;
         team.isReady = true;
         addLogItem(`⚓ [${team.name}] đã hoàn tất bố trí chiến hạm!`, 'hit');
         commitLocalState();
+      } else {
+        console.warn('LOCK_FLEET invalid:', valid.error);
       }
     }
   }
@@ -561,56 +575,46 @@ function updatePhaseAndControls(state) {
 
 function renderTeamsRoster(state) {
   const container = document.getElementById('teamsRosterList');
+  if (!container) return;
   container.innerHTML = '';
 
   state.teams.forEach(team => {
     const isCurrentTurn = state.phase === 'BATTLE' && state.currentTurnTeamId === team.id;
     const card = document.createElement('div');
     card.className = `team-roster-card ${isCurrentTurn ? 'active-turn' : ''} ${team.isEliminated ? 'eliminated' : ''}`;
-    card.style.borderLeftColor = team.colorHex;
-
-    let statusBadge = '';
-    if (team.isEliminated) {
-      statusBadge = '<span class="status-badge status-offline">ĐÃ BỊ CHÌM</span>';
-    } else if (team.isBot) {
-      statusBadge = '<span class="status-badge status-bot">BOT TỰ ĐỘNG</span>';
-    } else if (team.isConnected) {
-      statusBadge = '<span class="status-badge status-ready">ONLINE</span>';
-    } else {
-      statusBadge = '<span class="status-badge status-offline">CHỜ VÀO</span>';
+    if (isCurrentTurn) {
+      card.style.borderColor = team.colorHex;
+      card.style.background = `${team.colorHex}15`;
+      card.style.boxShadow = `0 0 12px ${team.colorHex}66`;
     }
 
-    let readyStatus = '';
-    if (state.phase === 'LOBBY') {
-      readyStatus = team.isReady ? '✓ Sẵn sàng' : 'Chưa sẵn sàng';
+    let statusText = '';
+    if (team.isEliminated) {
+      statusText = '<span style="color: #dc2626; font-weight: 800; font-size: 0.8rem;">☠️ ĐÃ CHÌM</span>';
+    } else if (state.phase === 'LOBBY') {
+      statusText = `<span style="font-weight: 700; color: ${team.isReady ? '#16a34a' : '#64748b'}; font-size: 0.75rem;">${team.isReady ? '✓ Sẵn sàng' : 'Chưa vào'}</span>`;
     } else if (state.phase === 'PLACEMENT') {
-      readyStatus = team.isFleetLocked ? '🔒 Đã bố trí' : '⏳ Đang dàn trận';
+      statusText = `<span style="font-weight: 700; color: ${team.isFleetLocked ? '#16a34a' : '#d97706'}; font-size: 0.75rem;">${team.isFleetLocked ? '🔒 Đã dàn trận' : '⏳ Đang xếp'}</span>`;
     } else {
-      readyStatus = `❤️ Còn ${team.shipsRemaining} tàu`;
+      statusText = `<span style="font-weight: 800; color: #15803d; font-size: 0.82rem;">❤️ ${team.shipsRemaining} tàu</span>`;
     }
 
     const radarRemaining = team.radarScansRemaining ?? 2;
     const crossRemaining = team.crossfireRemaining ?? 1;
 
     card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 1.3rem;">${team.icon}</span>
-          <div>
-            <div style="font-weight: 800; color: ${team.colorHex}; font-size: 0.95rem;">${team.name}</div>
-            <div style="font-size: 0.75rem; color: #64748b;">Hải phận: ${team.zone ? team.zone.name : '--'}</div>
-          </div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 1.25rem;">${team.icon}</span>
+        <div>
+          <div style="font-weight: 800; color: ${team.colorHex}; font-size: 0.85rem; line-height: 1.2;">${team.name}</div>
+          <div style="font-size: 0.7rem; color: #64748b;">${team.isBot ? '🤖 Bot AI' : (team.playerName || 'Trống')}</div>
         </div>
-        <div>${statusBadge}</div>
       </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 0.8rem;">
-        <span style="color: #475569;">${team.isBot ? team.botName : (team.playerName || 'Trống')}</span>
-        <span style="font-weight: 700; color: #0284c7;">${readyStatus}</span>
-      </div>
-      <div style="display: flex; gap: 8px; margin-top: 6px; font-size: 0.72rem; color: #64748b; border-top: 1px dashed #e2e8f0; padding-top: 4px;">
-        <span>📡 Radar: <b>${radarRemaining}/2</b></span>
-        <span>•</span>
-        <span>🚀 Chữ thập: <b>${crossRemaining}/1</b></span>
+      <div style="text-align: right;">
+        <div>${statusText}</div>
+        <div style="font-size: 0.65rem; color: #0284c7; margin-top: 1px;">
+          📡 ${radarRemaining}/2 • 🚀 ${crossRemaining}/1
+        </div>
       </div>
     `;
 
@@ -622,54 +626,50 @@ function renderOceanMap(state) {
   document.querySelectorAll('.ocean-cell').forEach(cell => {
     cell.className = 'ocean-cell';
     cell.innerHTML = '';
+    cell.style.borderColor = '';
+    cell.style.background = '';
   });
 
-  // Tô màu hải phận
+  // Hiển thị vị trí tàu chiến liền khối (nếu tàu đã chìm HOẶC MC bật xem tàu ẩn)
   if (state.teams) {
     state.teams.forEach(team => {
-      if (team.zone && team.zone.cells) {
-        team.zone.cells.forEach(key => {
-          const cell = document.getElementById(`cell-${key}`);
-          if (cell) {
-            cell.style.background = `${team.colorHex}0c`;
+      if (team.fleet) {
+        team.fleet.forEach(ship => {
+          const isShipSunk = ship.isSunk;
+          if (showSecretShips || isShipSunk) {
+            ship.cells.forEach(key => {
+              const cell = document.getElementById(`cell-${key}`);
+              if (!cell) return;
+              const partClass = window.GameEngine.getShipPartClass(ship, key);
+              cell.classList.add('has-ship');
+              if (partClass) cell.classList.add(partClass);
+              cell.style.borderColor = team.colorHex;
+
+              if (isShipSunk) {
+                cell.classList.add('shot-sunk');
+              } else if (ship.hits && ship.hits.includes(key)) {
+                cell.classList.add('shot-hit');
+              }
+            });
           }
         });
       }
     });
   }
 
-  // Hiển thị vị trí tàu ẩn nếu MC bật
-  if (showSecretShips && state.teams) {
-    state.teams.forEach(team => {
-      if (team.fleet) {
-        team.fleet.forEach(ship => {
-          ship.cells.forEach(key => {
-            const cell = document.getElementById(`cell-${key}`);
-            if (cell && !cell.classList.contains('shot-hit') && !cell.classList.contains('shot-sunk')) {
-              cell.classList.add('has-ship');
-              cell.style.borderColor = team.colorHex;
-            }
-          });
-        });
-      }
-    });
-  }
-
-  // Hiển thị lịch sử các phát bắn
+  // Hiển thị các phát bắn trượt và trúng khác
   if (state.shotsMap) {
     for (const key in state.shotsMap) {
       const shot = state.shotsMap[key];
       const cell = document.getElementById(`cell-${key}`);
       if (!cell) continue;
 
-      cell.classList.remove('has-ship');
-
       if (shot.result === 'MISS') {
-        cell.classList.add('shot-miss');
-      } else if (shot.result === 'HIT') {
-        cell.classList.add('shot-hit');
-      } else if (shot.result === 'SUNK') {
-        cell.classList.add('shot-sunk');
+        cell.className = 'ocean-cell shot-miss';
+      } else if (shot.result === 'HIT' && !cell.classList.contains('has-ship')) {
+        cell.className = 'ocean-cell shot-hit';
+      } else if (shot.result === 'SUNK' && !cell.classList.contains('has-ship')) {
+        cell.className = 'ocean-cell shot-sunk';
       }
     }
   }

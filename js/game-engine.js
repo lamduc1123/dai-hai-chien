@@ -44,8 +44,11 @@ function parseKey(key) {
 /**
  * Kiểm tra tính hợp lệ của tọa độ
  */
-function isValidCoord(col, row) {
-  return COLS.includes(col) && ROWS.includes(row);
+function isValidCoord(colOrKey, row = null) {
+  if (row === null || row === undefined) {
+    return parseKey(colOrKey) !== null;
+  }
+  return COLS.includes(colOrKey) && ROWS.includes(row);
 }
 
 /**
@@ -149,11 +152,40 @@ function allocatePlayerZones(playerCount = 4) {
 }
 
 /**
- * Sinh hạm đội ngẫu nhiên nằm hoàn toàn trong hải phận quy định
+ * Trả về class bộ phận của tàu (ship-bow-h, ship-mid-h, ship-stern-h, ship-bow-v, ship-mid-v, ship-stern-v)
+ * Giúp hiển thị trọn vẹn 1 chiến hạm 3 ô hoặc 4 ô liền khối đẹp mắt
  */
-function generateRandomFleetInZone(zone, shipLengths = [4, 3]) {
+function getShipPartClass(ship, cellKey) {
+  if (!ship || !Array.isArray(ship.cells)) return '';
+  const idx = ship.cells.indexOf(cellKey);
+  if (idx === -1) return '';
+  const total = ship.cells.length;
+  if (total === 1) return 'ship-single';
+
+  const isHorizontal = ship.orientation === 'horizontal';
+  if (idx === 0) {
+    return isHorizontal ? 'ship-bow-h' : 'ship-bow-v';
+  }
+  if (idx === total - 1) {
+    return isHorizontal ? 'ship-stern-h' : 'ship-stern-v';
+  }
+  return isHorizontal ? 'ship-mid-h' : 'ship-mid-v';
+}
+
+/**
+ * Sinh hạm đội ngẫu nhiên trên toàn bộ đại dương 400 ô (hoặc theo vùng chỉ định)
+ * Không bị bó buộc nửa hải đồ, tự do phân tán chiến thuật, chỉ cần không trùng với tàu của đối phương
+ */
+function generateRandomFleetOpenOcean(shipLengths = [4, 3], existingEnemyCells = new Set(), bounds = null) {
   const fleet = [];
-  const occupiedCells = new Set();
+  const occupiedCells = new Set([...existingEnemyCells]);
+
+  const minCol = bounds ? bounds.minCol : 0;
+  const maxCol = bounds ? bounds.maxCol : (COLS.length - 1);
+  const minRow = bounds ? bounds.minRow : 0;
+  const maxRow = bounds ? bounds.maxRow : (ROWS.length - 1);
+  const width = maxCol - minCol + 1;
+  const height = maxRow - minRow + 1;
 
   for (let i = 0; i < shipLengths.length; i++) {
     const length = shipLengths[i];
@@ -161,17 +193,17 @@ function generateRandomFleetInZone(zone, shipLengths = [4, 3]) {
     let placed = false;
     let attempts = 0;
 
-    while (!placed && attempts < 500) {
+    while (!placed && attempts < 800) {
       attempts++;
       const isHorizontal = Math.random() < 0.5;
       let startColIdx, startRowIdx;
 
       if (isHorizontal) {
-        startColIdx = zone.colStartIdx + Math.floor(Math.random() * (zone.width - length + 1));
-        startRowIdx = zone.rowStartIdx + Math.floor(Math.random() * zone.height);
+        startColIdx = minCol + Math.floor(Math.random() * Math.max(1, width - length + 1));
+        startRowIdx = minRow + Math.floor(Math.random() * height);
       } else {
-        startColIdx = zone.colStartIdx + Math.floor(Math.random() * zone.width);
-        startRowIdx = zone.rowStartIdx + Math.floor(Math.random() * (zone.height - length + 1));
+        startColIdx = minCol + Math.floor(Math.random() * width);
+        startRowIdx = minRow + Math.floor(Math.random() * Math.max(1, height - length + 1));
       }
 
       const shipCells = [];
@@ -180,8 +212,13 @@ function generateRandomFleetInZone(zone, shipLengths = [4, 3]) {
       for (let step = 0; step < length; step++) {
         const c = isHorizontal ? startColIdx + step : startColIdx;
         const r = isHorizontal ? startRowIdx : startRowIdx + step;
-        const cellKey = coordToKey(COLS[c], ROWS[r]);
 
+        if (c >= COLS.length || r >= ROWS.length) {
+          collision = true;
+          break;
+        }
+
+        const cellKey = coordToKey(COLS[c], ROWS[r]);
         if (occupiedCells.has(cellKey)) {
           collision = true;
           break;
@@ -189,7 +226,7 @@ function generateRandomFleetInZone(zone, shipLengths = [4, 3]) {
         shipCells.push(cellKey);
       }
 
-      if (!collision) {
+      if (!collision && shipCells.length === length) {
         shipCells.forEach(cell => occupiedCells.add(cell));
         fleet.push({
           id: `ship_${i + 1}`,
@@ -205,7 +242,7 @@ function generateRandomFleetInZone(zone, shipLengths = [4, 3]) {
     }
 
     if (!placed) {
-      console.warn(`Không thể đặt tàu kích thước ${length} trong hải phận sau 500 lần thử`);
+      console.warn(`Không thể đặt tàu kích thước ${length} sau 800 lần thử`);
     }
   }
 
@@ -213,9 +250,26 @@ function generateRandomFleetInZone(zone, shipLengths = [4, 3]) {
 }
 
 /**
- * Xác thực hạm đội tùy chỉnh của người chơi
+ * Sinh hạm đội ngẫu nhiên (tương thích ngược với zone cũ, nhưng mặc định mở rộng toàn bộ đại dương nếu cần)
  */
-function validateCustomFleet(fleet, zone, expectedLengths = [4, 3]) {
+function generateRandomFleetInZone(zone, shipLengths = [4, 3], existingEnemyCells = new Set()) {
+  if (!zone || !zone.width) {
+    return generateRandomFleetOpenOcean(shipLengths, existingEnemyCells);
+  }
+  return generateRandomFleetOpenOcean(shipLengths, existingEnemyCells, {
+    minCol: zone.colStartIdx,
+    maxCol: zone.colEndIdx,
+    minRow: zone.rowStartIdx,
+    maxRow: zone.rowEndIdx,
+  });
+}
+
+/**
+ * Xác thực hạm đội tùy chỉnh của người chơi:
+ * Cho phép đặt tàu ở bất kỳ đâu trên 400 ô đại dương, chỉ cần các tàu không chồng lên nhau
+ * và không trùng với vị trí tàu của đối phương đã bố trí.
+ */
+function validateCustomFleet(fleet, expectedLengths = [4, 3], existingEnemyCells = new Set()) {
   if (!Array.isArray(fleet)) {
     return { valid: false, error: 'Dữ liệu hạm đội không hợp lệ' };
   }
@@ -224,7 +278,6 @@ function validateCustomFleet(fleet, zone, expectedLengths = [4, 3]) {
     return { valid: false, error: `Số lượng tàu yêu cầu: ${expectedLengths.length} (nhận được: ${fleet.length})` };
   }
 
-  const zoneCells = new Set(zone.cells);
   const occupied = new Set();
   const sortedExpected = [...expectedLengths].sort((a, b) => b - a);
   const actualLengths = fleet.map(s => s.cells ? s.cells.length : 0).sort((a, b) => b - a);
@@ -242,11 +295,14 @@ function validateCustomFleet(fleet, zone, expectedLengths = [4, 3]) {
     }
 
     for (const cellKey of ship.cells) {
-      if (!zoneCells.has(cellKey)) {
-        return { valid: false, error: `Tọa độ ${cellKey} nằm ngoài hải phận cho phép của đội` };
+      if (!isValidCoord(cellKey)) {
+        return { valid: false, error: `Tọa độ ${cellKey} nằm ngoài phạm vi hải đồ (A-T × 1-20)` };
       }
       if (occupied.has(cellKey)) {
-        return { valid: false, error: `Tọa độ ${cellKey} bị chồng lấn giữa các tàu` };
+        return { valid: false, error: `Tọa độ ${cellKey} bị chồng lấn giữa các tàu của bạn` };
+      }
+      if (existingEnemyCells && existingEnemyCells.has(cellKey)) {
+        return { valid: false, error: `Tọa độ ${cellKey} bị trùng với khu vực của tàu đối phương!` };
       }
       occupied.add(cellKey);
     }
@@ -382,10 +438,11 @@ function startPlacementPhase(gameState) {
   if (gameState.phase !== 'LOBBY') return false;
   gameState.phase = 'PLACEMENT';
 
+  const occupiedByOthers = new Set();
   gameState.teams.forEach(team => {
     if (team.isBot) {
-      const zone = gameState.zones[team.id];
-      team.fleet = generateRandomFleetInZone(zone, gameState.config.shipLengths);
+      team.fleet = generateRandomFleetOpenOcean(gameState.config.shipLengths, occupiedByOthers);
+      team.fleet.forEach(s => s.cells.forEach(k => occupiedByOthers.add(k)));
       team.isFleetLocked = true;
       team.isReady = true;
     }
@@ -400,10 +457,17 @@ function startPlacementPhase(gameState) {
 function startBattlePhase(gameState, manualOrder = null) {
   if (gameState.phase !== 'PLACEMENT' && gameState.phase !== 'LOBBY') return gameState;
 
+  const occupiedByOthers = new Set();
+  gameState.teams.forEach(team => {
+    if (team.fleet && team.fleet.length > 0) {
+      team.fleet.forEach(s => s.cells.forEach(k => occupiedByOthers.add(k)));
+    }
+  });
+
   gameState.teams.forEach(team => {
     if (!team.fleet || team.fleet.length === 0) {
-      const zone = gameState.zones[team.id];
-      team.fleet = generateRandomFleetInZone(zone, gameState.config.shipLengths);
+      team.fleet = generateRandomFleetOpenOcean(gameState.config.shipLengths, occupiedByOthers);
+      team.fleet.forEach(s => s.cells.forEach(k => occupiedByOthers.add(k)));
       team.isFleetLocked = true;
       team.isReady = true;
     }
@@ -1045,6 +1109,8 @@ const engineExports = {
   isValidCoord,
   getShipLengths,
   allocatePlayerZones,
+  getShipPartClass,
+  generateRandomFleetOpenOcean,
   generateRandomFleetInZone,
   validateCustomFleet,
   createInitialGameState,

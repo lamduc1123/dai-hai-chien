@@ -328,32 +328,53 @@ function renderTurnHeader() {
 }
 
 function renderOceanGrid() {
-  const myTeam = gameState.teams.find(t => t.id === myTeamId);
-  const myShipCells = new Set();
-  if (myTeam && myTeam.fleet) {
-    myTeam.fleet.forEach(s => s.cells.forEach(k => myShipCells.add(k)));
-  }
-
   document.querySelectorAll('#demoOceanGrid .ocean-cell').forEach(c => {
-    const k = c.dataset.key;
     c.className = 'ocean-cell';
     c.style.backgroundColor = '';
+    c.style.borderColor = '';
+  });
 
-    // Ô tàu của bạn (chỉ bạn nhìn thấy)
-    if (myShipCells.has(k)) {
-      c.classList.add('has-ship');
-      c.style.borderColor = myTeam.colorHex;
-    }
+  // Render các tàu của bạn (và các tàu đối phương đã bị bắn chìm)
+  gameState.teams.forEach(team => {
+    const isMe = team.id === myTeamId;
+    if (team.fleet) {
+      team.fleet.forEach(ship => {
+        if (isMe || ship.isSunk) {
+          ship.cells.forEach(k => {
+            const cell = document.getElementById(`demo-cell-${k}`);
+            if (!cell) return;
+            const partClass = window.GameEngine.getShipPartClass(ship, k);
+            cell.classList.add('has-ship');
+            if (partClass) cell.classList.add(partClass);
+            cell.style.borderColor = team.colorHex;
 
-    // Các phát bắn
-    if (gameState.shotsMap && gameState.shotsMap[k]) {
-      const s = gameState.shotsMap[k];
-      c.classList.remove('has-ship');
-      if (s.result === 'MISS') c.classList.add('shot-miss');
-      else if (s.result === 'HIT') c.classList.add('shot-hit');
-      else if (s.result === 'SUNK') c.classList.add('shot-sunk');
+            if (ship.isSunk) {
+              cell.classList.add('shot-sunk');
+            } else if (ship.hits && ship.hits.includes(k)) {
+              cell.classList.add('shot-hit');
+            }
+          });
+        }
+      });
     }
   });
+
+  // Render các phát bắn khác
+  if (gameState.shotsMap) {
+    for (const k in gameState.shotsMap) {
+      const s = gameState.shotsMap[k];
+      const cell = document.getElementById(`demo-cell-${k}`);
+      if (!cell) continue;
+
+      if (s.result === 'MISS') {
+        cell.className = 'ocean-cell shot-miss';
+      } else if (s.result === 'HIT' && !cell.classList.contains('has-ship')) {
+        cell.className = 'ocean-cell shot-hit';
+      } else if (s.result === 'SUNK' && !cell.classList.contains('has-ship')) {
+        cell.className = 'ocean-cell shot-sunk';
+      }
+    }
+  }
 
   highlightTargetArea();
 }

@@ -3,61 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>⚓ Chỉ Huy Trưởng - Đại Hải Chiến 200 Ô</title>
+  <title>⚓ Chỉ Huy Trưởng - Đại Hải Chiến 400 Ô (A-T × 1-20)</title>
   <link rel="stylesheet" href="css/naval-light.css">
   <style>
-    .host-layout {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 16px;
-      padding: 16px;
-      max-width: 1800px;
-      margin: 0 auto;
+    body {
+      background: #f0f7ff;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
 
-    @media (max-width: 1024px) {
-      .host-layout {
-        grid-template-columns: 1fr;
-      }
+    .host-wrapper {
+      width: 100%;
+      max-width: 100%;
+      padding: 8px 14px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
     }
 
-    .header-bar {
+    .header-bar-compact {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 20px;
-      margin: 12px 16px 0 16px;
+      padding: 8px 14px;
       background: #ffffff;
+      border-radius: 10px;
+      border: 1px solid var(--border-ocean);
+      box-shadow: var(--shadow-sm);
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
-    .teams-roster-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 12px;
+    /* Thanh hạm đội sinh tồn nằm ngang trên đầu */
+    .teams-roster-horizontal {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 8px;
+      width: 100%;
     }
 
     .team-roster-card {
-      padding: 12px;
-      border-radius: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
       background: #ffffff;
-      border: 1px solid var(--border-ocean);
+      border: 2px solid var(--border-ocean);
       display: flex;
-      flex-direction: column;
-      gap: 6px;
+      align-items: center;
+      justify-content: space-between;
       transition: all 0.2s ease;
+      box-shadow: var(--shadow-sm);
     }
 
     .team-roster-card.active-turn {
       border-color: #0284c7;
-      box-shadow: 0 0 12px rgba(2, 132, 199, 0.3);
+      box-shadow: 0 0 14px rgba(2, 132, 199, 0.4);
       background: #f0f9ff;
+      transform: translateY(-1px);
     }
 
     .team-roster-card.eliminated {
-      opacity: 0.5;
+      opacity: 0.45;
       background: #f1f5f9;
+      border-color: #cbd5e1;
       filter: grayscale(1);
+    }
+
+    /* Hải đồ full trang chiều ngang */
+    .ocean-section-full {
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid var(--border-ocean);
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      box-shadow: var(--shadow-sm);
+      gap: 8px;
+    }
+
+    .ocean-map-wrapper {
+      width: 100%;
+      overflow: auto;
+      max-height: 72vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: 8px;
+      border: 1px solid var(--border-ocean);
+    }
+
+    .ocean-grid {
+      display: grid;
+      grid-template-columns: 28px repeat(20, minmax(24px, 42px));
+      grid-template-rows: 24px repeat(20, minmax(24px, 42px));
+      gap: 2px;
+      user-select: none;
+      margin: 0 auto;
     }
   </style>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
@@ -71,150 +119,120 @@
 </head>
 <body>
 
-  <!-- Thanh điều khiển trên cùng -->
-  <header class="glass-panel header-bar">
-    <div style="display: flex; align-items: center; gap: 14px;">
-      <span style="font-size: 1.8rem;">⚓</span>
-      <div>
-        <h1 style="font-size: 1.25rem; font-weight: 900; color: var(--navy-dark); letter-spacing: 0.5px;">
-          ĐẠI HẢI CHIẾN: CHỈ HUY HẢI QUÂN
-        </h1>
-        <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
-          <span class="badge badge-live">TRỰC TIẾP MC</span>
-          <span style="font-size: 0.85rem; color: var(--text-muted);">Mã phòng: <b id="roomCodeText" style="color: var(--navy-primary);">------</b></span>
-          <span id="phaseBadge" class="badge" style="background: #e0f2fe; color: #0284c7;">SẢNH CHỜ</span>
+  <div class="host-wrapper">
+
+    <!-- Thanh điều khiển trên cùng (Tinh gọn) -->
+    <header class="header-bar-compact">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 1.5rem;">⚓</span>
+        <div>
+          <h1 style="font-size: 1.15rem; font-weight: 900; color: var(--navy-dark); letter-spacing: 0.5px; margin: 0;">
+            ĐẠI HẢI CHIẾN: CHỈ HUY HẢI QUÂN
+          </h1>
+          <div style="display: flex; align-items: center; gap: 6px; margin-top: 1px;">
+            <span class="badge badge-live" style="font-size: 0.7rem; padding: 2px 6px;">MC LIVE</span>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Mã: <b id="roomCodeText" style="color: var(--navy-primary);">------</b></span>
+            <span id="phaseBadge" class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.7rem; padding: 2px 6px;">SẢNH CHỜ</span>
+          </div>
         </div>
       </div>
-    </div>
 
-      <button id="btnOpenFirebaseModal" class="btn btn-outline" style="border-color: #f59e0b; color: #d97706;" title="Cài đặt kết nối Google Firebase Cloud">
-        🔥 Firebase
-      </button>
-      <button id="btnOpenConfig" class="btn btn-outline" title="Thiết lập số người chơi và số tàu">
-        ⚙️ Cài Đặt Game
-      </button>
-      <button id="btnAddBot" class="btn btn-outline" style="border-color: #0284c7; color: #0284c7;" title="Thêm 1 máy tự động">
-        🤖 +1 Máy (Bot)
-      </button>
-      <button id="btnFillBots" class="btn btn-outline" style="border-color: #059669; color: #059669;" title="Lấp đầy các đội trống bằng máy">
-        🤖 Lấp Đầy Bằng Máy
-      </button>
-      <button id="btnOpenQR" class="btn btn-primary" title="Mã QR cho người chơi quét">
-        📱 Quét QR Tham Gia
-      </button>
-      <a href="screen.html" target="_blank" class="btn btn-outline" title="Mở Màn Hình Trình Chiếu Máy Chiếu">
-        📺 Tab Máy Chiếu
-      </a>
-      <button id="btnSoundToggle" class="btn btn-outline" title="Bật/Tắt âm thanh">
-        🔊 Âm Thanh
-      </button>
-      <button id="btnResetGame" class="btn btn-danger" title="Đặt lại ván mới">
-        🔄 Đặt Lại
-      </button>
-    </div>
-  </header>
+      <!-- Nhóm nút chức năng nhỏ gọn -->
+      <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+        <button id="btnOpenFirebaseModal" class="btn btn-outline" style="padding: 5px 9px; font-size: 0.8rem; border-color: #f59e0b; color: #d97706;" title="Cài đặt kết nối Google Firebase Cloud">🔥 Firebase</button>
+        <button id="btnOpenConfig" class="btn btn-outline" style="padding: 5px 9px; font-size: 0.8rem;" title="Thiết lập số người chơi và số tàu">⚙️ Cài Đặt</button>
+        <button id="btnAddBot" class="btn btn-outline" style="padding: 5px 9px; font-size: 0.8rem; border-color: #0284c7; color: #0284c7;" title="Thêm 1 máy tự động">🤖 +1 Bot</button>
+        <button id="btnFillBots" class="btn btn-outline" style="padding: 5px 9px; font-size: 0.8rem; border-color: #059669; color: #059669;" title="Lấp đầy các đội trống bằng máy">🤖 Đầy Bot</button>
+        <button id="btnOpenQR" class="btn btn-primary" style="padding: 5px 12px; font-size: 0.8rem;" title="Mã QR cho người chơi quét">📱 Mã QR</button>
+        <a href="screen.html" target="_blank" class="btn btn-outline" style="padding: 5px 9px; font-size: 0.8rem;" title="Mở Màn Hình Trình Chiếu Máy Chiếu">📺 Máy Chiếu</a>
+        <button id="btnSoundToggle" class="btn btn-outline" style="padding: 5px 9px; font-size: 0.8rem;" title="Bật/Tắt âm thanh">🔊 Âm Thanh</button>
+        <button id="btnResetGame" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;" title="Đặt lại ván mới">🔄 Đặt Lại</button>
+      </div>
+    </header>
 
-  <!-- Thanh hiển thị trạng thái và nút chuyển bước -->
-  <div class="glass-panel" style="margin: 12px 16px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; background: #ffffff; flex-wrap: wrap; gap: 12px;">
-    <div style="display: flex; align-items: center; gap: 24px;">
-      <div>
-        <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Tiến độ phòng</div>
-        <div id="statusProgressText" style="font-size: 1.2rem; font-weight: 900; color: var(--navy-dark);">0/4 Đội Sẵn Sàng</div>
-      </div>
-      <div style="width: 1px; height: 32px; background: var(--border-ocean);"></div>
-      <div>
-        <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Lượt Khai Hỏa Hiện Tại</div>
-        <div id="statusTurnText" style="font-size: 1.2rem; font-weight: 900; color: #0284c7;">Chờ Khởi Động</div>
-      </div>
-      <div id="turnTimerWrapper" style="display: none; align-items: center; gap: 8px;">
-        <div style="width: 1px; height: 32px; background: var(--border-ocean); margin-right: 12px;"></div>
+    <!-- Thanh hiển thị trạng thái, đếm ngược và nút chuyển bước -->
+    <div style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-ocean); box-shadow: var(--shadow-sm); flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 16px;">
         <div>
-          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Đếm Ngược Lượt</div>
-          <div id="turnTimerBadge" class="turn-timer-badge">
+          <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Tiến độ</div>
+          <div id="statusProgressText" style="font-size: 1.05rem; font-weight: 900; color: var(--navy-dark);">0/4 Đội Sẵn Sàng</div>
+        </div>
+        <div style="width: 1px; height: 26px; background: var(--border-ocean);"></div>
+        <div>
+          <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Lượt Khai Hỏa</div>
+          <div id="statusTurnText" style="font-size: 1.05rem; font-weight: 900; color: #0284c7;">Chờ Khởi Động</div>
+        </div>
+        <div id="turnTimerWrapper" style="display: none; align-items: center; gap: 6px;">
+          <div style="width: 1px; height: 26px; background: var(--border-ocean); margin-right: 6px;"></div>
+          <div id="turnTimerBadge" class="turn-timer-badge" style="padding: 4px 10px; font-size: 0.85rem;">
             <span>⏱️</span>
             <span id="turnTimerText">60s</span>
           </div>
         </div>
       </div>
+
+      <!-- Nút hành động theo từng giai đoạn -->
+      <div id="actionButtonsContainer" style="display: flex; align-items: center; gap: 8px;">
+        <button id="btnStartPlacement" class="btn btn-primary" style="padding: 8px 16px; font-weight: 800; font-size: 0.9rem;">
+          🗺️ BƯỚC 1: BẮT ĐẦU DÀN TRẬN
+        </button>
+        <button id="btnStartBattle" class="btn btn-success" style="display: none; padding: 8px 16px; font-weight: 800; font-size: 0.9rem;">
+          ⚔️ BƯỚC 2: BẮT ĐẦU CHIẾN ĐẤU
+        </button>
+        <button id="btnManualTurn" class="btn btn-outline" style="display: none; padding: 6px 12px; font-size: 0.85rem;" title="Chuyển lượt cho người kế tiếp">
+          ⏩ Chuyển Lượt
+        </button>
+        <button id="btnUndo" class="btn btn-outline" style="display: none; padding: 6px 12px; font-size: 0.85rem;" title="Hủy lượt bắn vừa rồi">
+          ⏪ Hoàn Tác
+        </button>
+      </div>
     </div>
 
-    <!-- Nút hành động theo từng giai đoạn -->
-    <div id="actionButtonsContainer" style="display: flex; align-items: center; gap: 10px;">
-      <button id="btnStartPlacement" class="btn btn-primary btn-large">
-        🗺️ BƯỚC 1: BẮT ĐẦU DÀN TRẬN
-      </button>
-      <button id="btnStartBattle" class="btn btn-success btn-large" style="display: none;">
-        ⚔️ BƯỚC 2: BẮT ĐẦU CHIẾN ĐẤU
-      </button>
-      <button id="btnManualTurn" class="btn btn-outline" style="display: none;" title="Chuyển lượt cho người kế tiếp">
-        ⏩ Chuyển Lượt
-      </button>
-      <button id="btnUndo" class="btn btn-outline" style="display: none;" title="Hủy lượt bắn vừa rồi">
-        ⏪ Hoàn Tác
-      </button>
+    <!-- DẢI HẠM ĐỘI SINH TỒN (NẰM NGANG PHÍA TRÊN) -->
+    <div id="teamsRosterList" class="teams-roster-horizontal">
+      <!-- Render tự động bởi host.js -->
     </div>
-  </div>
 
-  <!-- Bố cục chính -->
-  <main class="host-layout">
-    
-    <!-- Cột trái: Danh sách các đội & Mã QR -->
-    <aside class="glass-panel" style="padding: 14px; display: flex; flex-direction: column; gap: 12px;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="font-size: 0.95rem; font-weight: 800; color: var(--navy-dark); margin: 0;">👥 HẠM ĐỘI SINH TỒN</h2>
-        <span id="playerCountLabel" class="badge" style="background: #f1f5f9; color: var(--text-main);">4 Đội</span>
-      </div>
-      <div id="teamsRosterList" class="teams-roster-list" style="flex: 1; overflow-y: auto;">
-        <!-- Render tự động -->
-      </div>
-
-      <!-- Khung QR thu nhỏ gọn gàng ở đáy cột trái -->
-      <div style="padding-top: 10px; border-top: 1px solid var(--border-ocean); text-align: center;">
-        <div style="font-size: 0.72rem; font-weight: bold; color: var(--text-muted); margin-bottom: 4px;">📱 QUÉT ĐỂ THAM GIA</div>
-        <img id="qrMiniThumb" src="" alt="Mã QR" style="width: 100px; height: 100px; border-radius: 8px; border: 1px solid var(--border-ocean); cursor: pointer; margin: 0 auto; display: block;" title="Bấm để phóng to">
-        <div id="qrMiniUrl" style="font-size: 0.72rem; color: var(--navy-primary); word-break: break-all; margin-top: 4px;"></div>
-      </div>
-    </aside>
-
-    <!-- Cột chính: Đại Hải Đồ 400 ô (20x20) Chiếm trọn không gian -->
-    <section class="glass-panel" style="padding: 14px; display: flex; flex-direction: column;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-        <h2 style="font-size: 1.05rem; font-weight: 800; color: var(--navy-dark); display: flex; align-items: center; gap: 8px; margin: 0;">
-          <span>🗺️ ĐẠI HẢI ĐỒ 400 Ô (A-T × 1-20)</span>
-        </h2>
-        <div style="display: flex; align-items: center; gap: 12px; font-size: 0.85rem;">
-          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted);">
+    <!-- ĐẠI HẢI ĐỒ 400 Ô (A-T × 1-20) FULL TRANG CHIỀU NGANG -->
+    <main class="ocean-section-full">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h2 style="font-size: 1rem; font-weight: 800; color: var(--navy-dark); margin: 0;">
+            🗺️ ĐẠI HẢI ĐỒ 400 Ô (A-T × 1-20)
+          </h2>
+          <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text-muted); font-size: 0.8rem; background: #f1f5f9; padding: 3px 8px; border-radius: 6px;">
             <input type="checkbox" id="chkShowSecretShips"> 👁️ Xem vị trí tàu ẩn (Chỉ MC)
           </label>
         </div>
+
+        <!-- MC Nhập Tọa Độ Bắn Nhanh & Kỹ Năng -->
+        <div id="hostQuickFireBar" style="display: none; align-items: center; gap: 6px;">
+          <span style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark);">🎯 TỌA ĐỘ:</span>
+          <input type="text" id="inputHostCoord" placeholder="B14" maxlength="4" style="width: 60px; padding: 4px 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 800; text-transform: uppercase; text-align: center; font-size: 0.85rem;">
+          <button id="btnHostFireCoord" class="btn btn-primary" style="padding: 5px 10px; font-size: 0.8rem;">🚀 Bắn</button>
+          <button id="btnHostRadarCoord" class="btn btn-outline" style="border-color: #0284c7; color: #0284c7; padding: 5px 8px; font-size: 0.8rem;">📡 Radar</button>
+          <button id="btnHostCrossfireCoord" class="btn btn-outline" style="border-color: #ea580c; color: #ea580c; padding: 5px 8px; font-size: 0.8rem;">💥 Chữ Thập</button>
+        </div>
       </div>
 
-      <!-- MC Nhập Tọa Độ Bắn Nhanh & Kỹ Năng -->
-      <div id="hostQuickFireBar" style="display: none; align-items: center; gap: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border-ocean); margin-bottom: 10px; flex-wrap: wrap;">
-        <span style="font-size: 0.85rem; font-weight: 800; color: var(--navy-dark);">🎯 Nhập Tọa Độ Nhanh:</span>
-        <input type="text" id="inputHostCoord" placeholder="VD: B14" maxlength="4" style="width: 80px; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 800; text-transform: uppercase; text-align: center; font-size: 0.95rem;">
-        <button id="btnHostFireCoord" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;">🚀 Bắn Ô Này</button>
-        <button id="btnHostRadarCoord" class="btn btn-outline" style="border-color: #0284c7; color: #0284c7; padding: 6px 10px; font-size: 0.85rem;" title="Quét vùng 3x3 quanh tọa độ">📡 Quét Radar 3x3</button>
-        <button id="btnHostCrossfireCoord" class="btn btn-outline" style="border-color: #ea580c; color: #ea580c; padding: 6px 10px; font-size: 0.85rem;" title="Bắn 5 ô chữ thập quanh tọa độ">💥 Bắn Chữ Thập (+)</button>
-      </div>
-
-      <!-- Khung lưới hải đồ -->
+      <!-- Khung lưới hải đồ full width -->
       <div class="ocean-map-wrapper">
         <div id="oceanMapGrid" class="ocean-grid">
           <!-- Render bằng host.js -->
         </div>
       </div>
 
-      <!-- Chú thích & Thống kê -->
-      <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 10px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; font-size: 0.85rem; color: var(--text-muted); flex-wrap: wrap; gap: 8px;">
-        <div>🌊 <b>Bắn Trượt:</b> <span id="statMissCount">0</span></div>
-        <div>💥 <b>Bắn Trúng:</b> <span id="statHitCount">0</span></div>
-        <div>☠️ <b>Tàu Bị Chìm:</b> <span id="statSunkCount">0</span></div>
-        <div>🎯 <b>Tổng Số Phát Bắn:</b> <span id="statTotalShots">0</span></div>
+      <!-- Thống kê nhanh footer -->
+      <div style="display: flex; justify-content: space-around; align-items: center; padding: 6px 10px; background: #f8fafc; border-radius: 6px; font-size: 0.8rem; color: var(--text-muted); border: 1px solid var(--border-ocean); flex-wrap: wrap; gap: 6px;">
+        <div>🌊 <b>Trượt:</b> <span id="statMissCount">0</span></div>
+        <div>💥 <b>Trúng:</b> <span id="statHitCount">0</span></div>
+        <div>☠️ <b>Chìm:</b> <span id="statSunkCount">0</span></div>
+        <div>🎯 <b>Tổng bắn:</b> <span id="statTotalShots">0</span></div>
+        <div style="font-size: 0.75rem; color: #64748b;">💡 Tàu chiến 3-4 ô hiển thị liền khối nguyên bản</div>
       </div>
-    </section>
+    </main>
 
-  </main>
+  </div>
 
   <!-- Hộp thoại Cài Đặt Game -->
   <div id="modalConfig" class="modal-overlay">
