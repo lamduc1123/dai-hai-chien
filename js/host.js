@@ -739,28 +739,33 @@ function updateStats(state) {
 }
 
 function initEventListeners() {
+  const on = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', fn);
+  };
+
   // Thêm 1 bot
-  document.getElementById('btnAddBot').addEventListener('click', () => {
+  on('btnAddBot', () => {
     dispatchHostAction('host:add_bot');
   });
 
   // Lấp đầy bằng bot
-  document.getElementById('btnFillBots').addEventListener('click', () => {
+  on('btnFillBots', () => {
     dispatchHostAction('host:fill_bots');
   });
 
   // Bắt đầu dàn trận
-  document.getElementById('btnStartPlacement').addEventListener('click', () => {
+  on('btnStartPlacement', () => {
     dispatchHostAction('host:start_placement');
   });
 
   // Bắt đầu chiến đấu
-  document.getElementById('btnStartBattle').addEventListener('click', () => {
+  on('btnStartBattle', () => {
     dispatchHostAction('host:start_battle');
   });
 
   // Chuyển lượt thủ công
-  document.getElementById('btnManualTurn').addEventListener('click', () => {
+  on('btnManualTurn', () => {
     if (!currentHostState) return;
     const living = currentHostState.teams.filter(t => !t.isEliminated);
     if (living.length > 0) {
@@ -771,12 +776,12 @@ function initEventListeners() {
   });
 
   // Hoàn tác
-  document.getElementById('btnUndo').addEventListener('click', () => {
+  on('btnUndo', () => {
     dispatchHostAction('host:undo');
   });
 
   // Đặt lại
-  document.getElementById('btnResetGame').addEventListener('click', () => {
+  on('btnResetGame', () => {
     if (confirm('Bạn có chắc muốn đặt lại ván đấu mới không?')) {
       dispatchHostAction('host:reset');
     }
@@ -790,68 +795,80 @@ function initEventListeners() {
 
   if (btnHostFireCoord) {
     btnHostFireCoord.addEventListener('click', () => {
-      const val = inputHostCoord.value.trim().toUpperCase();
+      const val = inputHostCoord ? inputHostCoord.value.trim().toUpperCase() : '';
       if (!val) { alert('Vui lòng nhập tọa độ! (VD: B14)'); return; }
       if (!currentHostState || currentHostState.phase !== 'BATTLE') return;
       processLocalShot(currentHostState.currentTurnTeamId, val);
-      inputHostCoord.value = '';
+      if (inputHostCoord) inputHostCoord.value = '';
     });
   }
 
   if (btnHostRadarCoord) {
     btnHostRadarCoord.addEventListener('click', () => {
-      const val = inputHostCoord.value.trim().toUpperCase();
+      const val = inputHostCoord ? inputHostCoord.value.trim().toUpperCase() : '';
       if (!val) { alert('Vui lòng nhập tọa độ tâm quét! (VD: B14)'); return; }
       if (!currentHostState || currentHostState.phase !== 'BATTLE') return;
       processLocalRadar(currentHostState.currentTurnTeamId, val);
-      inputHostCoord.value = '';
+      if (inputHostCoord) inputHostCoord.value = '';
     });
   }
 
   if (btnHostCrossfireCoord) {
     btnHostCrossfireCoord.addEventListener('click', () => {
-      const val = inputHostCoord.value.trim().toUpperCase();
+      const val = inputHostCoord ? inputHostCoord.value.trim().toUpperCase() : '';
       if (!val) { alert('Vui lòng nhập tọa độ tâm bắn chữ thập! (VD: B14)'); return; }
       if (!currentHostState || currentHostState.phase !== 'BATTLE') return;
       processLocalCrossfire(currentHostState.currentTurnTeamId, val);
-      inputHostCoord.value = '';
+      if (inputHostCoord) inputHostCoord.value = '';
     });
   }
 
   // Xem vị trí tàu ẩn toggle
-  document.getElementById('chkShowSecretShips').addEventListener('change', (e) => {
-    showSecretShips = e.target.checked;
-    if (currentHostState) renderOceanMap(currentHostState);
-  });
+  const chkSecret = document.getElementById('chkShowSecretShips');
+  if (chkSecret) {
+    chkSecret.addEventListener('change', (e) => {
+      showSecretShips = e.target.checked;
+      if (currentHostState) renderOceanMap(currentHostState);
+    });
+  }
 
   // Bật/Tắt âm thanh
-  document.getElementById('btnSoundToggle').addEventListener('click', () => {
+  on('btnSoundToggle', () => {
     const isEnabled = soundManager.isEnabled();
     soundManager.setEnabled(!isEnabled);
-    document.getElementById('btnSoundToggle').textContent = !isEnabled ? '🔊 Âm Thanh' : '🔇 Đã Tắt Âm';
+    const btn = document.getElementById('btnSoundToggle');
+    if (btn) btn.textContent = !isEnabled ? '🔊 Âm Thanh' : '🔇 Đã Tắt Âm';
   });
 
   // Modal QR
-  document.getElementById('btnOpenQR').addEventListener('click', openQRModal);
-  document.getElementById('qrMiniThumb').addEventListener('click', openQRModal);
-  document.getElementById('btnCloseQR').addEventListener('click', closeQRModal);
-  document.getElementById('modalQR').addEventListener('click', (e) => {
-    if (e.target.id === 'modalQR') closeQRModal();
-  });
+  on('btnOpenQR', openQRModal);
+  on('qrMiniThumb', openQRModal);
+  on('btnCloseQR', closeQRModal);
+  const modalQR = document.getElementById('modalQR');
+  if (modalQR) {
+    modalQR.addEventListener('click', (e) => {
+      if (e.target.id === 'modalQR') closeQRModal();
+    });
+  }
 
-  document.getElementById('btnCopyUrl').addEventListener('click', () => {
+  on('btnCopyUrl', () => {
     const input = document.getElementById('qrCopyUrlInput');
-    input.select();
-    navigator.clipboard.writeText(input.value);
-    alert('Đã sao chép đường link tham gia!');
+    if (input) {
+      input.select();
+      navigator.clipboard.writeText(input.value);
+      alert('Đã sao chép đường link tham gia!');
+    }
   });
 
   // Modal Cấu hình
-  document.getElementById('btnOpenConfig').addEventListener('click', openConfigModal);
-  document.getElementById('btnCloseConfig').addEventListener('click', closeConfigModal);
-  document.getElementById('modalConfig').addEventListener('click', (e) => {
-    if (e.target.id === 'modalConfig') closeConfigModal();
-  });
+  on('btnOpenConfig', openConfigModal);
+  on('btnCloseConfig', closeConfigModal);
+  const modalConfig = document.getElementById('modalConfig');
+  if (modalConfig) {
+    modalConfig.addEventListener('click', (e) => {
+      if (e.target.id === 'modalConfig') closeConfigModal();
+    });
+  }
 
   // Chọn số lượng đội (2 -> 8)
   document.querySelectorAll('.cfg-player-btn').forEach(btn => {
@@ -879,7 +896,7 @@ function initEventListeners() {
     });
   });
 
-  document.getElementById('btnSaveConfig').addEventListener('click', () => {
+  on('btnSaveConfig', () => {
     const shipMode = document.getElementById('cfgShipConfigMode') ? document.getElementById('cfgShipConfigMode').value : 'mix34';
     const turnOrder = document.getElementById('cfgTurnOrderMode') ? document.getElementById('cfgTurnOrderMode').value : 'random';
     dispatchHostAction('host:update_config', {
@@ -892,16 +909,19 @@ function initEventListeners() {
   });
 
   // Modal Firebase
-  document.getElementById('btnOpenFirebaseModal').addEventListener('click', openFirebaseModal);
-  document.getElementById('btnCloseFirebase').addEventListener('click', closeFirebaseModal);
-  document.getElementById('modalFirebase').addEventListener('click', (e) => {
-    if (e.target.id === 'modalFirebase') closeFirebaseModal();
-  });
+  on('btnOpenFirebaseModal', openFirebaseModal);
+  on('btnCloseFirebase', closeFirebaseModal);
+  const modalFirebase = document.getElementById('modalFirebase');
+  if (modalFirebase) {
+    modalFirebase.addEventListener('click', (e) => {
+      if (e.target.id === 'modalFirebase') closeFirebaseModal();
+    });
+  }
 
-  document.getElementById('btnSaveFirebase').addEventListener('click', () => {
-    const dbUrl = document.getElementById('inputFirebaseDbUrl').value.trim();
-    const apiKey = document.getElementById('inputFirebaseApiKey').value.trim();
-    const projectId = document.getElementById('inputFirebaseProjectId').value.trim();
+  on('btnSaveFirebase', () => {
+    const dbUrl = document.getElementById('inputFirebaseDbUrl') ? document.getElementById('inputFirebaseDbUrl').value.trim() : '';
+    const apiKey = document.getElementById('inputFirebaseApiKey') ? document.getElementById('inputFirebaseApiKey').value.trim() : '';
+    const projectId = document.getElementById('inputFirebaseProjectId') ? document.getElementById('inputFirebaseProjectId').value.trim() : '';
 
     if (!dbUrl) {
       alert('Vui lòng nhập Database URL của Firebase!');

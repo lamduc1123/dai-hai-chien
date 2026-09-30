@@ -318,9 +318,12 @@
   <!-- Hộp thoại Mã QR -->
   <div id="modalQR" class="modal-overlay">
     <div class="modal-content" style="text-align: center; max-width: 440px;">
-      <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 8px;">
-        📱 QUÉT QR ĐỂ THAM GIA
-      </h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--navy-dark); margin: 0;">
+          📱 QUÉT QR ĐỂ THAM GIA
+        </h3>
+        <button id="btnCloseQR" class="btn btn-outline" style="padding: 4px 8px;">✕</button>
+      </div>
       <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
         Người chơi mở camera điện thoại quét mã hoặc truy cập đường dẫn bên dưới
       </p>
@@ -333,6 +336,8 @@
         <input id="qrCopyUrlInput" type="text" class="form-control" readonly style="text-align: center; font-weight: bold; margin-bottom: 8px;">
         <button id="btnCopyUrl" class="btn btn-outline" style="width: 100%;">📋 Sao Chép Đường Link</button>
       </div>
+    </div>
+  </div>
 
   <!-- Hộp thoại Cấu hình Firebase -->
   <div id="modalFirebase" class="modal-overlay">
