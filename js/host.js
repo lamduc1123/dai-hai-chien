@@ -507,9 +507,8 @@ function updatePhaseAndControls(state) {
 
   const readyCount = state.teams.filter(t => t.isReady).length;
   const lockedCount = state.teams.filter(t => t.isFleetLocked).length;
-  const totalCount = state.teams.length;
-
-  document.getElementById('playerCountLabel').textContent = `${totalCount} Đội`;
+  const pLabel = document.getElementById('playerCountLabel');
+  if (pLabel) pLabel.textContent = `${totalCount} Đội`;
 
   if (state.phase === 'LOBBY') {
     phaseBadge.textContent = 'SẢNH CHỜ';
@@ -964,37 +963,66 @@ function closeFirebaseModal() {
   document.getElementById('modalFirebase').classList.remove('active');
 }
 
-async function loadNetworkAndQR() {
+function loadNetworkAndQR() {
   let joinUrl = `${window.location.origin}${window.location.pathname.replace('host.html', 'join.html')}?room=${currentRoomId || 'PHONG-01'}`;
 
-  try {
-    const res = await fetch(`/api/network-info?room=${currentRoomId || ''}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.joinUrl) {
-        joinUrl = data.joinUrl;
-      }
-    }
-  } catch (err) {}
+  // Kiểm tra nếu pathname chưa có join.html
+  if (!joinUrl.includes('join.html')) {
+    joinUrl = `${window.location.origin}/join.html?room=${currentRoomId || 'PHONG-01'}`;
+  }
 
+  applyQRToUI(joinUrl);
+
+  // Thử lấy joinUrl từ API local nếu chạy bằng node server
+  fetch(`/api/network-info?room=${currentRoomId || ''}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data && data.joinUrl) {
+        applyQRToUI(data.joinUrl);
+      }
+    })
+    .catch(() => {});
+}
+
+function applyQRToUI(url) {
   const miniUrlEl = document.getElementById('qrMiniUrl');
   const copyInputEl = document.getElementById('qrCopyUrlInput');
-  if (miniUrlEl) miniUrlEl.textContent = joinUrl;
-  if (copyInputEl) copyInputEl.value = joinUrl;
+  if (miniUrlEl) miniUrlEl.textContent = url;
+  if (copyInputEl) copyInputEl.value = url;
 
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(joinUrl)}`;
   const thumbEl = document.getElementById('qrMiniThumb');
   const bigEl = document.getElementById('qrBigImage');
-  if (thumbEl) thumbEl.src = qrImageUrl;
-  if (bigEl) bigEl.src = qrImageUrl;
+
+  // Ưu tiên 1: Tạo trực tiếp bằng thư viện QRCode (offline, 100% không bị chặn)
+  if (window.QRCode && window.QRCode.toDataURL) {
+    window.QRCode.toDataURL(url, { width: 320, margin: 1 }, (err, dataUri) => {
+      if (!err && dataUri) {
+        if (thumbEl) thumbEl.src = dataUri;
+        if (bigEl) bigEl.src = dataUri;
+      } else {
+        fallbackQRImage(url, thumbEl, bigEl);
+      }
+    });
+  } else {
+    fallbackQRImage(url, thumbEl, bigEl);
+  }
+}
+
+function fallbackQRImage(url, thumbEl, bigEl) {
+  const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(url)}`;
+  if (thumbEl) thumbEl.src = qrApiUrl;
+  if (bigEl) bigEl.src = qrApiUrl;
 }
 
 function openQRModal() {
-  document.getElementById('modalQR').classList.add('active');
+  loadNetworkAndQR();
+  const m = document.getElementById('modalQR');
+  if (m) m.classList.add('active');
 }
 
 function closeQRModal() {
-  document.getElementById('modalQR').classList.remove('active');
+  const m = document.getElementById('modalQR');
+  if (m) m.classList.remove('active');
 }
 
 function openConfigModal() {

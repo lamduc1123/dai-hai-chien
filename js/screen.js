@@ -371,24 +371,39 @@ function initEvents() {
   }
 }
 
-async function loadNetworkAndQR() {
+function loadNetworkAndQR() {
   let joinUrl = `${window.location.origin}${window.location.pathname.replace('screen.html', 'join.html')}?room=${currentRoomId || 'PHONG-01'}`;
+  if (!joinUrl.includes('join.html')) {
+    joinUrl = `${window.location.origin}/join.html?room=${currentRoomId || 'PHONG-01'}`;
+  }
 
-  try {
-    const res = await fetch(`/api/network-info?room=${currentRoomId || ''}`);
-    if (res.ok) {
-      const data = await res.json();
+  applyScreenQRToUI(joinUrl);
+
+  fetch(`/api/network-info?room=${currentRoomId || ''}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
       if (data && data.joinUrl) {
-        joinUrl = data.joinUrl;
+        applyScreenQRToUI(data.joinUrl);
       }
-    }
-  } catch (err) {}
+    })
+    .catch(() => {});
+}
 
+function applyScreenQRToUI(url) {
   const urlEl = document.getElementById('projQrUrl');
-  if (urlEl) urlEl.textContent = joinUrl;
+  if (urlEl) urlEl.textContent = url;
 
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(joinUrl)}`;
   const imgEl = document.getElementById('projQrImg');
-  if (imgEl) imgEl.src = qrImageUrl;
+  if (window.QRCode && window.QRCode.toDataURL) {
+    window.QRCode.toDataURL(url, { width: 320, margin: 1 }, (err, dataUri) => {
+      if (!err && dataUri && imgEl) {
+        imgEl.src = dataUri;
+      } else if (imgEl) {
+        imgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(url)}`;
+      }
+    });
+  } else if (imgEl) {
+    imgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(url)}`;
+  }
 }
 })();
