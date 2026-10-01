@@ -217,23 +217,11 @@
       color: #0284c7;
       background: #e0f2fe;
       padding: 4px 14px;
-      border-radius: 6px;
-    }
-
-    .ocean-cell.selected-target {
-      background: #fef08a !important;
-      border-color: #eab308 !important;
-      box-shadow: 0 0 10px rgba(234, 179, 8, 0.8);
-      transform: scale(1.15);
-      z-index: 20;
-    }
-
-    .ocean-cell.selected-target::after {
-      content: '🎯' !important;
-      font-size: 0.9rem;
-    }
-
     .my-fleet-status {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+    }
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
       gap: 8px;
@@ -422,17 +410,37 @@
       <div class="battle-control-strip">
         <div class="weapon-switch-group">
           <button id="btnSkillNormal" type="button" class="btn btn-primary btn-weapon-sm">
-            <span>🎯 Thường</span>
+            <svg class="weapon-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <circle cx="12" cy="12" r="8"></circle>
+              <line x1="12" y1="2" x2="12" y2="6"></line>
+              <line x1="12" y1="18" x2="12" y2="22"></line>
+              <line x1="2" y1="12" x2="6" y2="12"></line>
+              <line x1="18" y1="12" x2="22" y2="12"></line>
+              <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
+            </svg>
+            <span>Đạn Thường</span>
           </button>
           <button id="btnSkillCrossfire" type="button" class="btn btn-outline btn-weapon-sm">
-            <span>🚀 Chữ Thập</span>
+            <svg class="weapon-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <line x1="12" y1="2" x2="12" y2="22"></line>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <rect x="7" y="7" width="10" height="10" rx="2" stroke-dasharray="2 2"></rect>
+              <circle cx="12" cy="12" r="2.5" fill="currentColor"></circle>
+            </svg>
+            <span>Chữ Thập (+)</span>
             <span id="badgeCrossfireCount" class="weapon-badge">1/1</span>
           </button>
         </div>
 
         <div class="target-action-group">
           <div class="target-coord-box">
-            <span style="font-size: 0.65rem; color: #64748b; font-weight: 700;">Ô:</span>
+            <svg style="width: 12px; height: 12px; color: #dc2626;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="8"></circle>
+              <line x1="12" y1="3" x2="12" y2="7"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+              <line x1="3" y1="12" x2="7" y2="12"></line>
+              <line x1="17" y1="12" x2="21" y2="12"></line>
+            </svg>
             <span id="selectedTargetDisplay" style="font-size: 0.95rem; font-weight: 900; color: #dc2626;">--</span>
           </div>
           <button id="btnFireDirect" type="button" class="btn btn-danger btn-fire-direct" disabled>

@@ -904,7 +904,7 @@ function selectTargetCoordinate(key) {
 
   const txt = document.getElementById('selectedTargetText');
   if (txt) {
-    txt.innerHTML = `🎯 Đã nhắm <b style="color: #dc2626;">[${key}]</b>. <b>CHẠM LẦN NỮA HOẶC BẤM [🔥 BẮN]!</b>`;
+    txt.innerHTML = `<span style="color:#dc2626; font-weight:900;">[${key}]</span> <b>Chạm lần nữa hoặc bấm [🔥 BẮN]!</b>`;
   }
 
   const inputManual = document.getElementById('inputManualCoord');

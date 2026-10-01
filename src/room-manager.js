@@ -294,23 +294,34 @@ function lockTeamFleet(roomId, teamId, fleet) {
   const team = room.gameState.teams.find(t => t.id === teamId);
   if (!team) return { success: false, error: 'Không tìm thấy đội' };
 
-  const zone = room.gameState.zones[teamId];
-  const validation = validateCustomFleet(fleet, zone, room.gameState.config.shipLengths);
+  const enemyCells = new Set();
+  room.gameState.teams.forEach(other => {
+    if (other.id !== team.id && other.fleet && other.fleet.length > 0) {
+      other.fleet.forEach(s => s.cells && s.cells.forEach(k => enemyCells.add(k)));
+    }
+  });
 
-  if (!validation.valid) {
-    return { success: false, error: validation.error };
+  if (fleet && Array.isArray(fleet) && fleet.length > 0) {
+    const validation = validateCustomFleet(fleet, room.gameState.config.shipLengths, enemyCells);
+    if (validation.valid) {
+      team.fleet = fleet.map((s, idx) => ({
+        id: `ship_${idx + 1}`,
+        name: s.cells.length === 4 ? `Tàu Sân Bay ${idx + 1}` : `Tuần Dương Hạm ${idx + 1}`,
+        size: s.cells.length,
+        orientation: s.orientation || 'horizontal',
+        cells: s.cells,
+        hits: [],
+        isSunk: false,
+      }));
+    } else {
+      team.fleet = generateRandomFleetOpenOcean(room.gameState.config.shipLengths, enemyCells);
+    }
+  } else if (!team.fleet || team.fleet.length === 0) {
+    team.fleet = generateRandomFleetOpenOcean(room.gameState.config.shipLengths, enemyCells);
   }
 
-  team.fleet = fleet.map((s, idx) => ({
-    id: `ship_${idx + 1}`,
-    name: s.cells.length === 4 ? `Thiết Giáp Hạm ${idx + 1}` : `Tuần Dương Hạm ${idx + 1}`,
-    size: s.cells.length,
-    orientation: s.orientation || 'H',
-    cells: s.cells,
-    hits: [],
-    isSunk: false,
-  }));
   team.isFleetLocked = true;
+  team.isReady = true;
 
   return { success: true, fleet: team.fleet };
 }

@@ -484,22 +484,28 @@ function startPlacementPhase(gameState) {
   gameState.phase = 'PLACEMENT';
 
   const occupiedByOthers = new Set();
-  // 1. Sinh hạm đội cố định cho Bot
+  // 1. Ghi nhận các đội đã khóa trước đó (nếu có)
+  gameState.teams.forEach(team => {
+    if (team.isFleetLocked && team.fleet && team.fleet.length > 0) {
+      team.fleet.forEach(s => s.cells && s.cells.forEach(k => occupiedByOthers.add(k)));
+    }
+  });
+
+  // 2. Sinh hạm đội cố định cho Bot (loại trừ các ô đã bị chiếm)
   gameState.teams.forEach(team => {
     if (team.isBot) {
       team.fleet = generateRandomFleetOpenOcean(gameState.config.shipLengths, occupiedByOthers);
-      team.fleet.forEach(s => s.cells.forEach(k => occupiedByOthers.add(k)));
+      team.fleet.forEach(s => s.cells && s.cells.forEach(k => occupiedByOthers.add(k)));
       team.isFleetLocked = true;
       team.isReady = true;
     }
   });
 
-  // 2. Tự động sinh hạm đội ban đầu cho các đội người chơi (nếu chưa có)
-  // Người chơi có thể tự do bấm "Xếp Tự Động" hoặc chạm ô trên điện thoại để điều chỉnh
+  // 3. Tự động sinh hạm đội ban đầu cho các đội người chơi (nếu chưa có, loại trừ tất cả ô đã bị chiếm)
   gameState.teams.forEach(team => {
     if (!team.isBot && (!team.fleet || team.fleet.length === 0)) {
       team.fleet = generateRandomFleetOpenOcean(gameState.config.shipLengths, occupiedByOthers);
-      team.fleet.forEach(s => s.cells.forEach(k => occupiedByOthers.add(k)));
+      team.fleet.forEach(s => s.cells && s.cells.forEach(k => occupiedByOthers.add(k)));
       team.isFleetLocked = false;
       team.isReady = false;
     }
@@ -514,17 +520,41 @@ function startPlacementPhase(gameState) {
 function startBattlePhase(gameState, manualOrder = null) {
   if (gameState.phase !== 'PLACEMENT' && gameState.phase !== 'LOBBY') return gameState;
 
-  const occupiedByOthers = new Set();
+  // Thuật toán kiểm tra và bảo đảm tuyệt đối không trùng lặp ô giữa các hạm đội
+  const masterOccupiedCells = new Set();
+
+  // 1. Ưu tiên giữ nguyên vị trí của các đội đã Khóa (isFleetLocked) nếu không có xung đột
   gameState.teams.forEach(team => {
-    if (team.fleet && team.fleet.length > 0) {
-      team.fleet.forEach(s => s.cells.forEach(k => occupiedByOthers.add(k)));
+    if (team.isFleetLocked && team.fleet && team.fleet.length > 0) {
+      let hasConflict = false;
+      for (const ship of team.fleet) {
+        if (!ship.cells) continue;
+        for (const cellKey of ship.cells) {
+          if (masterOccupiedCells.has(cellKey)) {
+            hasConflict = true;
+            break;
+          }
+        }
+        if (hasConflict) break;
+      }
+
+      if (!hasConflict) {
+        team.fleet.forEach(s => s.cells && s.cells.forEach(k => masterOccupiedCells.add(k)));
+      } else {
+        // Có xung đột: Tự động xếp lại đảm bảo không trùng với các đội đã khóa trước
+        team.fleet = generateRandomFleetOpenOcean(gameState.config.shipLengths, masterOccupiedCells);
+        team.fleet.forEach(s => s.cells && s.cells.forEach(k => masterOccupiedCells.add(k)));
+      }
+      team.isFleetLocked = true;
+      team.isReady = true;
     }
   });
 
+  // 2. Với các đội chưa khóa hoặc chưa có hạm đội, tự động xếp ngẫu nhiên trên các ô còn trống
   gameState.teams.forEach(team => {
-    if (!team.fleet || team.fleet.length === 0) {
-      team.fleet = generateRandomFleetOpenOcean(gameState.config.shipLengths, occupiedByOthers);
-      team.fleet.forEach(s => s.cells.forEach(k => occupiedByOthers.add(k)));
+    if (!team.isFleetLocked || !team.fleet || team.fleet.length === 0) {
+      team.fleet = generateRandomFleetOpenOcean(gameState.config.shipLengths, masterOccupiedCells);
+      team.fleet.forEach(s => s.cells && s.cells.forEach(k => masterOccupiedCells.add(k)));
       team.isFleetLocked = true;
       team.isReady = true;
     }
@@ -547,16 +577,22 @@ function startBattlePhase(gameState, manualOrder = null) {
   gameState.turnStartTime = Date.now();
   gameState.lastShotResult = null;
 
+  // Kiểm tra ngay nếu đội đầu tiên đã bị loại
+  const firstTeam = gameState.teams.find(t => t.id === gameState.currentTurnTeamId);
+  if (firstTeam && (firstTeam.isEliminated || firstTeam.shipsRemaining === 0)) {
+    advanceTurn(gameState);
+  }
+
   return gameState;
 }
 
 /**
- * Chuyển sang lượt tiếp theo (bỏ qua những đội đã bị loại)
+ * Chuyển sang lượt tiếp theo (bỏ qua những đội đã bị loại hoặc hết tàu)
  */
 function advanceTurn(gameState) {
   if (gameState.phase !== 'BATTLE') return null;
 
-  const livingTeams = gameState.teams.filter(t => !t.isEliminated);
+  const livingTeams = gameState.teams.filter(t => !t.isEliminated && (t.shipsRemaining === undefined || t.shipsRemaining > 0));
   if (livingTeams.length <= 1) {
     if (livingTeams.length === 1) {
       gameState.winner = livingTeams[0];

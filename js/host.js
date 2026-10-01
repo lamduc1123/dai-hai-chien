@@ -361,8 +361,23 @@ function handleIncomingFirebaseAction(action) {
       team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
     }
     if (team && currentHostState.phase === 'PLACEMENT') {
+      const enemyCells = new Set();
+      currentHostState.teams.forEach(other => {
+        if (other.id !== team.id && other.fleet && other.fleet.length > 0) {
+          other.fleet.forEach(s => s.cells && s.cells.forEach(k => enemyCells.add(k)));
+        }
+      });
+
       if (action.fleet && Array.isArray(action.fleet) && action.fleet.length > 0) {
-        team.fleet = action.fleet;
+        const validation = window.GameEngine.validateCustomFleet(action.fleet, currentHostState.config.shipLengths, enemyCells);
+        if (validation.valid) {
+          team.fleet = action.fleet;
+        } else {
+          // Nếu có xung đột với vị trí đã khóa của đội khác: Tự động sắp xếp lại không trùng lặp
+          team.fleet = window.GameEngine.generateRandomFleetOpenOcean(currentHostState.config.shipLengths, enemyCells);
+        }
+      } else if (!team.fleet || team.fleet.length === 0) {
+        team.fleet = window.GameEngine.generateRandomFleetOpenOcean(currentHostState.config.shipLengths, enemyCells);
       }
       team.isFleetLocked = true;
       team.isReady = true;
@@ -450,6 +465,17 @@ function startTurnTicker() {
     if (!currentHostState || currentHostState.phase !== 'BATTLE') {
       const timerWrapper = document.getElementById('turnTimerWrapper');
       if (timerWrapper) timerWrapper.style.display = 'none';
+      return;
+    }
+
+    // Nếu đội hiện tại đã bị tiêu diệt sạch tàu -> Chuyển ngay lập tức sang đội kế tiếp không cần chờ 60s
+    const currentTeam = currentHostState.teams.find(t => t.id === currentHostState.currentTurnTeamId);
+    if (currentTeam && (currentTeam.isEliminated || currentTeam.shipsRemaining === 0)) {
+      if (window.GameEngine) {
+        window.GameEngine.advanceTurn(currentHostState);
+        commitLocalState();
+        checkBotTurn();
+      }
       return;
     }
 
