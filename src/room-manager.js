@@ -275,9 +275,16 @@ function autoPlaceTeamFleet(roomId, teamId) {
   const team = room.gameState.teams.find(t => t.id === teamId);
   if (!team) return { success: false, error: 'Không tìm thấy đội' };
 
-  const zone = room.gameState.zones[teamId];
-  team.fleet = generateRandomFleetInZone(zone, room.gameState.config.shipLengths);
-  team.isFleetLocked = true;
+  const enemyCells = new Set();
+  room.gameState.teams.forEach(other => {
+    if (other.id !== team.id && other.fleet) {
+      other.fleet.forEach(s => s.cells && s.cells.forEach(k => enemyCells.add(k)));
+    }
+  });
+
+  team.fleet = generateRandomFleetOpenOcean(room.gameState.config.shipLengths, enemyCells);
+  team.isFleetLocked = false;
+  team.isReady = true;
   return { success: true, fleet: team.fleet };
 }
 

@@ -375,6 +375,17 @@ io.on('connection', (socket) => {
     }
   });
 
+  // 13b. Người chơi cập nhật đội hình (không khóa)
+  socket.on('player:update_fleet', ({ roomId, teamId, fleet }) => {
+    const room = getRoom(roomId);
+    if (!room) return;
+    const team = room.gameState.teams.find(t => t.id === teamId);
+    if (team && fleet && Array.isArray(fleet) && fleet.length > 0) {
+      team.fleet = fleet;
+      broadcastRoomState(room);
+    }
+  });
+
   // 14. Người chơi khóa hạm đội
   socket.on('player:lock_fleet', ({ roomId, teamId, fleet }) => {
     const res = lockTeamFleet(roomId, teamId, fleet);

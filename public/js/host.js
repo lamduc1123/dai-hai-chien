@@ -314,39 +314,60 @@ function handleIncomingFirebaseAction(action) {
       commitLocalState();
     }
   } else if (action.type === 'AUTO_PLACE') {
-    const team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
+    let team = null;
+    if (action.deviceToken) {
+      team = currentHostState.teams.find(t => t.deviceToken === action.deviceToken);
+    }
+    if (!team && targetTeamId) {
+      team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
+    }
     if (team && currentHostState.phase === 'PLACEMENT') {
-      const enemyCells = new Set();
-      currentHostState.teams.forEach(other => {
-        if (other.id !== team.id && other.fleet) {
-          other.fleet.forEach(s => s.cells && s.cells.forEach(k => enemyCells.add(k)));
-        }
-      });
-      team.fleet = window.GameEngine.generateRandomFleetOpenOcean(currentHostState.config.shipLengths, enemyCells);
-      team.isFleetLocked = true;
+      if (action.fleet && Array.isArray(action.fleet) && action.fleet.length > 0) {
+        team.fleet = action.fleet;
+      } else {
+        const enemyCells = new Set();
+        currentHostState.teams.forEach(other => {
+          if (other.id !== team.id && other.fleet) {
+            other.fleet.forEach(s => s.cells && s.cells.forEach(k => enemyCells.add(k)));
+          }
+        });
+        team.fleet = window.GameEngine.generateRandomFleetOpenOcean(currentHostState.config.shipLengths, enemyCells);
+      }
+      team.isFleetLocked = false;
       team.isReady = true;
-      addLogItem(`⚓ [${team.name}] đã bố trí đội hình chiến hạm tự động!`, 'hit');
+      addLogItem(`⚓ [${team.name}] đã bố trí đội hình chiến hạm!`, 'hit');
       commitLocalState();
     }
-  } else if (action.type === 'LOCK_FLEET') {
-    const team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
+  } else if (action.type === 'UPDATE_FLEET') {
+    let team = null;
+    if (action.deviceToken) {
+      team = currentHostState.teams.find(t => t.deviceToken === action.deviceToken);
+    }
+    if (!team && targetTeamId) {
+      team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
+    }
     if (team && currentHostState.phase === 'PLACEMENT') {
-      const enemyCells = new Set();
-      currentHostState.teams.forEach(other => {
-        if (other.id !== team.id && other.fleet) {
-          other.fleet.forEach(s => s.cells && s.cells.forEach(k => enemyCells.add(k)));
-        }
-      });
-      const valid = window.GameEngine.validateCustomFleet(action.fleet, currentHostState.config.shipLengths, enemyCells);
-      if (valid.valid) {
+      if (action.fleet && Array.isArray(action.fleet) && action.fleet.length > 0) {
         team.fleet = action.fleet;
-        team.isFleetLocked = true;
-        team.isReady = true;
-        addLogItem(`⚓ [${team.name}] đã hoàn tất bố trí chiến hạm!`, 'hit');
         commitLocalState();
-      } else {
-        console.warn('LOCK_FLEET invalid:', valid.error);
       }
+    }
+  } else if (action.type === 'LOCK_FLEET') {
+    let team = null;
+    if (action.deviceToken) {
+      team = currentHostState.teams.find(t => t.deviceToken === action.deviceToken);
+    }
+    if (!team && targetTeamId) {
+      team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
+    }
+    if (team && currentHostState.phase === 'PLACEMENT') {
+      if (action.fleet && Array.isArray(action.fleet) && action.fleet.length > 0) {
+        team.fleet = action.fleet;
+      }
+      team.isFleetLocked = true;
+      team.isReady = true;
+      addLogItem(`🔒 [${team.name}] đã khóa hạm đội sẵn sàng chiến đấu!`, 'hit');
+      commitLocalState();
     }
   }
 }

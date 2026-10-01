@@ -484,12 +484,24 @@ function startPlacementPhase(gameState) {
   gameState.phase = 'PLACEMENT';
 
   const occupiedByOthers = new Set();
+  // 1. Sinh hạm đội cố định cho Bot
   gameState.teams.forEach(team => {
     if (team.isBot) {
       team.fleet = generateRandomFleetOpenOcean(gameState.config.shipLengths, occupiedByOthers);
       team.fleet.forEach(s => s.cells.forEach(k => occupiedByOthers.add(k)));
       team.isFleetLocked = true;
       team.isReady = true;
+    }
+  });
+
+  // 2. Tự động sinh hạm đội ban đầu cho các đội người chơi (nếu chưa có)
+  // Người chơi có thể tự do bấm "Xếp Tự Động" hoặc chạm ô trên điện thoại để điều chỉnh
+  gameState.teams.forEach(team => {
+    if (!team.isBot && (!team.fleet || team.fleet.length === 0)) {
+      team.fleet = generateRandomFleetOpenOcean(gameState.config.shipLengths, occupiedByOthers);
+      team.fleet.forEach(s => s.cells.forEach(k => occupiedByOthers.add(k)));
+      team.isFleetLocked = false;
+      team.isReady = false;
     }
   });
 

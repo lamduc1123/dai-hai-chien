@@ -159,6 +159,12 @@ class FirebaseSyncManager {
   clientSubscribeState(roomId, onStateUpdate) {
     this.activeRoomId = roomId;
 
+    const computeStateHash = (st) => {
+      if (!st) return '';
+      const teamsStr = st.teams ? st.teams.map(t => `${t.id}:${t.isConnected ? 1 : 0}:${t.isReady ? 1 : 0}:${t.isFleetLocked ? 1 : 0}:${(t.fleet && t.fleet.length) || 0}:${t.name || ''}`).join(';') : '';
+      return `${st.phase}_${st.turnNumber}_${st.currentTurnTeamId}_${st.shotsHistory ? st.shotsHistory.length : 0}_${teamsStr}`;
+    };
+
     // 1. SDK Listener
     if (this.db) {
       try {
@@ -166,12 +172,7 @@ class FirebaseSyncManager {
         const listener = stateRef.on('value', (snapshot) => {
           const state = snapshot.val();
           if (state && onStateUpdate) {
-            this.lastStateHash = JSON.stringify({
-              phase: state.phase,
-              turn: state.turnNumber,
-              turnTeam: state.currentTurnTeamId,
-              shots: state.shotsHistory ? state.shotsHistory.length : 0,
-            });
+            this.lastStateHash = computeStateHash(state);
             onStateUpdate(state);
           }
         });
@@ -186,12 +187,7 @@ class FirebaseSyncManager {
       .then(res => res.json())
       .then(state => {
         if (state && onStateUpdate) {
-          this.lastStateHash = JSON.stringify({
-            phase: state.phase,
-            turn: state.turnNumber,
-            turnTeam: state.currentTurnTeamId,
-            shots: state.shotsHistory ? state.shotsHistory.length : 0,
-          });
+          this.lastStateHash = computeStateHash(state);
           onStateUpdate(state);
         }
       })
@@ -204,12 +200,7 @@ class FirebaseSyncManager {
         if (!res.ok) return;
         const state = await res.json();
         if (state && onStateUpdate) {
-          const newHash = JSON.stringify({
-            phase: state.phase,
-            turn: state.turnNumber,
-            turnTeam: state.currentTurnTeamId,
-            shots: state.shotsHistory ? state.shotsHistory.length : 0,
-          });
+          const newHash = computeStateHash(state);
           if (newHash !== this.lastStateHash) {
             this.lastStateHash = newHash;
             onStateUpdate(state);

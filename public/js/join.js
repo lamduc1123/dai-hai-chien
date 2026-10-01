@@ -140,69 +140,50 @@ function updatePlayerUI(state) {
   if (!state) return;
   myPlayerState = state;
 
-  // Cập nhật kích thước hải đồ động nếu có
-  if (state.grid && state.grid.cols && state.grid.rows) {
-    if (state.grid.cols.length !== COLS.length || state.grid.rows.length !== ROWS.length) {
-      COLS = [...state.grid.cols];
-      ROWS = [...state.grid.rows];
-      const pGrid = document.getElementById('placementGrid');
-      const bGrid = document.getElementById('battleGrid');
-      if (pGrid) {
-        buildGridInContainer(pGrid, handlePlacementCellClick);
-        fitPlacementGridToScreen();
-      }
-      if (bGrid) buildGridInContainer(bGrid, handleBattleCellClick);
+  // Cập nhật kích thước hải đồ động nếu có thay đổi từ máy chủ
+  const gridCols = (state.grid && state.grid.cols && state.grid.cols.length) || (state.config && state.config.gridCols) || COLS.length;
+  const gridRows = (state.grid && state.grid.rows && state.grid.rows.length) || (state.config && state.config.gridRows) || ROWS.length;
+
+  if (gridCols !== COLS.length || gridRows !== ROWS.length) {
+    COLS = ALL_LETTERS.slice(0, gridCols);
+    ROWS = Array.from({ length: gridRows }, (_, i) => i + 1);
+    if (window.GameEngine && window.GameEngine.setGridDimensions) {
+      window.GameEngine.setGridDimensions(gridCols, gridRows);
     }
-  }
-
-  const myTeam = state.myTeam;
-  if (myTeam) {
-    // Header
-    document.getElementById('headerTeamTitle').textContent = myTeam.name;
-    document.getElementById('headerTeamTitle').style.color = myTeam.colorHex;
-    document.getElementById('headerSubTitle').textContent = `Chiến Hạm #${myTeam.id}`;
-
-    const badge = document.getElementById('teamBadgeHeader');
-    badge.style.display = 'inline-flex';
-    badge.textContent = `${myTeam.icon} ĐỘI ${myTeam.id}`;
-    badge.style.background = `${myTeam.colorHex}22`;
-    badge.style.color = myTeam.colorHex;
-
-    // Cập nhật số lượng kỹ năng
-    const badgeCrossfire = document.getElementById('badgeCrossfireCount');
-    if (badgeCrossfire) badgeCrossfire.textContent = `Còn ${myTeam.crossfireRemaining ?? 1}/1`;
-
-    // Sẵn sàng button
-    const btnReady = document.getElementById('btnToggleReady');
-    if (btnReady) {
-      if (myTeam.isReady) {
-        btnReady.textContent = '✓ ĐÃ SẴN SÀNG';
-        btnReady.className = 'btn btn-outline';
-      } else {
-        btnReady.textContent = '✓ BẤM SẴN SÀNG';
-        btnReady.className = 'btn btn-success';
-      }
+    const pGrid = document.getElementById('placementGrid');
+    const bGrid = document.getElementById('battleGrid');
+    if (pGrid) {
+      buildGridInContainer(pGrid, handlePlacementCellClick);
+      fitPlacementGridToScreen();
     }
+    if (bGrid) buildGridInContainer(bGrid, handleBattleCellClick);
+  } else if (window.GameEngine && window.GameEngine.setGridDimensions) {
+    window.GameEngine.setGridDimensions(COLS.length, ROWS.length);
   }
 
   // CHỈ KHỚP ĐỘI CỦA THIẾT BỊ NÀY KHI:
   // 1. myDeviceToken hợp lệ
   // 2. VÀ team trên Máy Chủ đang kết nối (isConnected === true)
   // 3. VÀ deviceToken của team đó TRÙNG KHỚP với myDeviceToken của máy này
-  let verifiedTeam = null;
-  if (myDeviceToken && state.teamsOverview) {
-    verifiedTeam = state.teamsOverview.find(t => t.isConnected && t.deviceToken && t.deviceToken === myDeviceToken);
+  let myTeam = state.myTeam || null;
+  if (myTeam && myTeam.deviceToken && myDeviceToken && myTeam.deviceToken !== myDeviceToken) {
+    myTeam = null;
+  }
+  if (!myTeam && myDeviceToken && state.teamsOverview) {
+    const verified = state.teamsOverview.find(t => t.isConnected && t.deviceToken && t.deviceToken === myDeviceToken);
+    if (verified) {
+      myTeam = verified;
+    }
   }
 
-  // Nếu không khớp thiết bị (ví dụ người khác quét QR, hoặc phòng đã bị Host đặt lại):
-  // Tuyệt đối không nhận vơ đội!
-  if (verifiedTeam) {
-    myTeam = verifiedTeam;
-    myTeamId = verifiedTeam.id;
-    localStorage.setItem('dai_hai_chien_team_id', verifiedTeam.id);
+  // Tuyệt đối không nhận vơ đội nếu không khớp token thiết bị
+  if (myTeam) {
+    myTeamId = myTeam.id;
+    state.myTeam = myTeam;
+    localStorage.setItem('dai_hai_chien_team_id', myTeam.id);
   } else {
-    myTeam = null;
     myTeamId = null;
+    state.myTeam = null;
     localStorage.removeItem('dai_hai_chien_team_id');
   }
 
@@ -214,13 +195,16 @@ function updatePlayerUI(state) {
   // Cập nhật Header & Badge thông tin hạm đội
   if (myTeam) {
     const titleEl = document.getElementById('headerTeamTitle');
-    if (titleEl) titleEl.textContent = myTeam.name || `Chiến Hạm #${myTeam.id}`;
+    if (titleEl) {
+      titleEl.textContent = myTeam.name || `Chiến Hạm #${myTeam.id}`;
+      titleEl.style.color = myTeam.colorHex || '#0284c7';
+    }
     const subTitleEl = document.getElementById('headerSubTitle');
     if (subTitleEl) subTitleEl.textContent = `Vị Trí #${myTeam.id}`;
 
     const badge = document.getElementById('teamBadgeHeader');
     if (badge) {
-      badge.style.display = 'inline-block';
+      badge.style.display = 'inline-flex';
       badge.textContent = `${myTeam.icon || '⚓'} ĐỘI ${myTeam.id}`;
       badge.style.background = `${myTeam.colorHex || '#0284c7'}22`;
       badge.style.color = myTeam.colorHex || '#0284c7';
@@ -402,15 +386,24 @@ function renderTeamSlots(teams) {
 function handlePlacementCellClick(key) {
   if (!myPlayerState || !myPlayerState.myTeam) return;
   const myTeam = myPlayerState.myTeam;
-  if (!myTeam.isFleetLocked && window.GameEngine) {
+  if (window.GameEngine) {
+    if (window.GameEngine.setGridDimensions) {
+      window.GameEngine.setGridDimensions(COLS.length, ROWS.length);
+    }
     const shipLengths = (myPlayerState.config && myPlayerState.config.shipLengths) || [4, 3];
+    myTeam.isFleetLocked = false;
     myTeam.fleet = window.GameEngine.generateRandomFleetOpenOcean(shipLengths);
     renderPlacementView(myPlayerState);
     if (socket && socket.connected) {
       socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
     }
-    if (window.firebaseSync && window.firebaseSync.isReady) {
-      window.firebaseSync.clientSendAction(currentRoomId, { type: 'AUTO_PLACE', teamId: myTeamId });
+    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId && myTeamId) {
+      window.firebaseSync.clientSendAction(currentRoomId, {
+        type: 'AUTO_PLACE',
+        teamId: myTeamId,
+        fleet: myTeam.fleet,
+        deviceToken: myDeviceToken,
+      });
     }
   }
 }
@@ -468,15 +461,47 @@ function renderPlacementView(state) {
     hint.textContent = 'Chạm ô hoặc bấm nút để đổi vị trí';
   }
 
-  // Tự động sinh hạm đội ban đầu nếu chưa có tàu
-  const shipLengths = (state.config && state.config.shipLengths) || [4, 3];
-  if ((!myTeam.fleet || myTeam.fleet.length === 0) && window.GameEngine) {
-    myTeam.fleet = window.GameEngine.generateRandomFleetOpenOcean(shipLengths);
+  const container = document.getElementById('placementGrid');
+  const expectedCells = (COLS.length + 1) * (ROWS.length + 1);
+  if (container.children.length !== expectedCells) {
+    buildGridInContainer(container, handlePlacementCellClick);
   }
 
-  const container = document.getElementById('placementGrid');
-  if (container.children.length === 0) {
-    buildGridInContainer(container, handlePlacementCellClick);
+  // Tự động sinh hạm đội ban đầu nếu chưa có tàu hoặc tọa độ nằm ngoài kích thước hải đồ hiện tại
+  const shipLengths = (state.config && state.config.shipLengths) || [4, 3];
+  let hasOutOfBounds = false;
+  if (myTeam.fleet && myTeam.fleet.length > 0) {
+    for (const ship of myTeam.fleet) {
+      if (!ship.cells || !Array.isArray(ship.cells)) {
+        hasOutOfBounds = true;
+        break;
+      }
+      for (const cellKey of ship.cells) {
+        if (!container.querySelector(`[data-key="${cellKey}"]`)) {
+          hasOutOfBounds = true;
+          break;
+        }
+      }
+      if (hasOutOfBounds) break;
+    }
+  }
+
+  if ((!myTeam.fleet || myTeam.fleet.length === 0 || hasOutOfBounds) && window.GameEngine) {
+    if (window.GameEngine.setGridDimensions) {
+      window.GameEngine.setGridDimensions(COLS.length, ROWS.length);
+    }
+    myTeam.fleet = window.GameEngine.generateRandomFleetOpenOcean(shipLengths);
+    if (socket && socket.connected) {
+      socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
+    }
+    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId && myTeamId) {
+      window.firebaseSync.clientSendAction(currentRoomId, {
+        type: 'UPDATE_FLEET',
+        teamId: myTeamId,
+        fleet: myTeam.fleet,
+        deviceToken: myDeviceToken,
+      });
+    }
   }
 
   container.querySelectorAll('.ocean-cell').forEach(c => {
@@ -505,7 +530,7 @@ function renderPlacementView(state) {
     if (myTeam.isFleetLocked) {
       btnLock.textContent = '🔒 ĐÃ KHÓA HẠM ĐỘI (CHỜ KHỞI TRANH)';
       btnLock.className = 'btn btn-outline btn-lock-fleet';
-      btnLock.disabled = true;
+      btnLock.disabled = false;
     } else {
       btnLock.textContent = '🔒 KHÓA HẠM ĐỘI & SẴN SÀNG';
       btnLock.className = 'btn btn-success btn-large btn-lock-fleet';
@@ -1006,36 +1031,46 @@ function initEventListeners() {
   // Nút Xếp Tàu Tự Động (Placement)
   document.getElementById('btnAutoPlace').addEventListener('click', () => {
     if (!currentRoomId || !myTeamId) return;
+    if (myPlayerState && myPlayerState.myTeam && window.GameEngine) {
+      if (window.GameEngine.setGridDimensions) {
+        window.GameEngine.setGridDimensions(COLS.length, ROWS.length);
+      }
+      const shipLengths = (myPlayerState.config && myPlayerState.config.shipLengths) || [4, 3];
+      myPlayerState.myTeam.isFleetLocked = false;
+      myPlayerState.myTeam.fleet = window.GameEngine.generateRandomFleetOpenOcean(shipLengths);
+      renderPlacementView(myPlayerState);
+    }
     if (socket && socket.connected) {
       socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
     }
-    if (window.firebaseSync && window.firebaseSync.isReady) {
-      window.firebaseSync.clientSendAction(currentRoomId, { type: 'AUTO_PLACE', teamId: myTeamId });
+    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId && myTeamId) {
+      window.firebaseSync.clientSendAction(currentRoomId, {
+        type: 'AUTO_PLACE',
+        teamId: myTeamId,
+        fleet: myPlayerState && myPlayerState.myTeam ? myPlayerState.myTeam.fleet : null,
+        deviceToken: myDeviceToken,
+      });
     }
   });
 
   // Nút Khóa Hạm Đội (Placement)
   document.getElementById('btnLockFleet').addEventListener('click', () => {
     if (!currentRoomId || !myTeamId || !myPlayerState || !myPlayerState.myTeam) return;
-    const fleet = myPlayerState.myTeam.fleet;
-    if (!fleet || fleet.length === 0) {
-      if (socket && socket.connected) {
-        socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
-      }
-      if (window.firebaseSync && window.firebaseSync.isReady) {
-        window.firebaseSync.clientSendAction(currentRoomId, { type: 'AUTO_PLACE', teamId: myTeamId });
-      }
-      return;
-    }
+    const myTeam = myPlayerState.myTeam;
+    // Đảo trạng thái khóa hạm đội
+    myTeam.isFleetLocked = !myTeam.isFleetLocked;
+    renderPlacementView(myPlayerState);
 
+    const fleet = myTeam.fleet;
     if (socket && socket.connected) {
       socket.emit('player:lock_fleet', { roomId: currentRoomId, teamId: myTeamId, fleet });
     }
-    if (window.firebaseSync && window.firebaseSync.isReady) {
+    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId && myTeamId) {
       window.firebaseSync.clientSendAction(currentRoomId, {
-        type: 'LOCK_FLEET',
+        type: myTeam.isFleetLocked ? 'LOCK_FLEET' : 'UPDATE_FLEET',
         teamId: myTeamId,
         fleet,
+        deviceToken: myDeviceToken,
       });
     }
   });
