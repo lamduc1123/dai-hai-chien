@@ -668,9 +668,65 @@ function renderHostState(state) {
 
   updatePhaseAndControls(state);
   renderTeamsRoster(state);
+  renderQRModalTeamsTable(state);
   renderOceanMap(state);
   updateStats(state);
   fitOceanGridToScreen();
+}
+
+function renderQRModalTeamsTable(state) {
+  const container = document.getElementById('qrModalTeamsTable');
+  if (!container || !state || !state.teams) return;
+
+  const connectedCountEl = document.getElementById('qrModalConnectedCount');
+  const totalSlotsEl = document.getElementById('qrModalTotalSlots');
+  const readyTeams = state.teams.filter(t => (t.isConnected || t.isBot) && t.isReady);
+  const totalTeams = state.teams.length;
+
+  if (connectedCountEl) connectedCountEl.textContent = readyTeams.length;
+  if (totalSlotsEl) totalSlotsEl.textContent = totalTeams;
+
+  container.innerHTML = '';
+  state.teams.forEach(t => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.justifyContent = 'space-between';
+    row.style.padding = '6px 10px';
+    row.style.borderRadius = '6px';
+    row.style.border = '1px solid #cbd5e1';
+    row.style.background = '#ffffff';
+
+    let badgeHtml = '';
+    if (t.isBot) {
+      badgeHtml = '<span style="background: #e2e8f0; color: #475569; font-size: 0.72rem; font-weight: 800; padding: 2px 6px; border-radius: 4px;">🤖 BOT AI</span>';
+    } else if (t.isConnected) {
+      if (t.isReady) {
+        badgeHtml = '<span style="background: #dcfce7; color: #15803d; font-size: 0.72rem; font-weight: 800; padding: 2px 6px; border-radius: 4px;">🟢 ĐÃ SẴN SÀNG</span>';
+      } else {
+        badgeHtml = '<span style="background: #fef3c7; color: #b45309; font-size: 0.72rem; font-weight: 800; padding: 2px 6px; border-radius: 4px;">🟡 ĐANG CHỌN TÊN</span>';
+      }
+    } else {
+      badgeHtml = '<span style="background: #f1f5f9; color: #94a3b8; font-size: 0.72rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">⚪ Ô TRỐNG</span>';
+    }
+
+    row.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 1.1rem;">${t.icon || '⚓'}</span>
+        <div>
+          <div style="font-weight: 800; font-size: 0.82rem; color: ${t.colorHex || '#0f172a'}; line-height: 1.2;">
+            Vị Trí #${t.id}: ${t.name || ('Chiến Hạm #' + t.id)}
+          </div>
+          <div style="font-size: 0.68rem; color: #64748b;">
+            ${t.isConnected ? (t.deviceToken ? '📱 Thiết bị đã kết nối' : 'Đã vào slot') : 'Chưa có người chơi'}
+          </div>
+        </div>
+      </div>
+      <div>${badgeHtml}</div>
+    `;
+
+    container.appendChild(row);
+  });
 }
 
 function updatePhaseAndControls(state) {
@@ -991,9 +1047,15 @@ function initEventListeners() {
   on('btnAddBot', () => {
     dispatchHostAction('host:add_bot');
   });
+  on('btnQRAddBot', () => {
+    dispatchHostAction('host:add_bot');
+  });
 
   // Lấp đầy bằng bot
   on('btnFillBots', () => {
+    dispatchHostAction('host:fill_bots');
+  });
+  on('btnQRFillBots', () => {
     dispatchHostAction('host:fill_bots');
   });
 
@@ -1300,6 +1362,9 @@ function fallbackQRImage(url, thumbEl, bigEl) {
 
 function openQRModal() {
   loadNetworkAndQR();
+  if (currentHostState) {
+    renderQRModalTeamsTable(currentHostState);
+  }
   const m = document.getElementById('modalQR');
   if (m) m.classList.add('active');
 }

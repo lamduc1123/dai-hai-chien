@@ -372,7 +372,9 @@
       <div class="form-group">
         <label class="form-label">Chủng loại & Chiều dài tàu chiến:</label>
         <select id="cfgShipConfigMode" class="form-control">
-          <option value="mix34">Hỗn hợp Tàu 4 ô & Tàu 3 ô (Khuyên dùng)</option>
+          <option value="mix34">Hỗn hợp Tàu 4 ô & Tàu 3 ô (Chuẩn)</option>
+          <option value="mix234">Hỗn hợp Tàu 4, 3 & 2 ô (Đa dạng)</option>
+          <option value="size2">Toàn bộ Tàu 2 ô (Pháo Hạm nhỏ)</option>
           <option value="size3">Chỉ sử dụng Tàu 3 ô</option>
           <option value="size4">Chỉ sử dụng Tàu 4 ô</option>
         </select>
@@ -394,26 +396,52 @@
     </div>
   </div>
 
-  <!-- Hộp thoại Mã QR -->
+  <!-- Hộp thoại Mã QR & Bảng Theo Dõi Đội Tham Gia Trực Tiếp -->
   <div id="modalQR" class="modal-overlay">
-    <div class="modal-content" style="text-align: center; max-width: 440px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--navy-dark); margin: 0;">
-          📱 QUÉT QR ĐỂ THAM GIA
-        </h3>
-        <button id="btnCloseQR" class="btn btn-outline" style="padding: 4px 8px;">✕</button>
+    <div class="modal-content" style="max-width: 780px; width: 95vw; max-height: 90vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-ocean); padding-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.4rem;">📱</span>
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 900; color: var(--navy-dark); margin: 0;">
+              QUÉT QR THAM GIA PHÒNG ĐẤU
+            </h3>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">
+              Theo dõi người chơi vào phòng và sẵn sàng theo thời gian thực
+            </div>
+          </div>
+        </div>
+        <button id="btnCloseQR" class="btn btn-outline" style="padding: 4px 10px; font-weight: 800;">✕ Đóng</button>
       </div>
-      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
-        Người chơi mở camera điện thoại quét mã hoặc truy cập đường dẫn bên dưới
-      </p>
       
-      <div style="background: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid var(--border-ocean); display: inline-block;">
-        <img id="qrBigImage" src="" alt="Mã QR Tham Gia" style="width: 260px; height: 260px; display: block; margin: 0 auto;">
-      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start;">
+        <!-- Cột Trái: Mã QR và Link -->
+        <div style="text-align: center; background: #ffffff; padding: 14px; border-radius: 10px; border: 1px solid var(--border-ocean);">
+          <div style="background: #ffffff; padding: 8px; border-radius: 8px; display: inline-block;">
+            <img id="qrBigImage" src="" alt="Mã QR Tham Gia" style="width: 210px; height: 210px; display: block; margin: 0 auto;">
+          </div>
+          <div style="margin-top: 10px;">
+            <input id="qrCopyUrlInput" type="text" class="form-control" readonly style="text-align: center; font-weight: bold; font-size: 0.8rem; padding: 6px; margin-bottom: 6px;">
+            <button id="btnCopyUrl" class="btn btn-outline" style="width: 100%; font-size: 0.82rem; padding: 6px 12px;">📋 Sao Chép Đường Link</button>
+          </div>
+        </div>
 
-      <div style="margin-top: 14px;">
-        <input id="qrCopyUrlInput" type="text" class="form-control" readonly style="text-align: center; font-weight: bold; margin-bottom: 8px;">
-        <button id="btnCopyUrl" class="btn btn-outline" style="width: 100%;">📋 Sao Chép Đường Link</button>
+        <!-- Cột Phải: Bảng Danh Sách Đội & Trạng Thái Sẵn Sàng Trực Tiếp -->
+        <div style="background: #f8fafc; border: 1px solid var(--border-ocean); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="font-size: 0.9rem; font-weight: 800; color: var(--navy-dark); margin: 0;">
+              👥 DANH SÁCH ĐỘI (<span id="qrModalConnectedCount">0</span>/<span id="qrModalTotalSlots">4</span> SẴN SÀNG)
+            </h4>
+            <div style="display: flex; gap: 4px;">
+              <button id="btnQRAddBot" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.72rem; border-color: #0284c7; color: #0284c7;" title="Thêm 1 Bot">🤖 +Bot</button>
+              <button id="btnQRFillBots" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.72rem; border-color: #059669; color: #059669;" title="Lấp đầy Bot">🤖 Đầy</button>
+            </div>
+          </div>
+
+          <div id="qrModalTeamsTable" style="display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto;">
+            <!-- Render tự động bởi host.js -->
+          </div>
+        </div>
       </div>
     </div>
   </div>

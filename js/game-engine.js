@@ -70,15 +70,22 @@ function isValidCoord(colOrKey, row = null, customCols = COLS, customRows = ROWS
 /**
  * Lấy danh sách chiều dài các tàu dựa vào cấu hình:
  * shipCount: 1..5
- * shipConfigMode: 'mix34' (xen kẽ 4 và 3), 'size3' (toàn 3 ô), 'size4' (toàn 4 ô)
+ * shipConfigMode: 'mix34' (4 và 3 ô), 'mix234' (4, 3 và 2 ô), 'size2' (toàn 2 ô), 'size3' (toàn 3 ô), 'size4' (toàn 4 ô)
  */
 function getShipLengths(shipCount = 2, shipConfigMode = 'mix34') {
   const count = Math.min(Math.max(1, shipCount), 5);
+  if (shipConfigMode === 'size2') {
+    return Array(count).fill(2);
+  }
   if (shipConfigMode === 'size3') {
     return Array(count).fill(3);
   }
   if (shipConfigMode === 'size4') {
     return Array(count).fill(4);
+  }
+  if (shipConfigMode === 'mix234') {
+    const pattern = [4, 3, 2, 3, 2];
+    return pattern.slice(0, count);
   }
   const pattern = [4, 3, 4, 3, 3];
   return pattern.slice(0, count);
@@ -178,8 +185,8 @@ function allocatePlayerZones(playerCount = 4, colsCount = COLS.length, rowsCount
 }
 
 /**
- * Trả về class bộ phận của tàu (Cruiser 3 ô & Carrier 4 ô)
- * Giúp hiển thị trọn vẹn 1 chiến hạm 3 ô hoặc 4 ô liền khối đẹp mắt
+ * Trả về class bộ phận của tàu (Patrol Boat 2 ô, Cruiser 3 ô & Carrier 4 ô)
+ * Giúp hiển thị trọn vẹn 1 chiến hạm liền khối đẹp mắt
  */
 function getShipPartClass(ship, cellKey) {
   if (!ship || !Array.isArray(ship.cells)) return '';
@@ -197,9 +204,20 @@ function getShipPartClass(ship, cellKey) {
   }
 
   // 2. Tàu 3 ô: Tuần Dương Hạm (Cruiser)
-  if (idx === 0) return isHorizontal ? 'ship-cruiser-bow-h ship-bow-h' : 'ship-cruiser-bow-v ship-bow-v';
-  if (idx === total - 1) return isHorizontal ? 'ship-cruiser-stern-h ship-stern-h' : 'ship-cruiser-stern-v ship-stern-v';
-  return isHorizontal ? 'ship-cruiser-mid-h ship-mid-h' : 'ship-cruiser-mid-v ship-mid-v';
+  if (total === 3) {
+    if (idx === 0) return isHorizontal ? 'ship-cruiser-bow-h ship-bow-h' : 'ship-cruiser-bow-v ship-bow-v';
+    if (idx === total - 1) return isHorizontal ? 'ship-cruiser-stern-h ship-stern-h' : 'ship-cruiser-stern-v ship-stern-v';
+    return isHorizontal ? 'ship-cruiser-mid-h ship-mid-h' : 'ship-cruiser-mid-v ship-mid-v';
+  }
+
+  // 3. Tàu 2 ô: Pháo Hạm / Tàu Tuần Tra (Patrol Boat)
+  if (total === 2) {
+    if (idx === 0) return isHorizontal ? 'ship-patrol-bow-h ship-bow-h' : 'ship-patrol-bow-v ship-bow-v';
+    return isHorizontal ? 'ship-patrol-stern-h ship-stern-h' : 'ship-patrol-stern-v ship-stern-v';
+  }
+
+  // Tàu 1 ô hoặc độ dài khác
+  return 'ship-bow-v';
 }
 
 /**
@@ -219,7 +237,10 @@ function generateRandomFleetOpenOcean(shipLengths = [4, 3], existingEnemyCells =
 
   for (let i = 0; i < shipLengths.length; i++) {
     const length = shipLengths[i];
-    const shipName = length === 4 ? `Tàu Sân Bay #${i + 1}` : `Tuần Dương Hạm #${i + 1}`;
+    let shipName = `Tuần Dương Hạm #${i + 1}`;
+    if (length === 4) shipName = `Tàu Sân Bay #${i + 1}`;
+    else if (length === 3) shipName = `Tuần Dương Hạm #${i + 1}`;
+    else if (length === 2) shipName = `Pháo Hạm #${i + 1}`;
     let placed = false;
     let attempts = 0;
 
@@ -740,6 +761,14 @@ function executeSingleShot(gameState, shooterTeamId, targetKey) {
       targetTeam.shipsRemaining = Math.max(0, targetTeam.shipsRemaining - 1);
       result = 'SUNK';
 
+      // Cập nhật tất cả các ô của chiến hạm này thành 'SUNK' để toàn bộ người chơi thấy LỬA ĐEN / TRO TÀN
+      ship.cells.forEach(k => {
+        if (gameState.shotsMap[k]) {
+          gameState.shotsMap[k].result = 'SUNK';
+          gameState.shotsMap[k].sunkShip = ship.name;
+        }
+      });
+
       if (targetTeam.shipsRemaining === 0) {
         targetTeam.isEliminated = true;
         eliminatedTeam = {
@@ -788,6 +817,16 @@ function executeSingleShot(gameState, shooterTeamId, targetKey) {
     isLuckyCell: isLucky,
     timestamp: Date.now(),
   };
+
+  // Đồng bộ lại tất cả ô của tàu chìm trong shotsMap
+  if (result === 'SUNK' && sunkShip && Array.isArray(sunkShip.cells)) {
+    sunkShip.cells.forEach(k => {
+      if (gameState.shotsMap[k]) {
+        gameState.shotsMap[k].result = 'SUNK';
+        gameState.shotsMap[k].sunkShip = sunkShip.name;
+      }
+    });
+  }
 
   return { success: true, shotRecord };
 }

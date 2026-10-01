@@ -546,14 +546,26 @@ function renderPlacementView(state) {
   const btnLock = document.getElementById('btnLockFleet');
   if (btnLock) {
     if (myTeam.isFleetLocked) {
-      btnLock.textContent = '🔒 ĐÃ KHÓA HẠM ĐỘI (CHỜ KHỞI TRANH)';
+      btnLock.innerHTML = '🔒 <b>ĐÃ SẴN SÀNG & ĐÃ KHÓA</b> (Chạm để xếp lại)';
       btnLock.className = 'btn btn-outline btn-lock-fleet';
+      btnLock.style.borderColor = '#10b981';
+      btnLock.style.color = '#059669';
+      btnLock.style.background = '#ecfdf5';
       btnLock.disabled = false;
     } else {
-      btnLock.textContent = '🔒 KHÓA HẠM ĐỘI & SẴN SÀNG';
+      btnLock.innerHTML = '✓ <b>XÁC NHẬN SẴN SÀNG & KHÓA VỊ TRÍ</b>';
       btnLock.className = 'btn btn-success btn-large btn-lock-fleet';
+      btnLock.style.borderColor = '';
+      btnLock.style.color = '';
+      btnLock.style.background = '';
       btnLock.disabled = !myTeam.fleet || myTeam.fleet.length === 0;
     }
+  }
+
+  const summaryEl = document.getElementById('placementFleetSummary');
+  if (summaryEl && myTeam.fleet) {
+    const totalCells = myTeam.fleet.reduce((acc, s) => acc + (s.cells ? s.cells.length : 0), 0);
+    summaryEl.textContent = `⚓ Hạm đội: ${myTeam.fleet.length} chiến hạm (${totalCells} ô tác chiến)`;
   }
 
   // Căn chỉnh hải đồ vừa trọn vẹn màn hình điện thoại 100% không cuộn
@@ -1201,27 +1213,41 @@ function initEventListeners() {
     }
   });
 
-  // Nút Khóa Hạm Đội (Placement)
-  document.getElementById('btnLockFleet').addEventListener('click', () => {
-    if (!currentRoomId || !myTeamId || !myPlayerState || !myPlayerState.myTeam) return;
-    const myTeam = myPlayerState.myTeam;
-    // Đảo trạng thái khóa hạm đội
-    myTeam.isFleetLocked = !myTeam.isFleetLocked;
-    renderPlacementView(myPlayerState);
+  // Nút Khóa Hạm Đội & Sẵn Sàng (Placement)
+  const btnLockFleetEl = document.getElementById('btnLockFleet');
+  if (btnLockFleetEl) {
+    btnLockFleetEl.addEventListener('click', () => {
+      if (!currentRoomId || !myTeamId || !myPlayerState || !myPlayerState.myTeam) return;
+      const myTeam = myPlayerState.myTeam;
+      // Đảo trạng thái khóa hạm đội & sẵn sàng
+      myTeam.isFleetLocked = !myTeam.isFleetLocked;
+      myTeam.isReady = myTeam.isFleetLocked;
+      renderPlacementView(myPlayerState);
 
-    const fleet = myTeam.fleet;
-    if (socket && socket.connected) {
-      socket.emit('player:lock_fleet', { roomId: currentRoomId, teamId: myTeamId, fleet });
-    }
-    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId && myTeamId) {
-      window.firebaseSync.clientSendAction(currentRoomId, {
-        type: myTeam.isFleetLocked ? 'LOCK_FLEET' : 'UPDATE_FLEET',
-        teamId: myTeamId,
-        fleet,
-        deviceToken: myDeviceToken,
-      });
-    }
-  });
+      const fleet = myTeam.fleet;
+      if (socket && socket.connected) {
+        socket.emit('player:lock_fleet', { roomId: currentRoomId, teamId: myTeamId, fleet });
+        if (myTeam.isFleetLocked) {
+          socket.emit('player:ready', { roomId: currentRoomId, teamId: myTeamId });
+        }
+      }
+      if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId && myTeamId) {
+        window.firebaseSync.clientSendAction(currentRoomId, {
+          type: myTeam.isFleetLocked ? 'LOCK_FLEET' : 'UPDATE_FLEET',
+          teamId: myTeamId,
+          fleet,
+          deviceToken: myDeviceToken,
+        });
+        if (myTeam.isFleetLocked) {
+          window.firebaseSync.clientSendAction(currentRoomId, {
+            type: 'READY',
+            teamId: myTeamId,
+            deviceToken: myDeviceToken,
+          });
+        }
+      }
+    });
+  }
 
   // Nút Kỹ Năng / Vũ Khí
   const btnSkillNormal = document.getElementById('btnSkillNormal');
@@ -1319,6 +1345,14 @@ function initEventListeners() {
   const btnZoomReset = document.getElementById('btnZoomReset');
   if (btnZoomReset) {
     btnZoomReset.addEventListener('click', () => {
+      currentZoomLevel = 1.0;
+      fitBattleGridToScreen();
+    });
+  }
+
+  const btnZoomFit = document.getElementById('btnZoomFit');
+  if (btnZoomFit) {
+    btnZoomFit.addEventListener('click', () => {
       currentZoomLevel = 1.0;
       fitBattleGridToScreen();
     });
