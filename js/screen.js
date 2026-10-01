@@ -189,8 +189,19 @@ function updateProjectorPhase(state) {
     badge.textContent = 'DÀN TRẬN';
     badge.style.background = '#fef3c7';
     badge.style.color = '#d97706';
-    bannerText.textContent = 'CÁC HẠM ĐỘI ĐANG BỐ TRÍ TÀU';
-    bannerBox.style.borderColor = '#d97706';
+
+    const lockedCount = state.teams ? state.teams.filter(t => t.isFleetLocked).length : 0;
+    const connectedCount = state.teams ? state.teams.filter(t => t.isConnected || t.isBot).length : 0;
+    const totalCount = state.teams ? state.teams.length : 0;
+    const activeCount = Math.max(1, connectedCount);
+
+    if (lockedCount >= activeCount && activeCount > 0) {
+      bannerText.innerHTML = `🎉 <b style="color: #15803d;">TẤT CẢ ${lockedCount}/${totalCount} ĐỘI ĐÃ SẴN SÀNG! CHỜ MC BẮT ĐẦU</b>`;
+      bannerBox.style.borderColor = '#10b981';
+    } else {
+      bannerText.innerHTML = `🗺️ DÀN TRẬN: <b>${lockedCount}/${activeCount} ĐỘI ĐÃ SẴN SÀNG</b> (Chờ các đội khóa tàu...)`;
+      bannerBox.style.borderColor = '#d97706';
+    }
   } else if (state.phase === 'BATTLE') {
     badge.textContent = 'CHIẾN ĐẤU';
     badge.style.background = '#fee2e2';
@@ -316,6 +327,12 @@ function renderProjectorSurvivalBar(state) {
       statusText = '<span style="color: #dc2626; font-weight: 800; font-size: 0.85rem;">☠️ ĐÃ CHÌM</span>';
     } else if (state.phase === 'LOBBY') {
       statusText = `<span style="font-weight: 700; color: #16a34a; font-size: 0.8rem;">✓ Sẵn sàng</span>`;
+    } else if (state.phase === 'PLACEMENT') {
+      if (team.isFleetLocked) {
+        statusText = `<span style="font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 4px; border: 1px solid #86efac; font-size: 0.8rem;">✓ ĐÃ SẴN SÀNG</span>`;
+      } else {
+        statusText = `<span style="font-weight: 800; color: #b45309; background: #fef3c7; padding: 2px 8px; border-radius: 4px; border: 1px solid #fde68a; font-size: 0.8rem;">⏳ Đang Xếp...</span>`;
+      }
     } else {
       statusText = `<span style="font-weight: 800; color: #15803d; font-size: 0.85rem;">❤️ Còn ${team.shipsRemaining}/${state.config ? state.config.shipsPerPlayer : 2} tàu</span>`;
     }

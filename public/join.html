@@ -26,13 +26,13 @@
       margin: 0 !important;
       display: flex !important;
       flex-direction: column !important;
-      touch-action: manipulation;
+      touch-action: pan-x pan-y pinch-zoom;
     }
 
     body.mode-placement .mobile-header,
     body.mode-battle .mobile-header {
-      padding: 4px 10px !important;
-      min-height: 36px !important;
+      padding: 6px 12px !important;
+      min-height: 38px !important;
       flex-shrink: 0 !important;
       border-bottom: 1px solid rgba(14, 165, 233, 0.2);
     }
@@ -44,7 +44,7 @@
       height: 100% !important;
       max-width: 100% !important;
       width: 100% !important;
-      padding: 2px 4px !important;
+      padding: 4px 6px !important;
       margin: 0 auto !important;
       display: flex !important;
       flex-direction: column !important;
@@ -66,7 +66,7 @@
       display: flex !important;
       flex-direction: column !important;
       justify-content: space-between !important;
-      padding: 6px 8px !important;
+      padding: 2px !important;
       margin: 0 !important;
       overflow: hidden !important;
       gap: 4px !important;
@@ -78,11 +78,11 @@
       justify-content: space-between;
       align-items: center;
       flex-shrink: 0;
-      padding: 2px 2px 4px 2px;
+      padding: 2px 4px;
     }
 
     .placement-heading {
-      font-size: 0.92rem;
+      font-size: 0.95rem;
       font-weight: 900;
       color: var(--navy-dark);
       line-height: 1.2;
@@ -95,7 +95,7 @@
     }
 
     .btn-auto-place {
-      font-size: 0.78rem !important;
+      font-size: 0.8rem !important;
       padding: 6px 12px !important;
       font-weight: 800 !important;
       background: #0284c7 !important;
@@ -104,7 +104,8 @@
       box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
     }
 
-    .placement-map-wrapper {
+    .placement-map-wrapper,
+    .battle-map-wrapper {
       flex: 1 1 0% !important;
       min-height: 0 !important;
       width: 100% !important;
@@ -112,39 +113,48 @@
       align-items: center !important;
       justify-content: center !important;
       overflow: hidden !important;
-      padding: 4px !important;
+      padding: 0 !important;
       margin: 0 auto !important;
       box-sizing: border-box !important;
+      touch-action: none;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 8px;
+      border: 1px solid rgba(14, 165, 233, 0.25);
     }
 
-    .placement-grid {
+    .placement-grid,
+    .battle-grid {
       min-width: 0 !important;
       width: fit-content !important;
       height: fit-content !important;
       margin: auto !important;
       box-sizing: border-box !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
     }
 
     .placement-bottombar {
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
-      gap: 2px;
-      padding-top: 2px;
+      gap: 3px;
+      padding: 4px 2px 2px 2px;
+      z-index: 10;
     }
 
     .btn-lock-fleet {
       width: 100% !important;
-      padding: 9px 12px !important;
-      font-size: 0.92rem !important;
+      padding: 12px 14px !important;
+      font-size: 0.98rem !important;
       font-weight: 900 !important;
       border-radius: 8px !important;
       margin: 0 !important;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+      letter-spacing: 0.3px;
     }
 
     .placement-fleet-info {
-      font-size: 0.7rem;
+      font-size: 0.72rem;
       color: #64748b;
       text-align: center;
       font-weight: 700;
@@ -447,12 +457,6 @@
             🔥 BẮN
           </button>
         </div>
-
-        <div class="zoom-action-group">
-          <button id="btnZoomIn" class="btn btn-outline btn-zoom-sm" title="Phóng to">🔍+</button>
-          <button id="btnZoomOut" class="btn btn-outline btn-zoom-sm" title="Thu nhỏ">🔍-</button>
-          <button id="btnZoomFit" class="btn btn-outline btn-zoom-sm" title="Toàn màn hình tự động scale">⛶ Vừa</button>
-        </div>
       </div>
 
       <!-- Nhập tọa độ nhanh (1 hàng rút gọn) -->
@@ -460,7 +464,7 @@
         <input type="text" id="inputManualCoord" placeholder="Tọa độ VD: B14" maxlength="4">
         <button id="btnApplyCoord" type="button" class="btn btn-primary btn-apply-sm">Nhắm</button>
         <div id="selectedTargetText" class="target-hint-text">
-          👆 Chạm 2 lần vào ô để bắn ngay!
+          👆 Chạm 2 lần để bắn • Dùng 2 ngón tay kéo để phóng to/nhỏ
         </div>
       </div>
 

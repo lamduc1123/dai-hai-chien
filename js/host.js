@@ -764,8 +764,26 @@ function updatePhaseAndControls(state) {
     phaseBadge.style.background = '#fef3c7';
     phaseBadge.style.color = '#d97706';
 
-    statusProgressText.textContent = `${lockedCount}/${totalCount} Đội Đã Khóa Tàu`;
-    statusTurnText.textContent = 'Các đội đang dàn trận bí mật';
+    const activeCount = Math.max(1, connectedCount);
+    const allReady = lockedCount >= activeCount && activeCount > 0;
+
+    if (allReady) {
+      statusProgressText.innerHTML = `<span style="color: #16a34a; font-weight: 900;">🟢 ${lockedCount}/${totalCount} ĐỘI ĐÃ SẴN SÀNG!</span>`;
+      statusTurnText.innerHTML = `🎉 <b style="color: #15803d; font-size: 0.95rem;">TẤT CẢ ${lockedCount} ĐỘI ĐÃ KHÓA TÀU! MC BẤM BẮT ĐẦU ĐỂ VÀO GAME!</b>`;
+      btnStartBattle.innerHTML = `⚔️ TẤT CẢ ĐÃ SẴN SÀNG: BẮT ĐẦU CHIẾN ĐẤU NGAY!`;
+      btnStartBattle.className = 'btn btn-success';
+      btnStartBattle.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+      btnStartBattle.style.boxShadow = '0 0 16px rgba(16, 185, 129, 0.8)';
+      btnStartBattle.style.animation = 'pulse 1.2s infinite';
+    } else {
+      statusProgressText.innerHTML = `<span>⏳ <b>${lockedCount}/${activeCount} Đội Đã Khóa Tàu</b></span>`;
+      statusTurnText.innerHTML = `Đang chờ các đội hoàn tất dàn trận... (${activeCount - lockedCount} đội đang xếp tàu)`;
+      btnStartBattle.innerHTML = `⚔️ BƯỚC 2: BẮT ĐẦU CHIẾN ĐẤU (${lockedCount}/${activeCount} Sẵn Sàng)`;
+      btnStartBattle.className = 'btn btn-primary';
+      btnStartBattle.style.background = '';
+      btnStartBattle.style.boxShadow = '';
+      btnStartBattle.style.animation = '';
+    }
 
     btnStartPlacement.style.display = 'none';
     btnStartBattle.style.display = 'inline-flex';
@@ -773,6 +791,7 @@ function updatePhaseAndControls(state) {
     btnUndo.style.display = 'none';
     if (quickFireBar) quickFireBar.style.display = 'none';
   } else if (state.phase === 'BATTLE') {
+    btnStartBattle.style.animation = '';
     phaseBadge.textContent = 'CHIẾN ĐẤU';
     phaseBadge.style.background = '#fee2e2';
     phaseBadge.style.color = '#dc2626';
@@ -791,6 +810,7 @@ function updatePhaseAndControls(state) {
     btnUndo.style.display = 'inline-flex';
     if (quickFireBar) quickFireBar.style.display = 'flex';
   } else if (state.phase === 'GAME_OVER' || state.phase === 'FINISHED') {
+    btnStartBattle.style.animation = '';
     phaseBadge.textContent = 'KẾT THÚC';
     phaseBadge.style.background = '#dcfce7';
     phaseBadge.style.color = '#15803d';
@@ -863,7 +883,11 @@ function renderTeamsRoster(state) {
     } else if (state.phase === 'LOBBY') {
       statusText = `<span style="font-weight: 700; color: #16a34a; font-size: 0.75rem;">✓ Sẵn sàng</span>`;
     } else if (state.phase === 'PLACEMENT') {
-      statusText = `<span style="font-weight: 700; color: ${team.isFleetLocked ? '#16a34a' : '#d97706'}; font-size: 0.75rem;">${team.isFleetLocked ? '🔒 Đã dàn trận' : '⏳ Đang xếp'}</span>`;
+      if (team.isFleetLocked) {
+        statusText = `<span style="font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 4px; border: 1px solid #86efac; font-size: 0.75rem;">✓ ĐÃ SẴN SÀNG</span>`;
+      } else {
+        statusText = `<span style="font-weight: 800; color: #b45309; background: #fef3c7; padding: 2px 8px; border-radius: 4px; border: 1px solid #fde68a; font-size: 0.75rem;">⏳ Đang Xếp...</span>`;
+      }
     } else {
       statusText = `<span style="font-weight: 800; color: #15803d; font-size: 0.82rem;">❤️ ${team.shipsRemaining} tàu</span>`;
     }

@@ -436,15 +436,14 @@ function fitPlacementGridToScreen() {
   const numRows = (ROWS && ROWS.length) ? ROWS.length : 20;
   if (!numCols || !numRows) return;
 
-  const padW = 4;
-  const padH = 4;
-  const availW = Math.max(50, (wrapper.clientWidth || wrapper.getBoundingClientRect().width) - padW);
-  const availH = Math.max(50, (wrapper.clientHeight || wrapper.getBoundingClientRect().height) - padH);
+  const rect = wrapper.getBoundingClientRect();
+  const pad = 4;
+  const availW = Math.max(50, Math.floor((rect.width || wrapper.clientWidth) - pad));
+  const availH = Math.max(50, Math.floor((rect.height || wrapper.clientHeight) - pad));
 
-  // Dynamic header sizes for mobile screen
-  const headerColW = Math.max(10, Math.min(20, Math.floor(availW / (numCols + 1.5))));
-  const headerRowH = Math.max(10, Math.min(18, Math.floor(availH / (numRows + 1.5))));
   const gap = 1;
+  const headerColW = Math.max(10, Math.min(18, Math.floor(availW / (numCols + 1.2))));
+  const headerRowH = Math.max(10, Math.min(16, Math.floor(availH / (numRows + 1.2))));
 
   const remainingW = availW - headerColW - (numCols * gap);
   const remainingH = availH - headerRowH - (numRows * gap);
@@ -462,8 +461,7 @@ function fitPlacementGridToScreen() {
   grid.style.height = 'fit-content';
   grid.style.margin = 'auto';
 
-  // Responsive font size for headers based on cellSize
-  const fontSz = Math.max(7, Math.min(11, Math.floor(cellSize * 0.72)));
+  const fontSz = Math.max(6, Math.min(11, Math.floor(cellSize * 0.7)));
   grid.querySelectorAll('.ocean-col-header, .ocean-row-header').forEach(h => {
     h.style.fontSize = `${fontSz}px`;
     h.style.lineHeight = `${cellSize}px`;
@@ -769,14 +767,14 @@ function fitBattleGridToScreen() {
   const numRows = (ROWS && ROWS.length) ? ROWS.length : 20;
   if (!numCols || !numRows) return;
 
-  const padW = 4;
-  const padH = 4;
-  const availW = Math.max(50, (wrapper.clientWidth || wrapper.getBoundingClientRect().width) - padW);
-  const availH = Math.max(50, (wrapper.clientHeight || wrapper.getBoundingClientRect().height) - padH);
+  const rect = wrapper.getBoundingClientRect();
+  const pad = 4;
+  const availW = Math.max(50, Math.floor((rect.width || wrapper.clientWidth) - pad));
+  const availH = Math.max(50, Math.floor((rect.height || wrapper.clientHeight) - pad));
 
-  const headerColW = Math.max(10, Math.min(20, Math.floor(availW / (numCols + 1.5))));
-  const headerRowH = Math.max(10, Math.min(18, Math.floor(availH / (numRows + 1.5))));
   const gap = 1;
+  const headerColW = Math.max(10, Math.min(18, Math.floor(availW / (numCols + 1.2))));
+  const headerRowH = Math.max(10, Math.min(16, Math.floor(availH / (numRows + 1.2))));
 
   const remainingW = availW - headerColW - (numCols * gap);
   const remainingH = availH - headerRowH - (numRows * gap);
@@ -784,8 +782,8 @@ function fitBattleGridToScreen() {
   let baseCellSize = Math.floor(Math.min(remainingW / numCols, remainingH / numRows));
   baseCellSize = Math.max(6, baseCellSize);
 
-  // Khi Zoom <= 1.0: Tự động khóa toàn màn hình 100%, không cần vuốt lên xuống
-  if (currentZoomLevel <= 1.0) {
+  // Khi Zoom <= 1.05: Tự động khóa toàn màn hình 100%, căn giữa tuyệt đối không cuộn
+  if (currentZoomLevel <= 1.05) {
     currentZoomLevel = 1.0;
     wrapper.style.overflow = 'hidden';
     grid.style.transform = 'none';
@@ -797,13 +795,13 @@ function fitBattleGridToScreen() {
     grid.style.height = 'fit-content';
     grid.style.margin = 'auto';
 
-    const fontSz = Math.max(7, Math.min(11, Math.floor(baseCellSize * 0.72)));
+    const fontSz = Math.max(6, Math.min(11, Math.floor(baseCellSize * 0.7)));
     grid.querySelectorAll('.ocean-col-header, .ocean-row-header').forEach(h => {
       h.style.fontSize = `${fontSz}px`;
       h.style.lineHeight = `${baseCellSize}px`;
     });
   } else {
-    // Khi phóng to (> 1.0): Cho phép cuộn tự do bên trong khung hải đồ với kích thước ô sắc nét
+    // Khi phóng to (> 1.05): Cho phép vuốt cuộn mượt mà với kích thước ô lớn hơn
     wrapper.style.overflow = 'auto';
     const zoomedCellSize = Math.max(baseCellSize, Math.round(baseCellSize * currentZoomLevel));
     const zoomedColW = Math.max(headerColW, Math.round(headerColW * currentZoomLevel));
@@ -1325,38 +1323,63 @@ function initEventListeners() {
     });
   }
 
-  // Điều khiển Zoom Hải đồ
-  const btnZoomIn = document.getElementById('btnZoomIn');
-  if (btnZoomIn) {
-    btnZoomIn.addEventListener('click', () => {
-      currentZoomLevel = Math.min(2.5, currentZoomLevel + 0.35);
-      fitBattleGridToScreen();
-    });
+  // Cử chỉ Phóng To / Thu Nhỏ Bằng 2 Ngón Tay (Pinch to Zoom) & Chạm Đúp
+  const battleWrapper = document.getElementById('mobileMapWrapper');
+  if (battleWrapper) {
+    setupPinchToZoom(battleWrapper, () => fitBattleGridToScreen());
   }
+  const placementWrapper = document.getElementById('placementMapWrapper');
+  if (placementWrapper) {
+    setupPinchToZoom(placementWrapper, () => fitPlacementGridToScreen());
+  }
+}
 
-  const btnZoomOut = document.getElementById('btnZoomOut');
-  if (btnZoomOut) {
-    btnZoomOut.addEventListener('click', () => {
-      currentZoomLevel = Math.max(1.0, currentZoomLevel - 0.35);
-      fitBattleGridToScreen();
-    });
-  }
+function setupPinchToZoom(wrapper, onZoomChange) {
+  if (!wrapper) return;
 
-  const btnZoomReset = document.getElementById('btnZoomReset');
-  if (btnZoomReset) {
-    btnZoomReset.addEventListener('click', () => {
-      currentZoomLevel = 1.0;
-      fitBattleGridToScreen();
-    });
-  }
+  let initialDistance = 0;
+  let startZoom = 1.0;
+  let lastTapTime = 0;
 
-  const btnZoomFit = document.getElementById('btnZoomFit');
-  if (btnZoomFit) {
-    btnZoomFit.addEventListener('click', () => {
-      currentZoomLevel = 1.0;
-      fitBattleGridToScreen();
-    });
-  }
+  wrapper.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      const p1 = e.touches[0];
+      const p2 = e.touches[1];
+      initialDistance = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+      startZoom = currentZoomLevel;
+    } else if (e.touches.length === 1) {
+      const now = Date.now();
+      if (now - lastTapTime < 320) {
+        // Chạm đúp: Chuyển đổi giữa 100% Fit toàn màn hình và Phóng to 1.8x
+        currentZoomLevel = currentZoomLevel > 1.1 ? 1.0 : 1.8;
+        if (onZoomChange) onZoomChange();
+        lastTapTime = 0;
+      } else {
+        lastTapTime = now;
+      }
+    }
+  }, { passive: true });
+
+  wrapper.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && initialDistance > 0) {
+      e.preventDefault();
+      const p1 = e.touches[0];
+      const p2 = e.touches[1];
+      const currentDistance = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+      const factor = currentDistance / initialDistance;
+      const targetZoom = Math.max(1.0, Math.min(3.0, startZoom * factor));
+      if (Math.abs(targetZoom - currentZoomLevel) > 0.03) {
+        currentZoomLevel = targetZoom;
+        if (onZoomChange) onZoomChange();
+      }
+    }
+  }, { passive: false });
+
+  wrapper.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) {
+      initialDistance = 0;
+    }
+  }, { passive: true });
 }
 
 function buildPlayerStateFromRoomState(roomState, targetTeamId) {
