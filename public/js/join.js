@@ -10,7 +10,11 @@ let ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
 let socket = null;
 let currentRoomId = 'PHONG-01';
 let myTeamId = null;
-let myDeviceToken = localStorage.getItem('dai_hai_chien_token') || null;
+let myDeviceToken = localStorage.getItem('dai_hai_chien_token');
+if (!myDeviceToken) {
+  myDeviceToken = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+  localStorage.setItem('dai_hai_chien_token', myDeviceToken);
+}
 let myPlayerState = null;
 let soundManager = null;
 let turnTickerInterval = null;
@@ -37,12 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const urlParams = new URLSearchParams(window.location.search);
   currentRoomId = urlParams.get('room') || 'PHONG-01';
-
-  const savedTeamId = localStorage.getItem('dai_hai_chien_team_id');
-  if (savedTeamId) {
-    myTeamId = parseInt(savedTeamId, 10);
-    selectedSlotId = myTeamId;
-  }
 
   renderTeamSlots(DEFAULT_TEAMS_FALLBACK);
   initSocket();
@@ -187,17 +185,30 @@ function updatePlayerUI(state) {
     }
   }
 
-  // Khớp hạm đội bằng deviceToken trước, sau đó bằng myTeamId
-  if (!myTeam && myDeviceToken && state.teamsOverview) {
-    myTeam = state.teamsOverview.find(t => t.deviceToken === myDeviceToken);
+  // CHỈ KHỚP ĐỘI CỦA THIẾT BỊ NÀY KHI:
+  // 1. myDeviceToken hợp lệ
+  // 2. VÀ team trên Máy Chủ đang kết nối (isConnected === true)
+  // 3. VÀ deviceToken của team đó TRÙNG KHỚP với myDeviceToken của máy này
+  let verifiedTeam = null;
+  if (myDeviceToken && state.teamsOverview) {
+    verifiedTeam = state.teamsOverview.find(t => t.isConnected && t.deviceToken && t.deviceToken === myDeviceToken);
   }
-  const numTeamId = myTeamId ? parseInt(myTeamId, 10) : null;
-  if (!myTeam && numTeamId && state.teamsOverview) {
-    myTeam = state.teamsOverview.find(t => parseInt(t.id, 10) === numTeamId);
+
+  // Nếu không khớp thiết bị (ví dụ người khác quét QR, hoặc phòng đã bị Host đặt lại):
+  // Tuyệt đối không nhận vơ đội!
+  if (verifiedTeam) {
+    myTeam = verifiedTeam;
+    myTeamId = verifiedTeam.id;
+    localStorage.setItem('dai_hai_chien_team_id', verifiedTeam.id);
+  } else {
+    myTeam = null;
+    myTeamId = null;
+    localStorage.removeItem('dai_hai_chien_team_id');
   }
-  if (myTeam) {
-    myTeamId = myTeam.id;
-    localStorage.setItem('dai_hai_chien_team_id', myTeam.id);
+
+  // Luôn cập nhật trạng thái danh sách các vị trí đội ở form đăng ký
+  if (state.teamsOverview) {
+    renderTeamSlots(state.teamsOverview);
   }
 
   // Cập nhật Header & Badge thông tin hạm đội
@@ -302,52 +313,84 @@ function renderTeamSlots(teams) {
   const container = document.getElementById('teamSlotsContainer');
   if (!container || !teams) return;
 
-  // Tự động chọn vị trí đội khả dụng đầu tiên nếu chưa chọn
-  if (!selectedSlotId || !teams.some(t => parseInt(t.id, 10) === parseInt(selectedSlotId, 10))) {
-    const firstAvail = teams.find(t => !t.isConnected || t.isBot || (myTeamId && parseInt(myTeamId, 10) === parseInt(t.id, 10)));
+  // Nếu slot đang chọn đã bị người khác chiếm (isConnected và không phải deviceToken của mình), bỏ chọn
+  if (selectedSlotId) {
+    const currentSelected = teams.find(t => t.id === selectedSlotId);
+    if (currentSelected && currentSelected.isConnected && currentSelected.deviceToken !== myDeviceToken) {
+      selectedSlotId = null;
+    }
+  }
+
+  // Tự động gợi ý chọn ô trống đầu tiên nếu chưa chọn
+  if (!selectedSlotId) {
+    const firstAvail = teams.find(t => !t.isConnected && !t.isBot);
     if (firstAvail) {
       selectedSlotId = firstAvail.id;
     }
   }
 
+  const badgeEl = document.getElementById('selectedSlotBadge');
+  if (badgeEl) {
+    if (selectedSlotId) {
+      const sel = teams.find(t => t.id === selectedSlotId);
+      badgeEl.textContent = sel ? `Đang chọn: Vị trí #${sel.id}` : 'Tự động chọn ô trống';
+    } else {
+      badgeEl.textContent = 'Phòng đã kín';
+    }
+  }
+
   container.innerHTML = '';
   teams.forEach(t => {
-    const isSelected = selectedSlotId !== null && parseInt(selectedSlotId, 10) === parseInt(t.id, 10);
+    const isSelected = selectedSlotId !== null && t.id === selectedSlotId;
+    const isTaken = t.isConnected && (!t.deviceToken || t.deviceToken !== myDeviceToken);
+    const isMine = t.isConnected && t.deviceToken === myDeviceToken;
+
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.dataset.slotId = t.id;
-    btn.className = `slot-btn ${isSelected ? 'selected' : ''}`;
-    
-    // Nếu là bot hoặc chưa có ai kết nối thì có thể chọn
-    const canSelect = !t.isConnected || (myTeamId && parseInt(myTeamId, 10) === parseInt(t.id, 10)) || t.isBot;
-    if (!canSelect) {
-      btn.classList.add('taken');
-      btn.disabled = true;
-    }
+    btn.style.padding = '8px 10px';
+    btn.style.borderRadius = '8px';
+    btn.style.border = isSelected ? '2px solid #0284c7' : '1px solid #cbd5e1';
+    btn.style.background = isSelected ? '#e0f2fe' : (isTaken ? '#f1f5f9' : '#ffffff');
+    btn.style.cursor = isTaken ? 'not-allowed' : 'pointer';
+    btn.style.opacity = isTaken ? '0.6' : '1';
+    btn.style.display = 'flex';
+    btn.style.flexDirection = 'column';
+    btn.style.alignItems = 'flex-start';
+    btn.style.gap = '2px';
+    btn.style.textAlign = 'left';
+    btn.style.boxShadow = isSelected ? '0 0 8px rgba(2, 132, 199, 0.4)' : 'none';
 
-    let statusLabel = '🟢 Vị trí trống (Bấm chọn)';
-    if (t.isConnected && (!myTeamId || parseInt(myTeamId, 10) !== parseInt(t.id, 10))) {
-      statusLabel = '👤 Đã có chỉ huy khác';
+    let statusText = '🟢 Trống (Bấm chọn)';
+    let statusColor = '#16a34a';
+    if (isMine) {
+      statusText = '⭐ Đội của bạn';
+      statusColor = '#0284c7';
+    } else if (isTaken) {
+      statusText = `🔴 Đã có: ${t.name || 'Người chơi'}`;
+      statusColor = '#dc2626';
     } else if (t.isBot) {
-      statusLabel = '🤖 Máy tự động (Bấm nhận đội)';
-    } else if (myTeamId && parseInt(myTeamId, 10) === parseInt(t.id, 10)) {
-      statusLabel = '⭐ Đội của bạn';
+      statusText = '🤖 Máy tự động';
+      statusColor = '#64748b';
     }
 
     btn.innerHTML = `
-      <span style="font-size: 1.3rem;">${t.icon}</span>
-      <div style="flex: 1; text-align: left;">
-        <div style="font-weight: 800; color: ${t.colorHex}; font-size: 0.95rem;">${t.name}</div>
-        <div style="font-size: 0.75rem; color: #64748b;">${statusLabel}</div>
+      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+        <span style="font-weight: 800; font-size: 0.85rem; color: ${t.colorHex || '#0f172a'};">${t.icon || '⚓'} Vị trí #${t.id}</span>
+        ${isSelected ? '<span style="font-size: 0.7rem; font-weight: 900; color: #0284c7;">✓ CHỌN</span>' : ''}
       </div>
-      <div>
-        ${isSelected ? '<span style="color: var(--navy-primary); font-weight: bold;">✓ ĐÃ CHỌN</span>' : ''}
+      <div style="font-size: 0.72rem; color: ${statusColor}; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+        ${statusText}
       </div>
     `;
 
-    if (canSelect) {
+    if (!isTaken) {
       btn.addEventListener('click', () => {
         selectedSlotId = t.id;
+        const nameInput = document.getElementById('inputPlayerName');
+        if (nameInput && !nameInput.value.trim()) {
+          nameInput.placeholder = `VD: ${t.name || ('Chiến Hạm #' + t.id)}`;
+        }
         renderTeamSlots(teams);
       });
     }
@@ -826,15 +869,22 @@ function initEventListeners() {
   // Nút Tham Gia Đội
   const joinTeamAction = () => {
     const inputEl = document.getElementById('inputPlayerName');
-    const name = (inputEl && inputEl.value.trim()) ? inputEl.value.trim() : '';
+    let name = (inputEl && inputEl.value.trim()) ? inputEl.value.trim() : '';
+
+    if (!name && selectedSlotId && myPlayerState && myPlayerState.teamsOverview) {
+      const targetTeam = myPlayerState.teamsOverview.find(t => t.id === selectedSlotId);
+      if (targetTeam && targetTeam.name && !targetTeam.name.startsWith('Ô Trống')) {
+        name = targetTeam.name;
+      }
+    }
     if (!name) {
-      alert('Vui lòng nhập tên chiến hạm (tên đội) của bạn!');
-      if (inputEl) inputEl.focus();
-      return;
+      name = `Chiến Hạm #${selectedSlotId || 1}`;
     }
 
-    myDeviceToken = myDeviceToken || Math.random().toString(36).substring(2);
-    localStorage.setItem('dai_hai_chien_token', myDeviceToken);
+    if (!myDeviceToken) {
+      myDeviceToken = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      localStorage.setItem('dai_hai_chien_token', myDeviceToken);
+    }
     localStorage.setItem('dai_hai_chien_name', name);
 
     const joinFormArea = document.getElementById('joinFormArea');
@@ -845,11 +895,12 @@ function initEventListeners() {
     const waitTitle = document.getElementById('waitingAssignedShipTitle');
     if (waitTitle) waitTitle.innerHTML = `🚢 <b>${name}</b>`;
     const waitSub = document.getElementById('waitingAssignedShipSub');
-    if (waitSub) waitSub.textContent = 'Đang đồng bộ vào ô trống trên Máy Chủ...';
+    waitSub.textContent = `Đang kết nối vào Vị trí #${selectedSlotId || 'trống'} trên Máy Chủ...`;
 
     if (socket && socket.connected) {
       socket.emit('player:join', {
         roomId: currentRoomId,
+        teamId: selectedSlotId,
         playerName: name,
         deviceToken: myDeviceToken,
       });
@@ -858,6 +909,7 @@ function initEventListeners() {
     if (window.firebaseSync && window.firebaseSync.isReady) {
       window.firebaseSync.clientSendAction(currentRoomId, {
         type: 'JOIN',
+        teamId: selectedSlotId,
         playerName: name,
         deviceToken: myDeviceToken,
       });
@@ -874,6 +926,61 @@ function initEventListeners() {
     inputNameEl.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         joinTeamAction();
+      }
+    });
+  }
+
+  // Nút Đổi Tên / Đổi Vị Trí Đội
+  const btnChangeTeam = document.getElementById('btnChangeTeam');
+  if (btnChangeTeam) {
+    btnChangeTeam.addEventListener('click', () => {
+      const joinFormArea = document.getElementById('joinFormArea');
+      const waitingEl = document.getElementById('waitingRoomState');
+      if (joinFormArea) joinFormArea.style.display = 'block';
+      if (waitingEl) waitingEl.style.display = 'none';
+
+      const inputEl = document.getElementById('inputPlayerName');
+      if (inputEl && myPlayerState && myPlayerState.myTeam) {
+        inputEl.value = myPlayerState.myTeam.name || '';
+        inputEl.focus();
+      }
+
+      if (myPlayerState && myPlayerState.teamsOverview) {
+        renderTeamSlots(myPlayerState.teamsOverview);
+      }
+    });
+  }
+
+  // Nút Rời Phòng / Hủy Đội
+  const btnLeaveRoom = document.getElementById('btnLeaveRoom');
+  if (btnLeaveRoom) {
+    btnLeaveRoom.addEventListener('click', () => {
+      if (!confirm('Bạn có chắc chắn muốn rời phòng và hủy vị trí chiến hạm này?')) return;
+
+      if (myTeamId) {
+        if (socket && socket.connected) {
+          socket.emit('player:leave', { roomId: currentRoomId, teamId: myTeamId, deviceToken: myDeviceToken });
+        }
+        if (window.firebaseSync && window.firebaseSync.isReady) {
+          window.firebaseSync.clientSendAction(currentRoomId, {
+            type: 'LEAVE',
+            teamId: myTeamId,
+            deviceToken: myDeviceToken,
+          });
+        }
+      }
+
+      myTeamId = null;
+      selectedSlotId = null;
+      localStorage.removeItem('dai_hai_chien_team_id');
+
+      const joinFormArea = document.getElementById('joinFormArea');
+      const waitingEl = document.getElementById('waitingRoomState');
+      if (joinFormArea) joinFormArea.style.display = 'block';
+      if (waitingEl) waitingEl.style.display = 'none';
+
+      if (myPlayerState && myPlayerState.teamsOverview) {
+        renderTeamSlots(myPlayerState.teamsOverview);
       }
     });
   }
@@ -1017,19 +1124,19 @@ function initEventListeners() {
 
 function buildPlayerStateFromRoomState(roomState, targetTeamId) {
   if (!roomState || !roomState.teams) return roomState;
-  const numTargetId = targetTeamId ? parseInt(targetTeamId, 10) : null;
+
   let myTeam = null;
   if (myDeviceToken) {
-    myTeam = roomState.teams.find(t => t.deviceToken === myDeviceToken);
-  }
-  if (!myTeam && numTargetId) {
-    myTeam = roomState.teams.find(t => parseInt(t.id, 10) === numTargetId);
+    myTeam = roomState.teams.find(t => t.isConnected && t.deviceToken && t.deviceToken === myDeviceToken);
   }
   if (myTeam) {
     myTeamId = myTeam.id;
     localStorage.setItem('dai_hai_chien_team_id', myTeam.id);
+  } else {
+    myTeamId = null;
+    localStorage.removeItem('dai_hai_chien_team_id');
   }
-  const effectiveTeamId = myTeam ? myTeam.id : numTargetId;
+  const effectiveTeamId = myTeam ? myTeam.id : null;
 
   return {
     phase: roomState.phase,

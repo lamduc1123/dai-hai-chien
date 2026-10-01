@@ -308,11 +308,23 @@
       </h2>
 
       <div id="joinFormArea">
+        <div style="margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin: 0; font-weight: 800; color: var(--navy-dark); font-size: 0.88rem;">
+              🎯 CHỌN VỊ TRÍ CHIẾN HẠM:
+            </label>
+            <span id="selectedSlotBadge" style="color: #0284c7; font-weight: 900; font-size: 0.8rem;">Đang chọn ô trống</span>
+          </div>
+          <div id="teamSlotsContainer" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <!-- Render danh sách đội khả dụng -->
+          </div>
+        </div>
+
         <div class="form-group" style="margin-bottom: 12px;">
-          <label class="form-label" style="font-weight: 800; color: var(--navy-dark); font-size: 0.92rem;">
+          <label class="form-label" style="font-weight: 800; color: var(--navy-dark); font-size: 0.88rem;">
             🚢 ĐẶT TÊN CHIẾN HẠM (TÊN ĐỘI):
           </label>
-          <input type="text" id="inputPlayerName" class="form-control" placeholder="Nhập tên hạm đội (VD: Bạch Đằng, Hắc Long, Hạm 01...)" maxlength="20" style="font-weight: 800; text-align: center; font-size: 1.1rem; padding: 12px; border: 2px solid var(--border-ocean);">
+          <input type="text" id="inputPlayerName" class="form-control" placeholder="Nhập tên hạm đội (VD: Bạch Đằng, Hắc Long, Hạm 01...)" maxlength="20" style="font-weight: 800; text-align: center; font-size: 1.05rem; padding: 12px; border: 2px solid var(--border-ocean);">
         </div>
 
         <button id="btnJoinTeam" class="btn btn-primary btn-large" style="width: 100%; font-size: 1.05rem; padding: 14px; font-weight: 900; letter-spacing: 0.5px;">
@@ -320,7 +332,7 @@
         </button>
 
         <div style="font-size: 0.78rem; color: #64748b; text-align: center; margin-top: 10px; line-height: 1.4;">
-          💡 Sau khi bấm tham gia, chiến hạm của bạn sẽ tự động kết nối vào ô trống và hiển thị trực tiếp trên màn hình máy chủ.
+          💡 Chọn vị trí chiến hạm và đặt tên đội của bạn, sau đó bấm Xác Nhận Tham Gia để hiển thị lên màn hình máy chủ.
         </div>
       </div>
 
@@ -338,6 +350,15 @@
         <button id="btnToggleReady" class="btn btn-success btn-large" style="width: 100%; font-size: 1rem; font-weight: 800;">
           ✓ ĐÃ SẴN SÀNG CHIẾN ĐẤU
         </button>
+
+        <div style="display: flex; gap: 8px; margin-top: 10px;">
+          <button id="btnChangeTeam" class="btn btn-outline" type="button" style="flex: 1; font-size: 0.85rem; font-weight: 700; padding: 10px 8px; border-color: #94a3b8; color: #475569;">
+            🔄 Đổi Tên / Đổi Đội
+          </button>
+          <button id="btnLeaveRoom" class="btn btn-outline" type="button" style="font-size: 0.85rem; font-weight: 700; padding: 10px 12px; border-color: #ef4444; color: #ef4444;">
+            🚪 Rời Phòng
+          </button>
+        </div>
       </div>
     </section>
 

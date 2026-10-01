@@ -226,6 +226,34 @@ function joinTeam(roomId, { teamId, playerName, deviceToken, socketId }) {
   };
 }
 
+function leaveTeam(roomId, { teamId, deviceToken }) {
+  const room = getRoom(roomId);
+  if (!room) return false;
+
+  let team = null;
+  if (deviceToken) {
+    team = room.gameState.teams.find(t => t.deviceToken === deviceToken);
+  }
+  const parsedTeamId = teamId ? parseInt(teamId, 10) : null;
+  if (!team && parsedTeamId) {
+    team = room.gameState.teams.find(t => t.id === parsedTeamId);
+  }
+  if (!team) return false;
+
+  team.isConnected = false;
+  team.deviceToken = null;
+  team.isReady = false;
+  team.customName = '';
+  const defaultMeta = DEFAULT_TEAMS[team.id - 1];
+  team.name = defaultMeta ? defaultMeta.name : `Chiến Hạm #${team.id}`;
+
+  room.sockets.teams.delete(team.id);
+  if (deviceToken) {
+    room.playerSessions.delete(deviceToken);
+  }
+  return true;
+}
+
 function toggleTeamReady(roomId, teamId) {
   const room = getRoom(roomId);
   if (!room) return false;
@@ -393,6 +421,7 @@ module.exports = {
   fillRemainingBots,
   removeBot,
   joinTeam,
+  leaveTeam,
   toggleTeamReady,
   startPlacement,
   autoPlaceTeamFleet,

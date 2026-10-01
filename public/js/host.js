@@ -239,6 +239,8 @@ function handleIncomingFirebaseAction(action) {
       socket.emit('player:auto_place', { roomId: currentRoomId, teamId: targetTeamId });
     } else if (action.type === 'LOCK_FLEET') {
       socket.emit('player:lock_fleet', { roomId: currentRoomId, teamId: targetTeamId, fleet: action.fleet });
+    } else if (action.type === 'LEAVE') {
+      socket.emit('player:leave', { roomId: currentRoomId, teamId: targetTeamId, deviceToken: action.deviceToken });
     }
     return;
   }
@@ -250,6 +252,25 @@ function handleIncomingFirebaseAction(action) {
     processLocalShot(targetTeamId, action.targetKey);
   } else if (action.type === 'CROSSFIRE') {
     processLocalCrossfire(targetTeamId, action.centerKey);
+  } else if (action.type === 'LEAVE') {
+    let team = null;
+    if (action.deviceToken) {
+      team = currentHostState.teams.find(t => t.deviceToken === action.deviceToken);
+    }
+    if (!team && targetTeamId) {
+      team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
+    }
+    if (team) {
+      const oldName = team.name;
+      team.isConnected = false;
+      team.deviceToken = null;
+      team.isReady = false;
+      team.customName = '';
+      const defaultMeta = window.GameEngine && window.GameEngine.DEFAULT_TEAMS ? window.GameEngine.DEFAULT_TEAMS[team.id - 1] : null;
+      team.name = defaultMeta ? defaultMeta.name : `Chiến Hạm #${team.id}`;
+      addLogItem(`👋 Chiến hạm <b>${oldName}</b> đã rời [Vị Trí #${team.id}]. Ô này hiện đang trống!`, 'miss');
+      commitLocalState();
+    }
   } else if (action.type === 'JOIN') {
     let team = null;
     // 1. Kiểm tra xem thiết bị này đã từng nhận slot nào chưa

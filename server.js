@@ -17,6 +17,7 @@ const {
   addBot,
   fillRemainingBots,
   joinTeam,
+  leaveTeam,
   toggleTeamReady,
   startPlacement,
   autoPlaceTeamFleet,
@@ -343,6 +344,16 @@ io.on('connection', (socket) => {
       state: getPlayerState(room.gameState, joinRes.teamId),
     });
 
+    broadcastRoomState(room);
+  });
+
+  // 11b. Người chơi đổi đội / rời phòng
+  socket.on('player:leave', ({ roomId, teamId, deviceToken }) => {
+    let targetRoomId = roomId ? roomId.toUpperCase() : defaultRoom.roomId;
+    let room = getRoom(targetRoomId);
+    if (!room) return;
+
+    leaveTeam(targetRoomId, { teamId, deviceToken });
     broadcastRoomState(room);
   });
 
