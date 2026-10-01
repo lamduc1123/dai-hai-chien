@@ -450,7 +450,25 @@ function initEvents() {
     btnSound.addEventListener('click', () => {
       const enabled = soundManager.isEnabled();
       soundManager.setEnabled(!enabled);
-      btnSound.textContent = !enabled ? '🔊' : '🔇';
+      btnSound.textContent = !enabled ? '🔊 SFX' : '🔇 Tắt';
+    });
+  }
+
+  const btnProjBgm = document.getElementById('btnProjBgm');
+  if (btnProjBgm) {
+    btnProjBgm.addEventListener('click', () => {
+      const isPlaying = soundManager.toggleBgm();
+      btnProjBgm.textContent = isPlaying ? '🔊 Nhạc Bật' : '🎵 Nhạc';
+      btnProjBgm.style.background = isPlaying ? '#0284c7' : '';
+      btnProjBgm.style.color = isPlaying ? '#ffffff' : '';
+    });
+  }
+
+  const sliderProjBgm = document.getElementById('sliderProjBgm');
+  if (sliderProjBgm) {
+    sliderProjBgm.addEventListener('input', (e) => {
+      const vol = parseInt(e.target.value, 10) / 100;
+      soundManager.setBgmVolume(vol);
     });
   }
 

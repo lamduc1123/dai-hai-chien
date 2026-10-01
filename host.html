@@ -205,7 +205,11 @@
         <button id="btnFillBots" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem; border-color: #059669; color: #059669;" title="Lấp đầy các đội trống bằng máy">🤖 Đầy Bot</button>
         <button id="btnOpenQR" class="btn btn-primary" style="padding: 3px 10px; font-size: 0.75rem;" title="Mã QR cho người chơi quét">📱 Mã QR</button>
         <a href="screen.html" target="_blank" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem;" title="Mở Màn Hình Trình Chiếu Máy Chiếu">📺 Máy Chiếu</a>
-        <button id="btnSoundToggle" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem;" title="Bật/Tắt âm thanh">🔊 Âm Thanh</button>
+        <div style="display: inline-flex; align-items: center; gap: 4px; background: #f8fafc; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--border-ocean);">
+          <button id="btnBgmToggle" class="btn btn-outline" style="padding: 2px 7px; font-size: 0.72rem; font-weight: 800; border-color: #0284c7; color: #0284c7;" title="Bật/Tắt Nhạc Nền Hào Hùng">🎵 Nhạc Nền</button>
+          <input type="range" id="sliderBgmVolume" min="0" max="100" value="35" style="width: 55px; height: 14px; cursor: pointer; accent-color: #0284c7;" title="Âm lượng nhạc nền">
+          <button id="btnSoundToggle" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.72rem;" title="Bật/Tắt hiệu ứng tiếng nổ / bắn">🔊 SFX</button>
+        </div>
         <button id="btnResetGame" class="btn btn-danger" style="padding: 3px 9px; font-size: 0.75rem;" title="Đặt lại ván mới">🔄 Đặt Lại</button>
       </div>
     </header>

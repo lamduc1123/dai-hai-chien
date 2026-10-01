@@ -301,8 +301,13 @@
         </div>
       </div>
     </div>
-    <div id="teamBadgeHeader" class="badge" style="display: none; background: #e0f2fe; color: #0284c7;">
-      ĐỘI
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <button id="btnMobileBgm" class="btn btn-outline" type="button" style="padding: 4px 8px; font-size: 0.76rem; border-radius: 20px; font-weight: 800; border-color: #0284c7; color: #0284c7;" title="Bật/Tắt Nhạc Nền">
+        🎵 Nhạc
+      </button>
+      <div id="teamBadgeHeader" class="badge" style="display: none; background: #e0f2fe; color: #0284c7;">
+        ĐỘI
+      </div>
     </div>
   </header>
 
@@ -382,6 +387,13 @@
         </button>
       </div>
 
+      <!-- NÚT SẴN SÀNG ĐẶT NGAY PHÍA TRÊN HẢI ĐỒ: ĐẢM BẢO 100% LUÔN HIỂN THỊ RÕ RÀNG KHÔNG THỂ BỊ CHE -->
+      <div class="placement-ready-strip" style="flex-shrink: 0; padding: 3px 0;">
+        <button id="btnLockFleetTop" class="btn btn-success btn-large btn-lock-fleet" type="button" style="width: 100%; padding: 11px 14px; font-size: 0.96rem; font-weight: 900; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.45); letter-spacing: 0.3px;">
+          ✓ XÁC NHẬN SẴN SÀNG & KHÓA VỊ TRÍ
+        </button>
+      </div>
+
       <!-- Khung hải đồ tự động co giãn vừa khít 100% màn hình điện thoại -->
       <div class="ocean-map-wrapper placement-map-wrapper" id="placementMapWrapper">
         <div id="placementGrid" class="ocean-grid placement-grid">
@@ -389,7 +401,7 @@
         </div>
       </div>
 
-      <!-- Nút Khóa Hạm Đội & Tóm tắt hạm đội -->
+      <!-- Nút Khóa Hạm Đội & Tóm tắt hạm đội ở đáy -->
       <div class="placement-bottombar">
         <button id="btnLockFleet" class="btn btn-success btn-large btn-lock-fleet" type="button">
           ✓ XÁC NHẬN SẴN SÀNG & KHÓA VỊ TRÍ

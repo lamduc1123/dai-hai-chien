@@ -173,6 +173,13 @@ function handleLocalHostAction(actionType, payload) {
     const res = window.GameEngine.startBattlePhase(currentHostState);
     if (res && typeof res === 'object') currentHostState = res;
     soundManager.playAlarm();
+    soundManager.startBgm();
+    const btnBgm = document.getElementById('btnBgmToggle');
+    if (btnBgm) {
+      btnBgm.textContent = '🔊 Nhạc Bật';
+      btnBgm.style.background = '#0284c7';
+      btnBgm.style.color = '#ffffff';
+    }
     addLogItem('⚔️ BÁO ĐỘNG ĐỎ: CUỘC CHIẾN CHÍNH THỨC BẮT ĐẦU!', 'sunk');
     commitLocalState();
     checkBotTurn();
@@ -1150,13 +1157,32 @@ function initEventListeners() {
     });
   }
 
-  // Bật/Tắt âm thanh
+  // Bật/Tắt hiệu ứng âm thanh SFX
   on('btnSoundToggle', () => {
     const isEnabled = soundManager.isEnabled();
     soundManager.setEnabled(!isEnabled);
     const btn = document.getElementById('btnSoundToggle');
-    if (btn) btn.textContent = !isEnabled ? '🔊 Âm Thanh' : '🔇 Đã Tắt Âm';
+    if (btn) btn.textContent = !isEnabled ? '🔊 SFX' : '🔇 Tắt';
   });
+
+  // Bật/Tắt Nhạc Nền Hào Hùng BGM
+  on('btnBgmToggle', () => {
+    const isPlaying = soundManager.toggleBgm();
+    const btn = document.getElementById('btnBgmToggle');
+    if (btn) {
+      btn.textContent = isPlaying ? '🔊 Nhạc Bật' : '🎵 Nhạc Nền';
+      btn.style.background = isPlaying ? '#0284c7' : '';
+      btn.style.color = isPlaying ? '#ffffff' : '#0284c7';
+    }
+  });
+
+  const sliderBgm = document.getElementById('sliderBgmVolume');
+  if (sliderBgm) {
+    sliderBgm.addEventListener('input', (e) => {
+      const vol = parseInt(e.target.value, 10) / 100;
+      soundManager.setBgmVolume(vol);
+    });
+  }
 
   // Modal QR
   on('btnOpenQR', openQRModal);

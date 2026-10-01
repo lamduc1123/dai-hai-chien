@@ -170,7 +170,11 @@
             <div id="projQrUrl" style="color: var(--navy-primary); font-size: 0.68rem; font-weight: bold;"></div>
           </div>
         </div>
-        <button id="btnToggleSound" class="fullscreen-btn" title="Bật/Tắt âm thanh">🔊</button>
+        <div style="display: flex; align-items: center; gap: 5px; background: #f8fafc; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-ocean);">
+          <button id="btnProjBgm" class="fullscreen-btn" style="font-size: 0.82rem; padding: 4px 8px;" title="Bật/Tắt Nhạc Nền">🎵 Nhạc</button>
+          <input type="range" id="sliderProjBgm" min="0" max="100" value="35" style="width: 50px; height: 14px; cursor: pointer; accent-color: #0284c7;" title="Âm lượng nhạc nền">
+          <button id="btnToggleSound" class="fullscreen-btn" style="padding: 4px 8px; font-size: 0.85rem;" title="Bật/Tắt âm thanh SFX">🔊 SFX</button>
+        </div>
         <button id="btnFullscreen" class="fullscreen-btn" title="Toàn màn hình">⛶ F11</button>
       </div>
     </header>
