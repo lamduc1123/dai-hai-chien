@@ -688,7 +688,8 @@ function initEventListeners() {
       alert('Vui lòng chọn 1 vị trí đội tham gia!');
       return;
     }
-    const name = document.getElementById('inputPlayerName').value.trim() || `Chỉ Huy #${selectedSlotId}`;
+    const inputEl = document.getElementById('inputPlayerName');
+    const name = (inputEl && inputEl.value.trim()) ? inputEl.value.trim() : `Chiến Hạm #${selectedSlotId}`;
 
     myTeamId = selectedSlotId;
     myDeviceToken = myDeviceToken || Math.random().toString(36).substring(2);

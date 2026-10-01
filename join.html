@@ -179,12 +179,12 @@
       </h2>
 
       <div class="form-group">
-        <label class="form-label">Tên Chỉ Huy / Tên Đội:</label>
-        <input type="text" id="inputPlayerName" class="form-control" placeholder="Nhập tên thuyền trưởng của bạn..." maxlength="20">
+        <label class="form-label" style="font-weight: 800; color: var(--navy-dark);">🚢 TÊN ĐỘI / TÊN CHIẾN HẠM:</label>
+        <input type="text" id="inputPlayerName" class="form-control" placeholder="Nhập tên chiến hạm (VD: Hắc Long, Đại Bàng, Hạm 01...)" maxlength="20" style="font-weight: 800; text-align: center; font-size: 1rem;">
       </div>
 
       <div class="form-group">
-        <label class="form-label">Chọn Vị Trí Chiến Hạm:</label>
+        <label class="form-label" style="font-weight: 800; color: var(--navy-dark);">Chọn Vị Trí Chiến Hạm:</label>
         <div id="teamSlotsContainer" style="display: flex; flex-direction: column; gap: 8px;">
           <!-- Nút chọn đội sinh động bằng JS -->
         </div>
@@ -197,10 +197,10 @@
       <!-- Trạng thái chờ sau khi đã vào đội -->
       <div id="waitingRoomState" style="display: none; margin-top: 16px; text-align: center; border-top: 1px solid var(--border-ocean); padding-top: 16px;">
         <div style="font-size: 1rem; font-weight: bold; color: var(--navy-dark); margin-bottom: 8px;">
-          Bạn đã vào vị trí thành công!
+          Chiến hạm đã vào vị trí thành công!
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
-          Bấm nút sẵn sàng để thông báo cho chỉ huy trưởng bắt đầu dàn trận.
+          Bấm nút sẵn sàng để thông báo cho máy chủ bắt đầu dàn trận.
         </p>
         <button id="btnToggleReady" class="btn btn-success btn-large" style="width: 100%;">
           ✓ BẤM SẴN SÀNG

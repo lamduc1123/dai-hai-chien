@@ -413,10 +413,7 @@ function renderSurvivalBar() {
         <span style="font-size: 1.4rem;">${t.icon}</span>
         <div>
           <div style="font-weight: 800; font-size: 0.9rem; color: ${t.colorHex};">
-            ${isMe ? 'Bạn (Hải Ưng)' : t.name}
-          </div>
-          <div style="font-size: 0.72rem; color: #64748b;">
-            ${t.isBot ? '🤖 AI Máy' : '👤 Chỉ Huy'}
+            ${isMe ? 'Bạn (Hải Ưng)' : t.name} ${t.isBot ? '<span style="font-size: 0.72rem; color: #64748b; font-weight: normal;">(🤖 AI)</span>' : ''}
           </div>
         </div>
       </div>

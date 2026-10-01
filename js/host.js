@@ -248,9 +248,12 @@ function handleIncomingFirebaseAction(action) {
     const team = currentHostState.teams.find(t => t.id === action.teamId);
     if (team) {
       team.isConnected = true;
-      team.playerName = action.playerName || team.name;
+      if (action.playerName && action.playerName.trim()) {
+        team.customName = action.playerName.trim();
+        team.name = team.customName;
+      }
       team.isBot = false;
-      addLogItem(`👤 <b>${team.playerName}</b> đã gia nhập [${team.name}]!`, 'hit');
+      addLogItem(`🚢 Chiến hạm <b>${team.name}</b> đã vào vị trí sẵn sàng!`, 'hit');
       commitLocalState();
     }
   } else if (action.type === 'READY') {
@@ -676,8 +679,9 @@ function renderTeamsRoster(state) {
       <div style="display: flex; align-items: center; gap: 6px;">
         <span style="font-size: 1.25rem;">${team.icon}</span>
         <div>
-          <div style="font-weight: 800; color: ${team.colorHex}; font-size: 0.85rem; line-height: 1.2;">${team.name}</div>
-          <div style="font-size: 0.7rem; color: #64748b;">${team.isBot ? '🤖 Bot AI' : (team.playerName || 'Trống')}</div>
+          <div style="font-weight: 800; color: ${team.colorHex}; font-size: 0.85rem; line-height: 1.2;" title="${state.phase === 'LOBBY' ? 'Bấm đúp để đổi tên chiến hạm' : ''}">
+            ${team.name} ${team.isBot ? '<span style="font-size: 0.65rem; color: #64748b; font-weight: normal;">(🤖 AI)</span>' : ''}
+          </div>
         </div>
       </div>
       <div style="text-align: right;">
@@ -687,6 +691,18 @@ function renderTeamsRoster(state) {
         </div>
       </div>
     `;
+
+    if (state.phase === 'LOBBY') {
+      card.style.cursor = 'pointer';
+      card.addEventListener('dblclick', () => {
+        const newName = prompt(`Nhập tên chiến hạm mới cho Đội ${team.id}:`, team.name);
+        if (newName && newName.trim()) {
+          team.customName = newName.trim().substring(0, 20);
+          team.name = team.customName;
+          commitLocalState();
+        }
+      });
+    }
 
     container.appendChild(card);
   });

@@ -289,8 +289,9 @@ function renderProjectorSurvivalBar(state) {
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="font-size: 1.4rem;">${team.icon}</span>
         <div>
-          <div style="font-weight: 800; color: ${team.colorHex}; font-size: 0.95rem;">${team.name}</div>
-          <div style="font-size: 0.72rem; color: #64748b;">${team.isBot ? '🤖 AI Máy' : (team.playerName || 'Đang chờ')}</div>
+          <div style="font-weight: 800; color: ${team.colorHex}; font-size: 0.95rem;">
+            ${team.name} ${team.isBot ? '<span style="font-size: 0.72rem; color: #64748b; font-weight: normal;">(🤖 AI)</span>' : ''}
+          </div>
         </div>
       </div>
       <div style="text-align: right;">
