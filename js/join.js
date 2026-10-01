@@ -49,9 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('resize', () => {
     fitPlacementGridToScreen();
+    fitBattleGridToScreen();
   });
   window.addEventListener('orientationchange', () => {
     setTimeout(fitPlacementGridToScreen, 120);
+    setTimeout(fitBattleGridToScreen, 120);
   });
 
   if (window.firebaseSync && window.firebaseSync.init() && currentRoomId) {
@@ -253,6 +255,7 @@ function updatePlayerUI(state) {
   // ĐÃ CÓ ĐỘI -> HIỂN THỊ THEO GIAI ĐOẠN TRẬN ĐẤU
   if (state.phase === 'LOBBY') {
     document.body.classList.remove('mode-placement');
+    document.body.classList.remove('mode-battle');
     viewLobby.style.display = 'block';
     viewPlacement.style.display = 'none';
     viewBattle.style.display = 'none';
@@ -260,6 +263,7 @@ function updatePlayerUI(state) {
     if (joinFormArea) joinFormArea.style.display = 'none';
     if (waitingRoomState) waitingRoomState.style.display = 'block';
   } else if (state.phase === 'PLACEMENT') {
+    document.body.classList.remove('mode-battle');
     document.body.classList.add('mode-placement');
     viewLobby.style.display = 'none';
     viewPlacement.style.display = 'flex';
@@ -271,14 +275,18 @@ function updatePlayerUI(state) {
     setTimeout(fitPlacementGridToScreen, 60);
   } else if (state.phase === 'BATTLE') {
     document.body.classList.remove('mode-placement');
+    document.body.classList.add('mode-battle');
     viewLobby.style.display = 'none';
     viewPlacement.style.display = 'none';
     viewBattle.style.display = 'flex';
     viewFinished.style.display = 'none';
 
     renderBattleView(state);
+    requestAnimationFrame(fitBattleGridToScreen);
+    setTimeout(fitBattleGridToScreen, 60);
   } else if (state.phase === 'FINISHED' || state.phase === 'GAME_OVER') {
     document.body.classList.remove('mode-placement');
+    document.body.classList.remove('mode-battle');
     viewLobby.style.display = 'none';
     viewPlacement.style.display = 'none';
     viewBattle.style.display = 'none';
@@ -545,45 +553,70 @@ function renderPlacementView(state) {
 
 function renderBattleView(state) {
   const myTeam = state.myTeam;
-  const isMyTurn = state.isMyTurn;
+  const isMyTurn = Boolean(
+    myTeam &&
+    !myTeam.isEliminated &&
+    state.phase === 'BATTLE' &&
+    parseInt(state.currentTurnTeamId, 10) === parseInt(myTeam.id, 10)
+  );
+  state.isMyTurn = isMyTurn;
 
   const banner = document.getElementById('turnBanner');
-  const btnFire = document.getElementById('btnFire');
+  const btnFireDirect = document.getElementById('btnFireDirect');
+  const activeTeam = state.teamsOverview ? state.teamsOverview.find(t => parseInt(t.id, 10) === parseInt(state.currentTurnTeamId, 10)) : null;
 
   if (myTeam && myTeam.isEliminated) {
-    banner.className = 'turn-banner';
-    banner.style.background = '#fee2e2';
-    banner.style.color = '#dc2626';
-    banner.textContent = '☠️ HẠM ĐỘI CỦA BẠN ĐÃ BỊ HỦY DIỆT (CHẾ ĐỘ KHÁN GIẢ)';
-    btnFire.disabled = true;
+    if (banner) {
+      banner.className = 'turn-banner';
+      banner.style.background = '#fee2e2';
+      banner.style.color = '#dc2626';
+      banner.textContent = '☠️ HẠM ĐỘI ĐÃ BỊ HỦY DIỆT (CHẾ ĐỘ KHÁN GIẢ)';
+    }
+    if (btnFireDirect) btnFireDirect.disabled = true;
     return;
   }
 
   if (isMyTurn) {
-    banner.className = 'turn-banner my-turn';
-    banner.textContent = '🚨 ĐẾN LƯỢT BẠN! CHẠM 2 LẦN VÀO Ô ĐỂ BẮN!';
-    if (navigator.vibrate) {
-      navigator.vibrate([150, 50, 150]);
+    if (banner) {
+      banner.className = 'turn-banner my-turn';
+      banner.innerHTML = `🚨 <b>ĐẾN LƯỢT BẠN BẮN!</b> (${myTeam.icon || '⚓'} ${myTeam.name})`;
+    }
+    if (btnFireDirect && selectedTargetKey) {
+      btnFireDirect.disabled = false;
+    }
+    if (window._lastTurnAlert !== state.turnNumber) {
+      window._lastTurnAlert = state.turnNumber;
+      if (soundManager) soundManager.playSonar();
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 300]);
+      showTurnToast(`🚨 ĐÃ ĐẾN LƯỢT BẠN BẮN! 🎯`);
     }
   } else {
-    banner.className = 'turn-banner wait-turn';
-    const activeTeam = state.teamsOverview ? state.teamsOverview.find(t => t.id === state.currentTurnTeamId) : null;
-    banner.textContent = `⏳ ĐANG CHỜ ${activeTeam ? activeTeam.name : 'ĐỐI THỦ'} KHAI HỎA...`;
+    if (banner) {
+      banner.className = 'turn-banner wait-turn';
+      const activeName = activeTeam ? `${activeTeam.icon || '⚓'} ${activeTeam.name}` : `Đội #${state.currentTurnTeamId}`;
+      banner.innerHTML = `⏳ LƯỢT: <b style="color: ${activeTeam ? activeTeam.colorHex : '#0284c7'};">${activeName}</b> (Chờ đối thủ...)`;
+    }
+    if (btnFireDirect) btnFireDirect.disabled = true;
+    window._lastTurnAlert = null;
   }
 
-  // Khởi tạo lưới chiến đấu 20x20 nếu chưa có
+  // Khởi tạo hoặc cập nhật lưới chiến đấu đúng kích thước
   const container = document.getElementById('battleGrid');
-  if (container.children.length === 0) {
+  const expectedCells = (COLS.length + 1) * (ROWS.length + 1);
+  if (container && container.children.length !== expectedCells) {
     buildGridInContainer(container, (key) => {
       selectTargetCoordinate(key);
     });
   }
 
   // Cập nhật trạng thái từng ô
-  updateGridCellVisuals(container, state, myTeam);
+  if (container) {
+    updateGridCellVisuals(container, state, myTeam);
+  }
 
-  // Cập nhật danh sách tàu của mình
-  renderMyFleetStatus(myTeam);
+  // Căn chỉnh hải đồ vừa trọn vẹn màn hình điện thoại 100% không cuộn
+  requestAnimationFrame(fitBattleGridToScreen);
+  setTimeout(fitBattleGridToScreen, 50);
 }
 
 function updateGridCellVisuals(container, state, myTeam) {
@@ -688,26 +721,128 @@ function getTargetAreaHighlightKeys() {
   return set;
 }
 
+function showTurnToast(msg) {
+  let toast = document.getElementById('turnAlertToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'turnAlertToast';
+    toast.className = 'turn-alert-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  toast.style.animation = 'toastSlideDown 0.35s ease-out';
+  if (window._toastTimeout) clearTimeout(window._toastTimeout);
+  window._toastTimeout = setTimeout(() => {
+    if (toast) toast.style.display = 'none';
+  }, 2800);
+}
+
+function fitBattleGridToScreen() {
+  const grid = document.getElementById('battleGrid');
+  const wrapper = document.getElementById('mobileMapWrapper') || (grid ? grid.parentElement : null);
+  if (!wrapper || !grid || wrapper.offsetParent === null) return;
+
+  const numCols = (COLS && COLS.length) ? COLS.length : 20;
+  const numRows = (ROWS && ROWS.length) ? ROWS.length : 20;
+  if (!numCols || !numRows) return;
+
+  if (currentZoomLevel === 1.0) {
+    wrapper.style.overflow = 'hidden';
+    const rect = wrapper.getBoundingClientRect();
+    const pad = 4;
+    const availW = Math.max(50, rect.width - pad);
+    const availH = Math.max(50, rect.height - pad);
+
+    const headerColW = Math.max(12, Math.min(22, Math.floor(availW / (numCols + 1.5))));
+    const headerRowH = Math.max(12, Math.min(20, Math.floor(availH / (numRows + 1.5))));
+    const gap = 1;
+
+    const remainingW = availW - headerColW - (numCols * gap);
+    const remainingH = availH - headerRowH - (numRows * gap);
+
+    let cellSize = Math.floor(Math.min(remainingW / numCols, remainingH / numRows));
+    cellSize = Math.max(6, cellSize);
+
+    grid.style.transform = 'none';
+    grid.style.minWidth = '0px';
+    grid.style.gridTemplateColumns = `${headerColW}px repeat(${numCols}, ${cellSize}px)`;
+    grid.style.gridTemplateRows = `${headerRowH}px repeat(${numRows}, ${cellSize}px)`;
+    grid.style.gap = `${gap}px`;
+    grid.style.width = 'fit-content';
+    grid.style.height = 'fit-content';
+
+    const fontSz = Math.max(7, Math.min(11, Math.floor(cellSize * 0.72)));
+    grid.querySelectorAll('.ocean-col-header, .ocean-row-header').forEach(h => {
+      h.style.fontSize = `${fontSz}px`;
+      h.style.lineHeight = `${cellSize}px`;
+    });
+  } else {
+    wrapper.style.overflow = 'auto';
+    grid.style.transform = `scale(${currentZoomLevel})`;
+    grid.style.transformOrigin = 'top left';
+  }
+}
+
 function executeFireAction(targetKey) {
-  if (!targetKey || !currentRoomId || !myTeamId) return;
-  if (!myPlayerState || !myPlayerState.isMyTurn) {
-    alert('Chưa đến lượt của bạn!');
+  const coord = targetKey || selectedTargetKey;
+  if (!coord || !currentRoomId) return;
+
+  const effectiveTeamId = myTeamId || (myPlayerState && myPlayerState.myTeam ? myPlayerState.myTeam.id : null);
+  if (!effectiveTeamId) {
+    alert('Không tìm thấy thông tin đội của bạn.');
     return;
   }
+
+  if (!myPlayerState || !myPlayerState.isMyTurn) {
+    alert('⏳ Chưa đến lượt bắn của bạn! Vui lòng chờ đối thủ.');
+    return;
+  }
+
+  if (myPlayerState.shotsMap && myPlayerState.shotsMap[coord] && myPlayerState.shotsMap[coord].result !== 'PENDING') {
+    alert('Tọa độ này đã bị bắn trước đó! Hãy chọn ô khác.');
+    return;
+  }
+
+  // 🚀 Phản hồi tức thì 0ms (Zero-Latency Feedback)
+  const cell = document.getElementById(`cell-${coord}`);
+  if (cell) {
+    cell.classList.add('firing-pulse');
+  }
+  if (soundManager) soundManager.playMissile();
+  if (navigator.vibrate) navigator.vibrate([60, 40, 120]);
+
+  const disp = document.getElementById('selectedTargetDisplay');
+  if (disp) disp.textContent = coord;
+  const txt = document.getElementById('selectedTargetText');
+  if (txt) {
+    txt.innerHTML = `🚀 <b style="color: #dc2626;">ĐÃ KHAI HỎA [${coord}]!</b> Đang công phá...`;
+  }
+
+  const btnFireDirect = document.getElementById('btnFireDirect');
+  if (btnFireDirect) btnFireDirect.disabled = true;
+
+  if (!myPlayerState.shotsMap) myPlayerState.shotsMap = {};
+  myPlayerState.shotsMap[coord] = {
+    result: 'PENDING',
+    targetKey: coord,
+    shooterTeamId: effectiveTeamId,
+    timestamp: Date.now(),
+  };
 
   if (currentWeaponMode === 'CROSSFIRE') {
     if (socket && socket.connected) {
       socket.emit('player:crossfire', {
         roomId: currentRoomId,
-        teamId: myTeamId,
-        centerKey: targetKey,
+        teamId: effectiveTeamId,
+        centerKey: coord,
       });
     }
     if (window.firebaseSync && window.firebaseSync.isReady) {
       window.firebaseSync.clientSendAction(currentRoomId, {
         type: 'CROSSFIRE',
-        teamId: myTeamId,
-        centerKey: targetKey,
+        teamId: effectiveTeamId,
+        centerKey: coord,
       });
     }
     currentWeaponMode = 'NORMAL';
@@ -717,28 +852,20 @@ function executeFireAction(targetKey) {
     if (socket && socket.connected) {
       socket.emit('player:fire', {
         roomId: currentRoomId,
-        teamId: myTeamId,
-        targetKey: targetKey,
+        teamId: effectiveTeamId,
+        targetKey: coord,
       });
     }
     if (window.firebaseSync && window.firebaseSync.isReady) {
       window.firebaseSync.clientSendAction(currentRoomId, {
         type: 'FIRE',
-        teamId: myTeamId,
-        targetKey: targetKey,
+        teamId: effectiveTeamId,
+        targetKey: coord,
       });
     }
   }
 
-  if (navigator.vibrate) navigator.vibrate([60, 40, 120]);
   selectedTargetKey = null;
-
-  const disp = document.getElementById('selectedTargetDisplay');
-  if (disp) disp.textContent = '--';
-  const txt = document.getElementById('selectedTargetText');
-  if (txt) {
-    txt.innerHTML = `🚀 <b style="color: #dc2626;">ĐÃ KHAI HỎA [${targetKey}]!</b> Đang truyền tín hiệu...`;
-  }
 
   const container = document.getElementById('battleGrid');
   if (container && myPlayerState) {
@@ -749,11 +876,15 @@ function executeFireAction(targetKey) {
 function selectTargetCoordinate(key) {
   if (!myPlayerState || !myPlayerState.isMyTurn) {
     const txt = document.getElementById('selectedTargetText');
-    if (txt) txt.textContent = '⏳ Chưa đến lượt bắn của bạn!';
+    if (txt) {
+      const activeTeam = myPlayerState && myPlayerState.teamsOverview ? myPlayerState.teamsOverview.find(t => parseInt(t.id, 10) === parseInt(myPlayerState.currentTurnTeamId, 10)) : null;
+      const activeName = activeTeam ? `${activeTeam.icon || '⚓'} ${activeTeam.name}` : `Đội #${myPlayerState.currentTurnTeamId}`;
+      txt.innerHTML = `⏳ <b style="color: #64748b;">Chưa đến lượt!</b> Đang chờ ${activeName}...`;
+    }
     return;
   }
 
-  if (currentWeaponMode === 'NORMAL' && myPlayerState.shotsMap && myPlayerState.shotsMap[key]) {
+  if (currentWeaponMode === 'NORMAL' && myPlayerState.shotsMap && myPlayerState.shotsMap[key] && myPlayerState.shotsMap[key].result !== 'PENDING') {
     alert('Tọa độ này đã bị bắn trước đó! Hãy chọn ô khác.');
     return;
   }
@@ -764,13 +895,16 @@ function selectTargetCoordinate(key) {
     return;
   }
 
-  // Lần chạm đầu tiên: Nhắm ô và báo người chơi chạm lần nữa để bắn
+  // Lần chạm đầu tiên: Nhắm ô
   selectedTargetKey = key;
   const disp = document.getElementById('selectedTargetDisplay');
   if (disp) disp.textContent = key;
+  const btnFireDirect = document.getElementById('btnFireDirect');
+  if (btnFireDirect) btnFireDirect.disabled = false;
+
   const txt = document.getElementById('selectedTargetText');
   if (txt) {
-    txt.innerHTML = `🎯 Đã nhắm <b style="color: #dc2626;">[${key}]</b>. <b>CHẠM LẦN NỮA ĐỂ BẮN! 🔥</b>`;
+    txt.innerHTML = `🎯 Đã nhắm <b style="color: #dc2626;">[${key}]</b>. <b>CHẠM LẦN NỮA HOẶC BẤM [🔥 BẮN]!</b>`;
   }
 
   const inputManual = document.getElementById('inputManualCoord');
@@ -780,46 +914,18 @@ function selectTargetCoordinate(key) {
 
   // Cập nhật lại hình ảnh ô trên bản đồ
   const container = document.getElementById('battleGrid');
-  if (container) {
+  if (container && myPlayerState) {
     updateGridCellVisuals(container, myPlayerState, myPlayerState.myTeam);
-  }
-
-  // Cuộn ô được chọn vào tầm nhìn trên điện thoại
-  const targetCell = document.getElementById(`cell-${key}`);
-  if (targetCell) {
-    targetCell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
   }
 }
 
 function renderMyFleetStatus(myTeam) {
-  const container = document.getElementById('myFleetList');
-  if (!container || !myTeam || !myTeam.fleet) return;
-
-  container.innerHTML = '';
-  myTeam.fleet.forEach(ship => {
-    const hitsCount = ship.hits ? ship.hits.length : 0;
-    const isSunk = ship.isSunk;
-
-    const card = document.createElement('div');
-    card.className = `ship-status-card ${isSunk ? 'sunk' : ''}`;
-    card.innerHTML = `
-      <div style="font-weight: bold; margin-bottom: 2px;">${isSunk ? '☠️' : '🚢'} ${ship.name}</div>
-      <div style="font-size: 0.75rem; color: ${isSunk ? '#dc2626' : '#0284c7'};">
-        ${isSunk ? 'Đã bị bắn chìm' : `Sinh lực: ${ship.size - hitsCount}/${ship.size}`}
-      </div>
-    `;
-    container.appendChild(card);
-  });
+  // Đã tối ưu loại bỏ danh sách thẻ để mở rộng tối đa không gian cho hải đồ
 }
 
 function buildGridInContainer(container, onClickCell) {
   container.innerHTML = '';
-  if (container.id === 'placementGrid') {
-    container.style.minWidth = '0px';
-  } else {
-    container.style.gridTemplateColumns = `26px repeat(${COLS.length}, minmax(22px, 1fr))`;
-    container.style.gridTemplateRows = `22px repeat(${ROWS.length}, minmax(22px, 1fr))`;
-  }
+  container.style.minWidth = '0px';
 
   const corner = document.createElement('div');
   corner.className = 'ocean-header-corner';
@@ -852,7 +958,17 @@ function buildGridInContainer(container, onClickCell) {
       cell.title = `Tọa độ: ${colLetter}-${rowNum}`;
 
       if (onClickCell) {
-        cell.addEventListener('click', () => onClickCell(key));
+        let lastTouchTime = 0;
+        cell.addEventListener('touchend', (e) => {
+          lastTouchTime = Date.now();
+          e.preventDefault();
+          onClickCell(key);
+        }, { passive: false });
+
+        cell.addEventListener('click', (e) => {
+          if (Date.now() - lastTouchTime < 450) return;
+          onClickCell(key);
+        });
       }
 
       container.appendChild(cell);
@@ -861,6 +977,8 @@ function buildGridInContainer(container, onClickCell) {
 
   if (container.id === 'placementGrid') {
     requestAnimationFrame(fitPlacementGridToScreen);
+  } else if (container.id === 'battleGrid') {
+    requestAnimationFrame(fitBattleGridToScreen);
   }
 }
 
@@ -1139,22 +1257,42 @@ function initEventListeners() {
     });
   }
 
-  // Điều khiển Zoom
-  const battleGrid = document.getElementById('battleGrid');
-  document.getElementById('btnZoomIn').addEventListener('click', () => {
-    currentZoomLevel = Math.min(2.0, currentZoomLevel + 0.25);
-    battleGrid.style.transform = `scale(${currentZoomLevel})`;
-  });
+  // Nút Khai Hỏa Trực Tiếp
+  const btnFireDirect = document.getElementById('btnFireDirect');
+  if (btnFireDirect) {
+    btnFireDirect.addEventListener('click', () => {
+      if (!selectedTargetKey) {
+        alert('Vui lòng chạm vào một ô trên hải đồ để chọn tọa độ trước khi bấm Bắn!');
+        return;
+      }
+      executeFireAction(selectedTargetKey);
+    });
+  }
 
-  document.getElementById('btnZoomOut').addEventListener('click', () => {
-    currentZoomLevel = Math.max(0.65, currentZoomLevel - 0.25);
-    battleGrid.style.transform = `scale(${currentZoomLevel})`;
-  });
+  // Điều khiển Zoom Hải đồ
+  const btnZoomIn = document.getElementById('btnZoomIn');
+  if (btnZoomIn) {
+    btnZoomIn.addEventListener('click', () => {
+      currentZoomLevel = Math.min(2.5, currentZoomLevel + 0.35);
+      fitBattleGridToScreen();
+    });
+  }
 
-  document.getElementById('btnZoomReset').addEventListener('click', () => {
-    currentZoomLevel = 1.0;
-    battleGrid.style.transform = `scale(1)`;
-  });
+  const btnZoomOut = document.getElementById('btnZoomOut');
+  if (btnZoomOut) {
+    btnZoomOut.addEventListener('click', () => {
+      currentZoomLevel = Math.max(1.0, currentZoomLevel - 0.35);
+      fitBattleGridToScreen();
+    });
+  }
+
+  const btnZoomReset = document.getElementById('btnZoomReset');
+  if (btnZoomReset) {
+    btnZoomReset.addEventListener('click', () => {
+      currentZoomLevel = 1.0;
+      fitBattleGridToScreen();
+    });
+  }
 }
 
 function buildPlayerStateFromRoomState(roomState, targetTeamId) {
@@ -1199,7 +1337,13 @@ function buildPlayerStateFromRoomState(roomState, targetTeamId) {
     turnNumber: roomState.turnNumber,
     turnTimeRemaining: roomState.turnTimeRemaining || 60,
     turnStartTime: roomState.turnStartTime || Date.now(),
-    isMyTurn: roomState.currentTurnTeamId === effectiveTeamId && myTeam && !myTeam.isEliminated && roomState.phase === 'BATTLE',
+    isMyTurn: Boolean(
+      myTeam &&
+      !myTeam.isEliminated &&
+      roomState.phase === 'BATTLE' &&
+      effectiveTeamId &&
+      parseInt(roomState.currentTurnTeamId, 10) === parseInt(effectiveTeamId, 10)
+    ),
     shotsMap: roomState.shotsMap || {},
     lastShotResult: roomState.lastShotResult,
     lastCrossfireRecord: roomState.lastCrossfireRecord,

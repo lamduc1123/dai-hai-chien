@@ -12,8 +12,9 @@
       touch-action: manipulation;
     }
 
-    /* Tối ưu toàn diện chế độ Dàn trận trên Mobile: Vừa vặn 1 màn hình 100%, chống cuộn tuyệt đối */
-    body.mode-placement {
+    /* Tối ưu toàn diện chế độ Dàn trận & Chiến đấu trên Mobile: Vừa vặn 1 màn hình 100%, chống cuộn tuyệt đối */
+    body.mode-placement,
+    body.mode-battle {
       position: fixed;
       inset: 0;
       width: 100vw;
@@ -25,23 +26,25 @@
       margin: 0 !important;
       display: flex !important;
       flex-direction: column !important;
-      touch-action: none;
+      touch-action: manipulation;
     }
 
-    body.mode-placement .mobile-header {
-      padding: 6px 12px !important;
-      min-height: 38px !important;
+    body.mode-placement .mobile-header,
+    body.mode-battle .mobile-header {
+      padding: 4px 10px !important;
+      min-height: 36px !important;
       flex-shrink: 0 !important;
       border-bottom: 1px solid rgba(14, 165, 233, 0.2);
     }
 
-    body.mode-placement .mobile-container {
+    body.mode-placement .mobile-container,
+    body.mode-battle .mobile-container {
       flex: 1 1 0% !important;
       min-height: 0 !important;
       height: 100% !important;
       max-width: 100% !important;
       width: 100% !important;
-      padding: 4px 6px !important;
+      padding: 2px 4px !important;
       margin: 0 auto !important;
       display: flex !important;
       flex-direction: column !important;
@@ -50,11 +53,13 @@
       box-sizing: border-box !important;
     }
 
-    .placement-container {
+    .placement-container,
+    .battle-container {
       display: none;
     }
 
-    body.mode-placement .placement-container {
+    body.mode-placement .placement-container,
+    body.mode-battle .battle-container {
       flex: 1 1 0% !important;
       min-height: 0 !important;
       height: 100% !important;
@@ -397,85 +402,64 @@
       </div>
     </section>
 
-    <!-- PHẦN 3: CHIẾN ĐẤU THỜI GIAN THỰC -->
-    <section id="viewBattle" style="display: none; flex-direction: column; gap: 12px;">
+    <!-- PHẦN 3: CHIẾN ĐẤU THỜI GIAN THỰC (TỐI ƯU 1 MÀN HÌNH KHÔNG CUỘN) -->
+    <section id="viewBattle" class="battle-container" style="display: none;">
       
-      <!-- Thông báo lượt bắn & Đếm ngược 60s -->
-      <div id="turnBanner" class="turn-banner wait-turn">
-        ⏳ ĐANG CHỜ ĐỐI THỦ KHAI HỎA...
-      </div>
-
-      <!-- Banner Thưởng Easter Egg Mobile -->
-      <div id="mobileEasterEggBanner" style="display: none; padding: 10px 14px; background: linear-gradient(135deg, #f59e0b, #ea580c); color: #ffffff; border-radius: 8px; font-weight: 800; font-size: 0.85rem; text-align: center; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.4); margin-bottom: 8px;">
-        🎁 <b>BẮN TRÚNG Ô MAY MẮN (EASTER EGG)!</b><br>Đội của bạn được thưởng thêm +1 LƯỢT BẮN! 🎯
-      </div>
-
-      <div id="mobileTimerRow" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #ffffff; border-radius: 8px; border: 1px solid var(--border-ocean);">
-        <div style="font-size: 0.85rem; font-weight: 800; color: var(--navy-dark);">
-          ⏱️ ĐẾM NGƯỢC LƯỢT SUY NGHĨ:
+      <!-- Topbar: Thông báo lượt bắn & Đếm ngược 60s -->
+      <div class="battle-topbar">
+        <div id="turnBanner" class="turn-banner wait-turn">
+          ⏳ ĐANG CHỜ ĐỐI THỦ KHAI HỎA...
         </div>
         <div id="mobileTurnTimer" class="turn-timer-badge">60s</div>
       </div>
 
-      <!-- KHO VŨ KHÍ & KỸ NĂNG CHIẾN THUẬT -->
-      <div class="glass-panel" style="padding: 10px; background: #ffffff;">
-        <div style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 6px;">
-          ⚔️ CHỌN LOẠI VŨ KHÍ:
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <button id="btnSkillNormal" type="button" class="btn btn-primary" style="padding: 8px 4px; font-size: 0.8rem; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 2px;">
-            <span>🎯 BẮN THƯỜNG</span>
-            <span style="font-size: 0.65rem; opacity: 0.85;">1 Ô • Vô hạn</span>
-          </button>
-          <button id="btnSkillCrossfire" type="button" class="btn btn-outline" style="padding: 8px 4px; font-size: 0.8rem; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 2px; border-color: #ea580c; color: #ea580c;">
-            <span>🚀 CHỮ THẬP (+)</span>
-            <span id="badgeCrossfireCount" style="font-size: 0.65rem; font-weight: 900; color: #ea580c;">Còn 1/1</span>
-          </button>
-        </div>
+      <!-- Banner Thưởng Easter Egg Mobile -->
+      <div id="mobileEasterEggBanner" style="display: none; padding: 5px 10px; background: linear-gradient(135deg, #f59e0b, #ea580c); color: #ffffff; border-radius: 6px; font-weight: 800; font-size: 0.78rem; text-align: center; box-shadow: 0 2px 8px rgba(234, 88, 12, 0.3);">
+        🎁 <b>BẮN TRÚNG Ô MAY MẮN!</b> Thưởng thêm +1 LƯỢT BẮN! 🎯
       </div>
 
-      <!-- CHỌN Ô BẰNG CÁCH NHẬP TỌA ĐỘ -->
-      <div class="glass-panel" style="padding: 10px; background: #ffffff;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <div style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark);">🎯 TỌA ĐỘ ĐANG NHẮM:</div>
-          <div id="selectedTargetDisplay" class="target-key-box" style="padding: 2px 10px; font-size: 1rem; font-weight: 900; color: #dc2626;">--</div>
-        </div>
-        <div style="display: flex; gap: 8px;">
-          <input type="text" id="inputManualCoord" placeholder="Nhập VD: B14, D8, K20" maxlength="4" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 800; font-size: 1.05rem; text-transform: uppercase; text-align: center;">
-          <button id="btnApplyCoord" class="btn btn-danger" style="padding: 8px 14px; font-weight: 800; font-size: 0.85rem;">
-            🔥 BẮN TỌA ĐỘ
+      <!-- Thanh công cụ điều khiển siêu gọn: Vũ khí + Tọa độ ngắm + Nút Bắn + Zoom -->
+      <div class="battle-control-strip">
+        <div class="weapon-switch-group">
+          <button id="btnSkillNormal" type="button" class="btn btn-primary btn-weapon-sm">
+            <span>🎯 Thường</span>
+          </button>
+          <button id="btnSkillCrossfire" type="button" class="btn btn-outline btn-weapon-sm">
+            <span>🚀 Chữ Thập</span>
+            <span id="badgeCrossfireCount" class="weapon-badge">1/1</span>
           </button>
         </div>
-        <div id="selectedTargetText" style="font-size: 0.82rem; color: #dc2626; font-weight: 800; margin-top: 6px; text-align: center; background: #fef2f2; padding: 6px; border-radius: 6px; border: 1px dashed #fca5a5;">
-          👆 CHẠM 2 LẦN VÀO Ô TRÊN HẢI ĐỒ ĐỂ KHAI HỎA BẮN!
-        </div>
-      </div>
 
-      <!-- ĐIỀU KHIỂN ZOOM & ĐẠI HẢI ĐỒ 400 Ô -->
-      <div class="glass-panel" style="padding: 10px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <span style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark);">🗺️ HẢI ĐỒ 400 Ô (Chạm 2 lần để bắn)</span>
-          <div style="display: flex; gap: 4px;">
-            <button id="btnZoomIn" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.72rem;">🔍+ Phóng to</button>
-            <button id="btnZoomOut" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.72rem;">🔍- Thu nhỏ</button>
-            <button id="btnZoomReset" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.72rem;">🔄 Vừa màn</button>
+        <div class="target-action-group">
+          <div class="target-coord-box">
+            <span style="font-size: 0.65rem; color: #64748b; font-weight: 700;">Ô:</span>
+            <span id="selectedTargetDisplay" style="font-size: 0.95rem; font-weight: 900; color: #dc2626;">--</span>
           </div>
+          <button id="btnFireDirect" type="button" class="btn btn-danger btn-fire-direct" disabled>
+            🔥 BẮN
+          </button>
         </div>
 
-        <div class="ocean-map-wrapper" id="mobileMapWrapper" style="overflow: auto; max-height: 56vh; border-radius: 6px;">
-          <div id="battleGrid" class="ocean-grid" style="transition: transform 0.2s ease; transform-origin: top left;">
-            <!-- Render bằng join.js -->
-          </div>
+        <div class="zoom-action-group">
+          <button id="btnZoomIn" class="btn btn-outline btn-zoom-sm" title="Phóng to">🔍+</button>
+          <button id="btnZoomOut" class="btn btn-outline btn-zoom-sm" title="Thu nhỏ">🔍-</button>
+          <button id="btnZoomReset" class="btn btn-outline btn-zoom-sm" title="Vừa màn hình">🔄 Vừa</button>
         </div>
       </div>
 
-      <!-- Tình trạng hạm đội của mình -->
-      <div class="glass-panel" style="padding: 12px;">
-        <div style="font-size: 0.85rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 8px;">
-          🛡️ TÌNH TRẠNG HẠM ĐỘI CỦA BẠN:
+      <!-- Nhập tọa độ nhanh (1 hàng rút gọn) -->
+      <div id="manualCoordStrip" class="manual-coord-strip">
+        <input type="text" id="inputManualCoord" placeholder="Tọa độ VD: B14" maxlength="4">
+        <button id="btnApplyCoord" type="button" class="btn btn-primary btn-apply-sm">Nhắm</button>
+        <div id="selectedTargetText" class="target-hint-text">
+          👆 Chạm 2 lần vào ô để bắn ngay!
         </div>
-        <div id="myFleetList" class="my-fleet-status">
-          <!-- Render tự động -->
+      </div>
+
+      <!-- KHUNG HẢI ĐỒ CHIẾN ĐẤU (Co giãn vừa khít 100% màn hình, không cuộn khi zoom 1.0) -->
+      <div class="ocean-map-wrapper battle-map-wrapper" id="mobileMapWrapper">
+        <div id="battleGrid" class="ocean-grid battle-grid">
+          <!-- Render bằng join.js -->
         </div>
       </div>
 

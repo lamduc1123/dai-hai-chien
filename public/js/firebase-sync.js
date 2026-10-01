@@ -79,7 +79,7 @@ class FirebaseSyncManager {
       }
     }
 
-    // 2. REST Polling Fallback (chạy mỗi 1.2 giây)
+    // 2. REST Polling Fallback (chạy siêu nhanh mỗi 300ms)
     const actionInterval = setInterval(async () => {
       try {
         const res = await fetch(`${this.baseUrl}/rooms/${roomId}/actions.json`);
@@ -97,7 +97,7 @@ class FirebaseSyncManager {
           }
         }
       } catch (err) {}
-    }, 1200);
+    }, 300);
 
     this.intervals.push(actionInterval);
   }
@@ -193,7 +193,7 @@ class FirebaseSyncManager {
       })
       .catch(() => {});
 
-    // 3. REST Polling Fallback định kỳ mỗi 1.2s
+    // 3. REST Polling Fallback định kỳ mỗi 350ms
     const pollInterval = setInterval(async () => {
       try {
         const res = await fetch(`${this.baseUrl}/rooms/${roomId}/state.json`);
@@ -207,7 +207,7 @@ class FirebaseSyncManager {
           }
         }
       } catch (err) {}
-    }, 1200);
+    }, 350);
 
     this.intervals.push(pollInterval);
   }
@@ -240,7 +240,7 @@ class FirebaseSyncManager {
           if (onShotEffect) onShotEffect(effect);
         }
       } catch (err) {}
-    }, 800);
+    }, 300);
 
     this.intervals.push(effectInterval);
   }
