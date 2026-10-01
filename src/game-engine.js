@@ -408,7 +408,6 @@ function createInitialGameState(options = {}) {
       totalShipCells: shipLengths.reduce((a, b) => a + b, 0),
       hitCellsCount: 0,
       score: 0,
-      radarScansRemaining: 2, // 2 lượt quét Radar 3x3
       crossfireRemaining: 1,   // 1 lượt bắn tên lửa chữ thập (+)
       isEliminated: false,
       deviceToken: null,
@@ -446,7 +445,6 @@ function createInitialGameState(options = {}) {
     shotsMap: {},
     winner: null,
     lastShotResult: null,
-    lastRadarRecord: null,
     lastCrossfireRecord: null,
   };
 }
@@ -736,12 +734,24 @@ function processShot(gameState, shooterTeamId, targetKey) {
   const shotRes = executeSingleShot(gameState, shooterTeamId, targetKey);
   if (!shotRes.success) return shotRes;
 
+  // 🎁 EASTER EGG: 10% cơ hội nhận thêm 1 lượt bắn!
+  const hasBonusTurn = Math.random() < 0.10;
+  if (hasBonusTurn) {
+    shotRes.shotRecord.easterEgg = true;
+    shotRes.shotRecord.easterEggType = 'BONUS_TURN';
+    shotRes.shotRecord.easterEggMessage = `🎁 EASTER EGG! Đội ${shotRes.shotRecord.shooterName} may mắn nhặt được tiếp tế đạn dược - Nhận thêm 1 lượt bắn!`;
+  }
+
   gameState.lastShotResult = shotRes.shotRecord;
 
   const livingTeams = gameState.teams.filter(t => !t.isEliminated);
   if (livingTeams.length <= 1) {
     gameState.winner = livingTeams.length === 1 ? livingTeams[0] : null;
     gameState.phase = 'FINISHED';
+  } else if (hasBonusTurn) {
+    // Không chuyển lượt: Đội bắn được giữ lượt và đặt lại đồng hồ 60s
+    gameState.turnTimeRemaining = gameState.config.turnDuration || 60;
+    gameState.turnStartTime = Date.now();
   } else {
     advanceTurn(gameState);
   }
@@ -749,6 +759,7 @@ function processShot(gameState, shooterTeamId, targetKey) {
   return {
     success: true,
     shotRecord: shotRes.shotRecord,
+    hasBonusTurn,
     isGameOver: gameState.phase === 'FINISHED',
     winner: gameState.winner,
     nextTurnTeamId: gameState.currentTurnTeamId,
@@ -1023,7 +1034,6 @@ function getScreenState(gameState) {
       isFleetLocked: t.isFleetLocked,
       shipsRemaining: t.shipsRemaining,
       score: t.score,
-      radarScansRemaining: t.radarScansRemaining ?? 2,
       crossfireRemaining: t.crossfireRemaining ?? 1,
       isEliminated: t.isEliminated,
     })),
@@ -1042,7 +1052,6 @@ function getScreenState(gameState) {
       score: gameState.winner.score,
     } : null,
     lastShotResult: gameState.lastShotResult,
-    lastRadarRecord: gameState.lastRadarRecord,
     lastCrossfireRecord: gameState.lastCrossfireRecord,
   };
 }
@@ -1092,7 +1101,6 @@ function getPlayerState(gameState, teamId) {
       fleet: currentTeam.fleet,
       shipsRemaining: currentTeam.shipsRemaining,
       score: currentTeam.score,
-      radarScansRemaining: currentTeam.radarScansRemaining ?? 2,
       crossfireRemaining: currentTeam.crossfireRemaining ?? 1,
       isEliminated: currentTeam.isEliminated,
     },
@@ -1106,7 +1114,6 @@ function getPlayerState(gameState, teamId) {
       isFleetLocked: t.isFleetLocked,
       shipsRemaining: t.shipsRemaining,
       score: t.score,
-      radarScansRemaining: t.radarScansRemaining ?? 2,
       crossfireRemaining: t.crossfireRemaining ?? 1,
       isEliminated: t.isEliminated,
     })),
@@ -1118,7 +1125,6 @@ function getPlayerState(gameState, teamId) {
     isMyTurn: gameState.currentTurnTeamId === teamId && !currentTeam.isEliminated && gameState.phase === 'BATTLE',
     shotsMap: gameState.shotsMap,
     lastShotResult: gameState.lastShotResult,
-    lastRadarRecord: gameState.lastRadarRecord,
     lastCrossfireRecord: gameState.lastCrossfireRecord,
     winner: gameState.winner ? {
       id: gameState.winner.id,

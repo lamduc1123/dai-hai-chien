@@ -10,7 +10,7 @@ let gameState = null;
 let soundManager = null;
 let myTeamId = 1;
 let selectedTargetKey = null;
-let currentWeaponMode = 'NORMAL'; // 'NORMAL', 'RADAR', 'CROSSFIRE'
+let currentWeaponMode = 'NORMAL'; // 'NORMAL', 'CROSSFIRE'
 let currentZoomLevel = 1.0;
 let turnTickerInterval = null;
 let botTurnTimer = null;
@@ -148,21 +148,6 @@ function highlightTargetArea() {
     return;
   }
 
-  if (currentWeaponMode === 'RADAR') {
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        const cIdx = parsed.colIdx + dc;
-        const rIdx = parsed.rowIdx + dr;
-        if (cIdx >= 0 && cIdx < COLS.length && rIdx >= 0 && rIdx < ROWS.length) {
-          const k = `${COLS[cIdx]}${ROWS[rIdx]}`;
-          const cell = document.getElementById(`demo-cell-${k}`);
-          if (cell) cell.classList.add('radar-sweep');
-        }
-      }
-    }
-    return;
-  }
-
   if (currentWeaponMode === 'CROSSFIRE') {
     const deltas = [{ dc: 0, dr: 0 }, { dc: 0, dr: -1 }, { dc: 0, dr: 1 }, { dc: -1, dr: 0 }, { dc: 1, dr: 0 }];
     for (const d of deltas) {
@@ -189,18 +174,7 @@ function fireSelectedTarget() {
     return;
   }
 
-  if (currentWeaponMode === 'RADAR') {
-    const res = window.GameEngine.processRadarScan(gameState, myTeamId, selectedTargetKey);
-    if (!res.success) {
-      alert(res.error);
-      return;
-    }
-    soundManager.playSonar();
-    showSkillBanner(res.radarRecord);
-    addLog(`📡 Bạn đã quét Radar vùng <b>[${selectedTargetKey}]</b> ➔ ${res.radarRecord.hasEnemyShip ? `⚠️ PHÁT HIỆN ${res.radarRecord.detectedCount} tọa độ có tàu địch!` : '🌊 Khu vực an toàn!'}`);
-    currentWeaponMode = 'NORMAL';
-    updateWeaponButtonsUI();
-  } else if (currentWeaponMode === 'CROSSFIRE') {
+  if (currentWeaponMode === 'CROSSFIRE') {
     const res = window.GameEngine.processCrossfire(gameState, myTeamId, selectedTargetKey);
     if (!res.success) {
       alert(res.error);
@@ -246,6 +220,17 @@ function animateShot(shot) {
     }, 500);
   }
 
+  if (shot.easterEgg) {
+    soundManager.playAlarm();
+    const eeBanner = document.getElementById('demoEasterEggBanner');
+    if (eeBanner) {
+      eeBanner.innerHTML = `🎁 <b>${shot.shooterName || 'CHIẾN HẠM'}</b> BẮN TRÚNG Ô MAY MẮN (EASTER EGG)!<br><span style="font-size: 0.95rem; font-weight: 700;">Nhận ngay thêm +1 LƯỢT BẮN tiếp tục! 🎯</span>`;
+      eeBanner.style.display = 'block';
+      setTimeout(() => { eeBanner.style.display = 'none'; }, 4500);
+    }
+    addLog(`🎁 <b>[EASTER EGG]</b> ${shot.shooterName} vừa bắn trúng ô may mắn và được thưởng thêm +1 lượt bắn!`, 'hit');
+  }
+
   const shooterStr = `<b style="color: ${shot.shooterColor}">${shot.shooterName}</b>`;
   if (shot.result === 'HIT') {
     addLog(`${shooterStr} khai hỏa vào <b>[${shot.targetKey}]</b> ➔ 💥 BẮN TRÚNG TÀU đối phương!`, 'hit');
@@ -254,21 +239,6 @@ function animateShot(shot) {
   } else {
     addLog(`${shooterStr} khai hỏa vào <b>[${shot.targetKey}]</b> ➔ 🌊 Bắn trượt xuống biển!`, 'miss');
   }
-}
-
-function showSkillBanner(record) {
-  const banner = document.getElementById('demoSkillBanner');
-  if (!banner) return;
-  banner.style.display = 'block';
-  banner.style.background = record.hasEnemyShip ? '#fee2e2' : '#e0f2fe';
-  banner.style.color = record.hasEnemyShip ? '#dc2626' : '#0284c7';
-  banner.innerHTML = record.hasEnemyShip
-    ? `📡 RADAR QUÉT VÙNG [${record.centerKey}] ➔ ⚠️ BÁO ĐỘNG: Có ${record.detectedCount} vị trí tàu đối phương!`
-    : `📡 RADAR QUÉT VÙNG [${record.centerKey}] ➔ 🌊 Vùng biển an toàn, không có tín hiệu tàu!`;
-
-  setTimeout(() => {
-    banner.style.display = 'none';
-  }, 3500);
 }
 
 function checkBotTurn() {
@@ -442,8 +412,8 @@ function renderSurvivalBar() {
       <div style="text-align: right;">
         <div style="font-size: 0.85rem;">${shipStatus}</div>
         ${isMe && !t.isEliminated ? `
-          <div style="font-size: 0.72rem; color: #0284c7; margin-top: 2px;">
-            📡 ${t.radarScansRemaining ?? 2}/2 • 🚀 ${t.crossfireRemaining ?? 1}/1
+          <div style="font-size: 0.72rem; color: #ea580c; margin-top: 2px;">
+            🚀 Chữ Thập: ${t.crossfireRemaining ?? 1}/1
           </div>
         ` : ''}
       </div>
@@ -456,29 +426,22 @@ function updateWeaponCounts() {
   const myTeam = gameState.teams.find(t => t.id === myTeamId);
   if (!myTeam) return;
 
-  const radarText = document.getElementById('radarCountText');
   const crossText = document.getElementById('crossfireCountText');
-  if (radarText) radarText.textContent = `${myTeam.radarScansRemaining ?? 2}/2`;
   if (crossText) crossText.textContent = `${myTeam.crossfireRemaining ?? 1}/1`;
 }
 
 function updateWeaponButtonsUI() {
   const btnNorm = document.getElementById('btnModeNormal');
-  const btnRad = document.getElementById('btnModeRadar');
   const btnCross = document.getElementById('btnModeCrossfire');
   const btnFire = document.getElementById('btnDemoFire');
 
   if (btnNorm) btnNorm.className = currentWeaponMode === 'NORMAL' ? 'btn btn-primary' : 'btn btn-outline';
-  if (btnRad) btnRad.className = currentWeaponMode === 'RADAR' ? 'btn btn-primary' : 'btn btn-outline';
   if (btnCross) btnCross.className = currentWeaponMode === 'CROSSFIRE' ? 'btn btn-primary' : 'btn btn-outline';
 
   if (btnFire) {
     if (currentWeaponMode === 'NORMAL') {
       btnFire.textContent = '🚀 KHAI HỎA';
       btnFire.style.background = '#dc2626';
-    } else if (currentWeaponMode === 'RADAR') {
-      btnFire.textContent = '📡 QUÉT RADAR';
-      btnFire.style.background = '#0284c7';
     } else if (currentWeaponMode === 'CROSSFIRE') {
       btnFire.textContent = '💥 BẮN CHỮ THẬP';
       btnFire.style.background = '#ea580c';
@@ -547,16 +510,6 @@ function initEvents() {
   // Chọn kỹ năng
   document.getElementById('btnModeNormal').addEventListener('click', () => {
     currentWeaponMode = 'NORMAL';
-    updateWeaponButtonsUI();
-  });
-
-  document.getElementById('btnModeRadar').addEventListener('click', () => {
-    const myTeam = gameState.teams.find(t => t.id === myTeamId);
-    if (myTeam && (myTeam.radarScansRemaining || 0) <= 0) {
-      alert('Bạn đã hết lượt quét Radar!');
-      return;
-    }
-    currentWeaponMode = 'RADAR';
     updateWeaponButtonsUI();
   });
 

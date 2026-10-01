@@ -247,6 +247,11 @@
         ⏳ ĐANG CHỜ ĐỐI THỦ KHAI HỎA...
       </div>
 
+      <!-- Banner Thưởng Easter Egg Mobile -->
+      <div id="mobileEasterEggBanner" style="display: none; padding: 10px 14px; background: linear-gradient(135deg, #f59e0b, #ea580c); color: #ffffff; border-radius: 8px; font-weight: 800; font-size: 0.85rem; text-align: center; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.4); margin-bottom: 8px;">
+        🎁 <b>BẮN TRÚNG Ô MAY MẮN (EASTER EGG)!</b><br>Đội của bạn được thưởng thêm +1 LƯỢT BẮN! 🎯
+      </div>
+
       <div id="mobileTimerRow" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #ffffff; border-radius: 8px; border: 1px solid var(--border-ocean);">
         <div style="font-size: 0.85rem; font-weight: 800; color: var(--navy-dark);">
           ⏱️ ĐẾM NGƯỢC LƯỢT SUY NGHĨ:
@@ -257,18 +262,14 @@
       <!-- KHO VŨ KHÍ & KỸ NĂNG CHIẾN THUẬT -->
       <div class="glass-panel" style="padding: 10px; background: #ffffff;">
         <div style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 6px;">
-          ⚔️ CHỌN LOẠI VŨ KHÍ / KỸ NĂNG:
+          ⚔️ CHỌN LOẠI VŨ KHÍ:
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
-          <button id="btnSkillNormal" type="button" class="btn btn-primary" style="padding: 8px 4px; font-size: 0.75rem; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button id="btnSkillNormal" type="button" class="btn btn-primary" style="padding: 8px 4px; font-size: 0.8rem; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 2px;">
             <span>🎯 BẮN THƯỜNG</span>
             <span style="font-size: 0.65rem; opacity: 0.85;">1 Ô • Vô hạn</span>
           </button>
-          <button id="btnSkillRadar" type="button" class="btn btn-outline" style="padding: 8px 4px; font-size: 0.75rem; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 2px; border-color: #0284c7; color: #0284c7;">
-            <span>📡 RADAR 3x3</span>
-            <span id="badgeRadarCount" style="font-size: 0.65rem; font-weight: 900; color: #0284c7;">Còn 2/2</span>
-          </button>
-          <button id="btnSkillCrossfire" type="button" class="btn btn-outline" style="padding: 8px 4px; font-size: 0.75rem; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 2px; border-color: #ea580c; color: #ea580c;">
+          <button id="btnSkillCrossfire" type="button" class="btn btn-outline" style="padding: 8px 4px; font-size: 0.8rem; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 2px; border-color: #ea580c; color: #ea580c;">
             <span>🚀 CHỮ THẬP (+)</span>
             <span id="badgeCrossfireCount" style="font-size: 0.65rem; font-weight: 900; color: #ea580c;">Còn 1/1</span>
           </button>

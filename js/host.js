@@ -223,8 +223,6 @@ function handleIncomingFirebaseAction(action) {
   if (socket && socket.connected) {
     if (action.type === 'FIRE') {
       socket.emit('player:fire', { roomId: currentRoomId, teamId: action.teamId, targetKey: action.targetKey });
-    } else if (action.type === 'RADAR') {
-      socket.emit('player:radar', { roomId: currentRoomId, teamId: action.teamId, centerKey: action.centerKey });
     } else if (action.type === 'CROSSFIRE') {
       socket.emit('player:crossfire', { roomId: currentRoomId, teamId: action.teamId, centerKey: action.centerKey });
     } else if (action.type === 'JOIN') {
@@ -244,8 +242,6 @@ function handleIncomingFirebaseAction(action) {
 
   if (action.type === 'FIRE') {
     processLocalShot(action.teamId, action.targetKey);
-  } else if (action.type === 'RADAR') {
-    processLocalRadar(action.teamId, action.centerKey);
   } else if (action.type === 'CROSSFIRE') {
     processLocalCrossfire(action.teamId, action.centerKey);
   } else if (action.type === 'JOIN') {
@@ -318,19 +314,6 @@ function processLocalShot(shooterTeamId, targetKey) {
   }
 }
 
-function processLocalRadar(shooterTeamId, centerKey) {
-  if (currentHostState.phase !== 'BATTLE' || currentHostState.phase === 'GAME_OVER') return;
-  const res = window.GameEngine.processRadarScan(currentHostState, shooterTeamId, centerKey);
-  if (res.success) {
-    handleRadarAnimation(res.radarRecord);
-    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId) {
-      window.firebaseSync.hostPublishShotEffect(currentRoomId, res.radarRecord);
-    }
-    commitLocalState();
-    checkBotTurn();
-  }
-}
-
 function processLocalCrossfire(shooterTeamId, centerKey) {
   if (currentHostState.phase !== 'BATTLE' || currentHostState.phase === 'GAME_OVER') return;
   const res = window.GameEngine.processCrossfire(currentHostState, shooterTeamId, centerKey);
@@ -342,29 +325,6 @@ function processLocalCrossfire(shooterTeamId, centerKey) {
     commitLocalState();
     checkBotTurn();
   }
-}
-
-function handleRadarAnimation(radar) {
-  soundManager.playSonar();
-  radar.scannedCells.forEach(key => {
-    const cell = document.getElementById(`cell-${key}`);
-    if (cell) cell.classList.add('radar-sweep');
-  });
-
-  setTimeout(() => {
-    radar.scannedCells.forEach(key => {
-      const cell = document.getElementById(`cell-${key}`);
-      if (cell) cell.classList.remove('radar-sweep');
-    });
-
-    const shooterStr = `<b style="color: ${radar.shooterColor}">${radar.shooterName}</b>`;
-    if (radar.hasEnemyShip) {
-      soundManager.playAlarm();
-      addLogItem(`📡 ${shooterStr} quét Radar vùng <b>[${radar.centerKey}] (3x3)</b> ➔ ⚠️ PHÁT HIỆN ${radar.detectedCount} tọa độ có tàu địch!`, 'hit');
-    } else {
-      addLogItem(`📡 ${shooterStr} quét Radar vùng <b>[${radar.centerKey}] (3x3)</b> ➔ 🌊 Vùng biển an toàn, không có bóng dáng tàu địch!`, 'miss');
-    }
-  }, 1200);
 }
 
 function handleCrossfireAnimation(record) {
@@ -710,7 +670,6 @@ function renderTeamsRoster(state) {
       statusText = `<span style="font-weight: 800; color: #15803d; font-size: 0.82rem;">❤️ ${team.shipsRemaining} tàu</span>`;
     }
 
-    const radarRemaining = team.radarScansRemaining ?? 2;
     const crossRemaining = team.crossfireRemaining ?? 1;
 
     card.innerHTML = `
@@ -723,8 +682,8 @@ function renderTeamsRoster(state) {
       </div>
       <div style="text-align: right;">
         <div>${statusText}</div>
-        <div style="font-size: 0.65rem; color: #0284c7; margin-top: 1px;">
-          📡 ${radarRemaining}/2 • 🚀 ${crossRemaining}/1
+        <div style="font-size: 0.65rem; color: #ea580c; margin-top: 1px; font-weight: bold;">
+          🚀 Chữ Thập: ${crossRemaining}/1
         </div>
       </div>
     `;
@@ -816,6 +775,20 @@ function handleShotAnimation(shot) {
     } else {
       addLogItem(`${shooterStr} khai hỏa vào <b>[${shot.targetKey}]</b> ➔ 🌊 Bắn trượt xuống biển!`, 'miss');
     }
+
+    // 🎁 Kích hoạt hiệu ứng Easter Egg nếu trúng 10% may mắn
+    if (shot.easterEgg) {
+      soundManager.playAlarm();
+      const eggBanner = document.getElementById('hostEasterEggBanner');
+      if (eggBanner) {
+        eggBanner.textContent = `🎁 EASTER EGG! Đội ${shot.shooterName} nhặt được Tiếp Tế Đạn Dược - Nhận thêm 1 lượt bắn!`;
+        eggBanner.style.display = 'block';
+        setTimeout(() => {
+          eggBanner.style.display = 'none';
+        }, 3500);
+      }
+      addLogItem(`🎁 <b>EASTER EGG!</b> ${shooterStr} đào được hòm tiếp tế đạn dược ➔ <b>NHẬN THÊM +1 LƯỢT BẮN!</b>`, 'hit');
+    }
   }, 700);
 }
 
@@ -900,7 +873,6 @@ function initEventListeners() {
   // MC Nhập Tọa Độ Nhanh
   const inputHostCoord = document.getElementById('inputHostCoord');
   const btnHostFireCoord = document.getElementById('btnHostFireCoord');
-  const btnHostRadarCoord = document.getElementById('btnHostRadarCoord');
   const btnHostCrossfireCoord = document.getElementById('btnHostCrossfireCoord');
 
   if (btnHostFireCoord) {
@@ -909,16 +881,6 @@ function initEventListeners() {
       if (!val) { alert('Vui lòng nhập tọa độ! (VD: B14)'); return; }
       if (!currentHostState || currentHostState.phase !== 'BATTLE') return;
       processLocalShot(currentHostState.currentTurnTeamId, val);
-      if (inputHostCoord) inputHostCoord.value = '';
-    });
-  }
-
-  if (btnHostRadarCoord) {
-    btnHostRadarCoord.addEventListener('click', () => {
-      const val = inputHostCoord ? inputHostCoord.value.trim().toUpperCase() : '';
-      if (!val) { alert('Vui lòng nhập tọa độ tâm quét! (VD: B14)'); return; }
-      if (!currentHostState || currentHostState.phase !== 'BATTLE') return;
-      processLocalRadar(currentHostState.currentTurnTeamId, val);
       if (inputHostCoord) inputHostCoord.value = '';
     });
   }

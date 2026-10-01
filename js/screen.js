@@ -38,9 +38,7 @@ function initFirebase() {
     });
     window.firebaseSync.clientSubscribeShotEffect(currentRoomId, (effect) => {
       if (!effect) return;
-      if (effect.actionType === 'RADAR') {
-        handleProjectorRadar(effect);
-      } else if (effect.actionType === 'CROSSFIRE') {
+      if (effect.actionType === 'CROSSFIRE') {
         handleProjectorCrossfire(effect);
       } else {
         handleProjectorShot(effect);
@@ -293,7 +291,7 @@ function renderProjectorSurvivalBar(state) {
       <div style="text-align: right;">
         <div>${statusText}</div>
         <div style="font-size: 0.7rem; color: #0284c7; margin-top: 2px;">
-          📡 ${team.radarScansRemaining ?? 2}/2 • 🚀 ${team.crossfireRemaining ?? 1}/1
+          🚀 Chữ Thập: ${team.crossfireRemaining ?? 1}/1
         </div>
       </div>
     `;
@@ -309,6 +307,17 @@ function handleProjectorShot(shot) {
   soundManager.playMissile();
   cell.classList.add('targeted');
 
+  if (shot.easterEgg) {
+    const eeBanner = document.getElementById('projEasterEggBanner');
+    if (eeBanner) {
+      eeBanner.innerHTML = `🎁 <b>${shot.shooterName || 'CHIẾN HẠM'}</b> BẮN TRÚNG Ô MAY MẮN (EASTER EGG)!<br><span style="font-size: 1rem; font-weight: 700;">Nhận ngay thêm +1 LƯỢT BẮN tiếp tục! 🎯</span>`;
+      eeBanner.style.display = 'block';
+      setTimeout(() => {
+        eeBanner.style.display = 'none';
+      }, 4500);
+    }
+  }
+
   setTimeout(() => {
     cell.classList.remove('targeted');
 
@@ -321,33 +330,6 @@ function handleProjectorShot(shot) {
       soundManager.playMiss();
     }
   }, 750);
-}
-
-function handleProjectorRadar(radar) {
-  soundManager.playSonar();
-
-  radar.scannedCells.forEach(key => {
-    const cell = document.getElementById(`proj-cell-${key}`);
-    if (cell) cell.classList.add('radar-sweep');
-  });
-
-  const banner = document.getElementById('projSkillBanner');
-  if (banner) {
-    banner.style.display = 'block';
-    banner.style.background = radar.hasEnemyShip ? '#fee2e2' : '#e0f2fe';
-    banner.style.color = radar.hasEnemyShip ? '#dc2626' : '#0284c7';
-    banner.innerHTML = radar.hasEnemyShip
-      ? `📡 <b>${radar.shooterName}</b> quét Radar vùng <b>[${radar.centerKey}] (3x3)</b> ➔ ⚠️ BÁO ĐỘNG: Phát hiện ${radar.detectedCount} vị trí tàu địch!`
-      : `📡 <b>${radar.shooterName}</b> quét Radar vùng <b>[${radar.centerKey}] (3x3)</b> ➔ 🌊 Vùng biển tĩnh lặng, không có tín hiệu tàu!`;
-  }
-
-  setTimeout(() => {
-    radar.scannedCells.forEach(key => {
-      const cell = document.getElementById(`proj-cell-${key}`);
-      if (cell) cell.classList.remove('radar-sweep');
-    });
-    if (banner) banner.style.display = 'none';
-  }, 3500);
 }
 
 function handleProjectorCrossfire(crossfire) {

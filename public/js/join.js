@@ -54,17 +54,18 @@ document.addEventListener('DOMContentLoaded', () => {
     window.firebaseSync.clientSubscribeShotEffect(currentRoomId, (effect) => {
       if (!effect) return;
 
-      if (effect.actionType === 'RADAR') {
-        soundManager.playSonar();
-        if (effect.shooterTeamId === myTeamId) {
-          if (effect.hasEnemyShip) {
-            soundManager.playAlarm();
-            alert(`📡 KẾT QUẢ RADAR: Phát hiện ${effect.detectedCount} vị trí tàu đối phương trong vùng 3x3 quanh [${effect.centerKey}]!`);
+      if (effect.easterEgg) {
+        soundManager.playAlarm();
+        const eeMobile = document.getElementById('mobileEasterEggBanner');
+        if (eeMobile) {
+          if (effect.shooterTeamId === myTeamId) {
+            eeMobile.innerHTML = `🎁 <b>BẮN TRÚNG Ô MAY MẮN (EASTER EGG)!</b><br>Đội của bạn được thưởng thêm +1 LƯỢT BẮN TIẾP TỤC! 🎯`;
           } else {
-            alert(`📡 KẾT QUẢ RADAR: Vùng biển quanh [${effect.centerKey}] an toàn, không có tín hiệu tàu!`);
+            eeMobile.innerHTML = `🎁 <b>${effect.shooterName || 'ĐỐI THỦ'}</b> bắn trúng ô May Mắn và được thêm 1 lượt!`;
           }
+          eeMobile.style.display = 'block';
+          setTimeout(() => { eeMobile.style.display = 'none'; }, 4500);
         }
-        return;
       }
 
       if (effect.actionType === 'CROSSFIRE') {
@@ -154,9 +155,7 @@ function updatePlayerUI(state) {
     badge.style.color = myTeam.colorHex;
 
     // Cập nhật số lượng kỹ năng
-    const badgeRadar = document.getElementById('badgeRadarCount');
     const badgeCrossfire = document.getElementById('badgeCrossfireCount');
-    if (badgeRadar) badgeRadar.textContent = `Còn ${myTeam.radarScansRemaining ?? 2}/2`;
     if (badgeCrossfire) badgeCrossfire.textContent = `Còn ${myTeam.crossfireRemaining ?? 1}/1`;
 
     // Sẵn sàng button
@@ -440,9 +439,7 @@ function updateGridCellVisuals(container, state, myTeam) {
   targetHighlightSet.forEach(k => {
     const c = container.querySelector(`[data-key="${k}"]`);
     if (!c) return;
-    if (currentWeaponMode === 'RADAR') {
-      c.classList.add('radar-sweep');
-    } else if (currentWeaponMode === 'CROSSFIRE') {
+    if (currentWeaponMode === 'CROSSFIRE') {
       c.classList.add('crossfire-target');
     } else {
       c.classList.add('selected-target');
@@ -462,19 +459,6 @@ function getTargetAreaHighlightKeys() {
   const parsed = window.GameEngine ? window.GameEngine.parseKey(selectedTargetKey) : null;
   if (!parsed) {
     set.add(selectedTargetKey);
-    return set;
-  }
-
-  if (currentWeaponMode === 'RADAR') {
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        const cIdx = parsed.colIdx + dc;
-        const rIdx = parsed.rowIdx + dr;
-        if (cIdx >= 0 && cIdx < COLS.length && rIdx >= 0 && rIdx < ROWS.length) {
-          set.add(`${COLS[cIdx]}${ROWS[rIdx]}`);
-        }
-      }
-    }
     return set;
   }
 
@@ -705,21 +689,16 @@ function initEventListeners() {
 
   // Nút Kỹ Năng / Vũ Khí
   const btnSkillNormal = document.getElementById('btnSkillNormal');
-  const btnSkillRadar = document.getElementById('btnSkillRadar');
   const btnSkillCrossfire = document.getElementById('btnSkillCrossfire');
   const btnFire = document.getElementById('btnFire');
 
   function updateSkillButtonsUI() {
-    btnSkillNormal.className = currentWeaponMode === 'NORMAL' ? 'btn btn-primary' : 'btn btn-outline';
-    btnSkillRadar.className = currentWeaponMode === 'RADAR' ? 'btn btn-primary' : 'btn btn-outline';
-    btnSkillCrossfire.className = currentWeaponMode === 'CROSSFIRE' ? 'btn btn-primary' : 'btn btn-outline';
+    if (btnSkillNormal) btnSkillNormal.className = currentWeaponMode === 'NORMAL' ? 'btn btn-primary' : 'btn btn-outline';
+    if (btnSkillCrossfire) btnSkillCrossfire.className = currentWeaponMode === 'CROSSFIRE' ? 'btn btn-primary' : 'btn btn-outline';
 
     if (currentWeaponMode === 'NORMAL') {
       btnFire.textContent = '🚀 KHAI HỎA TÊN LỬA!';
       btnFire.style.background = '#dc2626';
-    } else if (currentWeaponMode === 'RADAR') {
-      btnFire.textContent = '📡 BẮT ĐẦU QUÉT RADAR 3x3!';
-      btnFire.style.background = '#0284c7';
     } else if (currentWeaponMode === 'CROSSFIRE') {
       btnFire.textContent = '💥 BẮN TÊN LỬA CHỮ THẬP (+)!';
       btnFire.style.background = '#ea580c';
@@ -731,28 +710,23 @@ function initEventListeners() {
     }
   }
 
-  btnSkillNormal.addEventListener('click', () => {
-    currentWeaponMode = 'NORMAL';
-    updateSkillButtonsUI();
-  });
+  if (btnSkillNormal) {
+    btnSkillNormal.addEventListener('click', () => {
+      currentWeaponMode = 'NORMAL';
+      updateSkillButtonsUI();
+    });
+  }
 
-  btnSkillRadar.addEventListener('click', () => {
-    if (myPlayerState && myPlayerState.myTeam && (myPlayerState.myTeam.radarScansRemaining || 0) <= 0) {
-      alert('Bạn đã hết lượt quét Radar!');
-      return;
-    }
-    currentWeaponMode = 'RADAR';
-    updateSkillButtonsUI();
-  });
-
-  btnSkillCrossfire.addEventListener('click', () => {
-    if (myPlayerState && myPlayerState.myTeam && (myPlayerState.myTeam.crossfireRemaining || 0) <= 0) {
-      alert('Bạn đã hết lượt bắn Tên lửa Chữ Thập!');
-      return;
-    }
-    currentWeaponMode = 'CROSSFIRE';
-    updateSkillButtonsUI();
-  });
+  if (btnSkillCrossfire) {
+    btnSkillCrossfire.addEventListener('click', () => {
+      if (myPlayerState && myPlayerState.myTeam && (myPlayerState.myTeam.crossfireRemaining || 0) <= 0) {
+        alert('Bạn đã hết lượt bắn Tên lửa Chữ Thập!');
+        return;
+      }
+      currentWeaponMode = 'CROSSFIRE';
+      updateSkillButtonsUI();
+    });
+  }
 
   // Nhập Tọa Độ Nhanh
   const inputManual = document.getElementById('inputManualCoord');
@@ -799,24 +773,7 @@ function initEventListeners() {
   btnFire.addEventListener('click', () => {
     if (!selectedTargetKey || !currentRoomId || !myTeamId) return;
 
-    if (currentWeaponMode === 'RADAR') {
-      if (socket && socket.connected) {
-        socket.emit('player:radar', {
-          roomId: currentRoomId,
-          teamId: myTeamId,
-          centerKey: selectedTargetKey,
-        });
-      }
-      if (window.firebaseSync && window.firebaseSync.isReady) {
-        window.firebaseSync.clientSendAction(currentRoomId, {
-          type: 'RADAR',
-          teamId: myTeamId,
-          centerKey: selectedTargetKey,
-        });
-      }
-      currentWeaponMode = 'NORMAL';
-      updateSkillButtonsUI();
-    } else if (currentWeaponMode === 'CROSSFIRE') {
+    if (currentWeaponMode === 'CROSSFIRE') {
       if (socket && socket.connected) {
         socket.emit('player:crossfire', {
           roomId: currentRoomId,
@@ -875,7 +832,6 @@ function buildPlayerStateFromRoomState(roomState, targetTeamId) {
       isFleetLocked: t.isFleetLocked,
       shipsRemaining: t.shipsRemaining,
       score: t.score,
-      radarScansRemaining: t.radarScansRemaining ?? 2,
       crossfireRemaining: t.crossfireRemaining ?? 1,
       isEliminated: t.isEliminated,
     })),
@@ -887,7 +843,6 @@ function buildPlayerStateFromRoomState(roomState, targetTeamId) {
     isMyTurn: roomState.currentTurnTeamId === targetTeamId && myTeam && !myTeam.isEliminated && roomState.phase === 'BATTLE',
     shotsMap: roomState.shotsMap || {},
     lastShotResult: roomState.lastShotResult,
-    lastRadarRecord: roomState.lastRadarRecord,
     lastCrossfireRecord: roomState.lastCrossfireRecord,
     winner: roomState.winner,
   };
