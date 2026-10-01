@@ -232,7 +232,7 @@ function renderProjectorOceanMap(state) {
               if (!cell) return;
               const partClass = window.GameEngine.getShipPartClass(ship, key);
               cell.classList.add('has-ship', 'shot-sunk');
-              if (partClass) cell.classList.add(partClass);
+              if (partClass) partClass.split(' ').filter(Boolean).forEach(cls => cell.classList.add(cls));
               cell.style.borderColor = team.colorHex;
             });
           }

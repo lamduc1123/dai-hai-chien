@@ -380,7 +380,7 @@ function renderPlacementView(state) {
         if (!cell) return;
         const partClass = window.GameEngine.getShipPartClass(ship, k);
         cell.classList.add('has-ship');
-        if (partClass) cell.classList.add(partClass);
+        if (partClass) partClass.split(' ').filter(Boolean).forEach(cls => cell.classList.add(cls));
         cell.style.borderColor = myTeam.colorHex;
       });
     });
@@ -471,7 +471,7 @@ function updateGridCellVisuals(container, state, myTeam) {
         if (!cell) return;
         const partClass = window.GameEngine.getShipPartClass(ship, k);
         cell.classList.add('has-ship');
-        if (partClass) cell.classList.add(partClass);
+        if (partClass) partClass.split(' ').filter(Boolean).forEach(cls => cell.classList.add(cls));
         cell.style.borderColor = myTeam.colorHex;
 
         if (isSunk) {

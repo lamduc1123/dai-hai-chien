@@ -178,7 +178,7 @@ function allocatePlayerZones(playerCount = 4, colsCount = COLS.length, rowsCount
 }
 
 /**
- * Trả về class bộ phận của tàu (ship-bow-h, ship-mid-h, ship-stern-h, ship-bow-v, ship-mid-v, ship-stern-v)
+ * Trả về class bộ phận của tàu (Cruiser 3 ô & Carrier 4 ô)
  * Giúp hiển thị trọn vẹn 1 chiến hạm 3 ô hoặc 4 ô liền khối đẹp mắt
  */
 function getShipPartClass(ship, cellKey) {
@@ -186,16 +186,20 @@ function getShipPartClass(ship, cellKey) {
   const idx = ship.cells.indexOf(cellKey);
   if (idx === -1) return '';
   const total = ship.cells.length;
-  if (total === 1) return 'ship-single';
-
   const isHorizontal = ship.orientation === 'horizontal';
-  if (idx === 0) {
-    return isHorizontal ? 'ship-bow-h' : 'ship-bow-v';
+
+  // 1. Tàu 4 ô: Tàu Sân Bay (Aircraft Carrier)
+  if (total === 4) {
+    if (idx === 0) return isHorizontal ? 'ship-carrier-bow-h ship-bow-h' : 'ship-carrier-bow-v ship-bow-v';
+    if (idx === 1) return isHorizontal ? 'ship-carrier-mid1-h ship-mid-h' : 'ship-carrier-mid1-v ship-mid-v';
+    if (idx === 2) return isHorizontal ? 'ship-carrier-mid2-h ship-mid-h' : 'ship-carrier-mid2-v ship-mid-v';
+    return isHorizontal ? 'ship-carrier-stern-h ship-stern-h' : 'ship-carrier-stern-v ship-stern-v';
   }
-  if (idx === total - 1) {
-    return isHorizontal ? 'ship-stern-h' : 'ship-stern-v';
-  }
-  return isHorizontal ? 'ship-mid-h' : 'ship-mid-v';
+
+  // 2. Tàu 3 ô: Tuần Dương Hạm (Cruiser)
+  if (idx === 0) return isHorizontal ? 'ship-cruiser-bow-h ship-bow-h' : 'ship-cruiser-bow-v ship-bow-v';
+  if (idx === total - 1) return isHorizontal ? 'ship-cruiser-stern-h ship-stern-h' : 'ship-cruiser-stern-v ship-stern-v';
+  return isHorizontal ? 'ship-cruiser-mid-h ship-mid-h' : 'ship-cruiser-mid-v ship-mid-v';
 }
 
 /**
@@ -215,7 +219,7 @@ function generateRandomFleetOpenOcean(shipLengths = [4, 3], existingEnemyCells =
 
   for (let i = 0; i < shipLengths.length; i++) {
     const length = shipLengths[i];
-    const shipName = length === 4 ? `Chiến Hạm Tuần Dương #${i + 1}` : `Tàu Khu Trục Hộ Tống #${i + 1}`;
+    const shipName = length === 4 ? `Tàu Sân Bay #${i + 1}` : `Tuần Dương Hạm #${i + 1}`;
     let placed = false;
     let attempts = 0;
 
