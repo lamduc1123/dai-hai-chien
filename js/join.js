@@ -56,6 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(fitBattleGridToScreen, 120);
   });
 
+  if (window.ResizeObserver) {
+    const pWrap = document.getElementById('placementMapWrapper');
+    const bWrap = document.getElementById('mobileMapWrapper');
+    if (pWrap) new ResizeObserver(() => fitPlacementGridToScreen()).observe(pWrap);
+    if (bWrap) new ResizeObserver(() => fitBattleGridToScreen()).observe(bWrap);
+  }
+
   if (window.firebaseSync && window.firebaseSync.init() && currentRoomId) {
     window.firebaseSync.clientSubscribeState(currentRoomId, (roomState) => {
       if (roomState) {
@@ -429,14 +436,14 @@ function fitPlacementGridToScreen() {
   const numRows = (ROWS && ROWS.length) ? ROWS.length : 20;
   if (!numCols || !numRows) return;
 
-  const rect = wrapper.getBoundingClientRect();
-  const pad = 4;
-  const availW = Math.max(50, rect.width - pad);
-  const availH = Math.max(50, rect.height - pad);
+  const padW = 4;
+  const padH = 4;
+  const availW = Math.max(50, (wrapper.clientWidth || wrapper.getBoundingClientRect().width) - padW);
+  const availH = Math.max(50, (wrapper.clientHeight || wrapper.getBoundingClientRect().height) - padH);
 
   // Dynamic header sizes for mobile screen
-  const headerColW = Math.max(12, Math.min(22, Math.floor(availW / (numCols + 1.5))));
-  const headerRowH = Math.max(12, Math.min(20, Math.floor(availH / (numRows + 1.5))));
+  const headerColW = Math.max(10, Math.min(20, Math.floor(availW / (numCols + 1.5))));
+  const headerRowH = Math.max(10, Math.min(18, Math.floor(availH / (numRows + 1.5))));
   const gap = 1;
 
   const remainingW = availW - headerColW - (numCols * gap);
@@ -445,12 +452,15 @@ function fitPlacementGridToScreen() {
   let cellSize = Math.floor(Math.min(remainingW / numCols, remainingH / numRows));
   cellSize = Math.max(6, cellSize);
 
+  wrapper.style.overflow = 'hidden';
+  grid.style.transform = 'none';
   grid.style.minWidth = '0px';
   grid.style.gridTemplateColumns = `${headerColW}px repeat(${numCols}, ${cellSize}px)`;
   grid.style.gridTemplateRows = `${headerRowH}px repeat(${numRows}, ${cellSize}px)`;
   grid.style.gap = `${gap}px`;
   grid.style.width = 'fit-content';
   grid.style.height = 'fit-content';
+  grid.style.margin = 'auto';
 
   // Responsive font size for headers based on cellSize
   const fontSz = Math.max(7, Math.min(11, Math.floor(cellSize * 0.72)));
@@ -747,40 +757,60 @@ function fitBattleGridToScreen() {
   const numRows = (ROWS && ROWS.length) ? ROWS.length : 20;
   if (!numCols || !numRows) return;
 
-  if (currentZoomLevel === 1.0) {
+  const padW = 4;
+  const padH = 4;
+  const availW = Math.max(50, (wrapper.clientWidth || wrapper.getBoundingClientRect().width) - padW);
+  const availH = Math.max(50, (wrapper.clientHeight || wrapper.getBoundingClientRect().height) - padH);
+
+  const headerColW = Math.max(10, Math.min(20, Math.floor(availW / (numCols + 1.5))));
+  const headerRowH = Math.max(10, Math.min(18, Math.floor(availH / (numRows + 1.5))));
+  const gap = 1;
+
+  const remainingW = availW - headerColW - (numCols * gap);
+  const remainingH = availH - headerRowH - (numRows * gap);
+
+  let baseCellSize = Math.floor(Math.min(remainingW / numCols, remainingH / numRows));
+  baseCellSize = Math.max(6, baseCellSize);
+
+  // Khi Zoom <= 1.0: Tự động khóa toàn màn hình 100%, không cần vuốt lên xuống
+  if (currentZoomLevel <= 1.0) {
+    currentZoomLevel = 1.0;
     wrapper.style.overflow = 'hidden';
-    const rect = wrapper.getBoundingClientRect();
-    const pad = 4;
-    const availW = Math.max(50, rect.width - pad);
-    const availH = Math.max(50, rect.height - pad);
-
-    const headerColW = Math.max(12, Math.min(22, Math.floor(availW / (numCols + 1.5))));
-    const headerRowH = Math.max(12, Math.min(20, Math.floor(availH / (numRows + 1.5))));
-    const gap = 1;
-
-    const remainingW = availW - headerColW - (numCols * gap);
-    const remainingH = availH - headerRowH - (numRows * gap);
-
-    let cellSize = Math.floor(Math.min(remainingW / numCols, remainingH / numRows));
-    cellSize = Math.max(6, cellSize);
-
     grid.style.transform = 'none';
     grid.style.minWidth = '0px';
-    grid.style.gridTemplateColumns = `${headerColW}px repeat(${numCols}, ${cellSize}px)`;
-    grid.style.gridTemplateRows = `${headerRowH}px repeat(${numRows}, ${cellSize}px)`;
+    grid.style.gridTemplateColumns = `${headerColW}px repeat(${numCols}, ${baseCellSize}px)`;
+    grid.style.gridTemplateRows = `${headerRowH}px repeat(${numRows}, ${baseCellSize}px)`;
     grid.style.gap = `${gap}px`;
     grid.style.width = 'fit-content';
     grid.style.height = 'fit-content';
+    grid.style.margin = 'auto';
 
-    const fontSz = Math.max(7, Math.min(11, Math.floor(cellSize * 0.72)));
+    const fontSz = Math.max(7, Math.min(11, Math.floor(baseCellSize * 0.72)));
     grid.querySelectorAll('.ocean-col-header, .ocean-row-header').forEach(h => {
       h.style.fontSize = `${fontSz}px`;
-      h.style.lineHeight = `${cellSize}px`;
+      h.style.lineHeight = `${baseCellSize}px`;
     });
   } else {
+    // Khi phóng to (> 1.0): Cho phép cuộn tự do bên trong khung hải đồ với kích thước ô sắc nét
     wrapper.style.overflow = 'auto';
-    grid.style.transform = `scale(${currentZoomLevel})`;
-    grid.style.transformOrigin = 'top left';
+    const zoomedCellSize = Math.max(baseCellSize, Math.round(baseCellSize * currentZoomLevel));
+    const zoomedColW = Math.max(headerColW, Math.round(headerColW * currentZoomLevel));
+    const zoomedRowH = Math.max(headerRowH, Math.round(headerRowH * currentZoomLevel));
+
+    grid.style.transform = 'none';
+    grid.style.minWidth = '0px';
+    grid.style.gridTemplateColumns = `${zoomedColW}px repeat(${numCols}, ${zoomedCellSize}px)`;
+    grid.style.gridTemplateRows = `${zoomedRowH}px repeat(${numRows}, ${zoomedCellSize}px)`;
+    grid.style.gap = `${gap}px`;
+    grid.style.width = 'fit-content';
+    grid.style.height = 'fit-content';
+    grid.style.margin = '0 auto';
+
+    const fontSz = Math.max(8, Math.min(16, Math.floor(zoomedCellSize * 0.68)));
+    grid.querySelectorAll('.ocean-col-header, .ocean-row-header').forEach(h => {
+      h.style.fontSize = `${fontSz}px`;
+      h.style.lineHeight = `${zoomedRowH}px`;
+    });
   }
 }
 
