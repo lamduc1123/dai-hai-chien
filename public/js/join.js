@@ -177,31 +177,70 @@ function updatePlayerUI(state) {
     }
   }
 
-  // Điều phối View theo Phase & Tình trạng chọn đội
-  const viewLobby = document.getElementById('viewLobby');
-  const viewPlacement = document.getElementById('viewPlacement');
-  const viewBattle = document.getElementById('viewBattle');
-  const viewFinished = document.getElementById('viewFinished');
-
+  // Khớp hạm đội bằng deviceToken trước, sau đó bằng myTeamId
+  if (!myTeam && myDeviceToken && state.teamsOverview) {
+    myTeam = state.teamsOverview.find(t => t.deviceToken === myDeviceToken);
+  }
   const numTeamId = myTeamId ? parseInt(myTeamId, 10) : null;
   if (!myTeam && numTeamId && state.teamsOverview) {
     myTeam = state.teamsOverview.find(t => parseInt(t.id, 10) === numTeamId);
   }
-  if (!myTeam && numTeamId) {
-    myTeam = DEFAULT_TEAMS_FALLBACK.find(t => parseInt(t.id, 10) === numTeamId);
+  if (myTeam) {
+    myTeamId = myTeam.id;
+    localStorage.setItem('dai_hai_chien_team_id', myTeam.id);
   }
 
-  // NẾU NGƯỜI CHƠI CHƯA CHỌN ĐỘI -> LUÔN HIỂN THỊ MÀN HÌNH CHỌN ĐỘI ĐẦU TIÊN
-  if (!numTeamId) {
+  // Cập nhật Header & Badge thông tin hạm đội
+  if (myTeam) {
+    const titleEl = document.getElementById('headerTeamTitle');
+    if (titleEl) titleEl.textContent = myTeam.name || `Chiến Hạm #${myTeam.id}`;
+    const subTitleEl = document.getElementById('headerSubTitle');
+    if (subTitleEl) subTitleEl.textContent = `Vị Trí #${myTeam.id}`;
+
+    const badge = document.getElementById('teamBadgeHeader');
+    if (badge) {
+      badge.style.display = 'inline-block';
+      badge.textContent = `${myTeam.icon || '⚓'} ĐỘI ${myTeam.id}`;
+      badge.style.background = `${myTeam.colorHex || '#0284c7'}22`;
+      badge.style.color = myTeam.colorHex || '#0284c7';
+    }
+
+    const waitTitle = document.getElementById('waitingAssignedShipTitle');
+    if (waitTitle) waitTitle.innerHTML = `${myTeam.icon || '⚓'} <b>${myTeam.name}</b>`;
+    const waitSub = document.getElementById('waitingAssignedShipSub');
+    if (waitSub) waitSub.textContent = `Đã kết nối Vị Trí #${myTeam.id} thành công!`;
+
+    const badgeCrossfire = document.getElementById('badgeCrossfireCount');
+    if (badgeCrossfire) badgeCrossfire.textContent = `Còn ${myTeam.crossfireRemaining ?? 1}/1`;
+
+    const btnReady = document.getElementById('btnToggleReady');
+    if (btnReady) {
+      if (myTeam.isReady) {
+        btnReady.textContent = '✓ ĐÃ SẴN SÀNG (CHỜ BẮT ĐẦU)';
+        btnReady.className = 'btn btn-outline';
+      } else {
+        btnReady.textContent = '✓ BẤM SẴN SÀNG';
+        btnReady.className = 'btn btn-success';
+      }
+    }
+  }
+
+  // Điều phối View theo Phase & Tình trạng tham gia
+  const viewLobby = document.getElementById('viewLobby');
+  const viewPlacement = document.getElementById('viewPlacement');
+  const viewBattle = document.getElementById('viewBattle');
+  const viewFinished = document.getElementById('viewFinished');
+  const joinFormArea = document.getElementById('joinFormArea');
+  const waitingRoomState = document.getElementById('waitingRoomState');
+
+  // NẾU NGƯỜI CHƠI CHƯA CÓ ĐỘI -> HIỂN THỊ FORM NHẬP TÊN THAM GIA
+  if (!myTeam) {
     viewLobby.style.display = 'block';
     viewPlacement.style.display = 'none';
     viewBattle.style.display = 'none';
     viewFinished.style.display = 'none';
-    document.getElementById('btnJoinTeam').style.display = 'block';
-    const slotsEl = document.getElementById('teamSlotsContainer');
-    if (slotsEl) slotsEl.style.display = 'flex';
-    document.getElementById('waitingRoomState').style.display = 'none';
-    renderTeamSlots(state.teamsOverview || DEFAULT_TEAMS_FALLBACK);
+    if (joinFormArea) joinFormArea.style.display = 'block';
+    if (waitingRoomState) waitingRoomState.style.display = 'none';
     return;
   }
 
@@ -211,12 +250,8 @@ function updatePlayerUI(state) {
     viewPlacement.style.display = 'none';
     viewBattle.style.display = 'none';
     viewFinished.style.display = 'none';
-    document.getElementById('btnJoinTeam').style.display = 'none';
-    const slotsEl = document.getElementById('teamSlotsContainer');
-    if (slotsEl) slotsEl.style.display = 'none';
-    const inputEl = document.getElementById('inputPlayerName');
-    if (inputEl) inputEl.disabled = true;
-    document.getElementById('waitingRoomState').style.display = 'block';
+    if (joinFormArea) joinFormArea.style.display = 'none';
+    if (waitingRoomState) waitingRoomState.style.display = 'block';
   } else if (state.phase === 'PLACEMENT') {
     viewLobby.style.display = 'none';
     viewPlacement.style.display = 'block';
@@ -716,41 +751,31 @@ function startMobileTurnTicker() {
 function initEventListeners() {
   // Nút Tham Gia Đội
   const joinTeamAction = () => {
-    if (!selectedSlotId) {
-      const avail = document.querySelector('#teamSlotsContainer .slot-btn:not(.taken)');
-      if (avail && avail.dataset && avail.dataset.slotId) {
-        selectedSlotId = parseInt(avail.dataset.slotId, 10);
-      } else {
-        selectedSlotId = 1;
-      }
-    }
     const inputEl = document.getElementById('inputPlayerName');
-    const name = (inputEl && inputEl.value.trim()) ? inputEl.value.trim() : `Chiến Hạm #${selectedSlotId}`;
+    const name = (inputEl && inputEl.value.trim()) ? inputEl.value.trim() : '';
+    if (!name) {
+      alert('Vui lòng nhập tên chiến hạm (tên đội) của bạn!');
+      if (inputEl) inputEl.focus();
+      return;
+    }
 
-    myTeamId = parseInt(selectedSlotId, 10);
     myDeviceToken = myDeviceToken || Math.random().toString(36).substring(2);
     localStorage.setItem('dai_hai_chien_token', myDeviceToken);
-    localStorage.setItem('dai_hai_chien_team_id', myTeamId);
+    localStorage.setItem('dai_hai_chien_name', name);
 
-    const btnJoin = document.getElementById('btnJoinTeam');
-    if (btnJoin) btnJoin.style.display = 'none';
-    const slotsEl = document.getElementById('teamSlotsContainer');
-    if (slotsEl) {
-      slotsEl.style.display = 'none';
-      const fg = slotsEl.closest('.form-group');
-      if (fg) fg.style.display = 'none';
-    }
-    if (inputEl) {
-      const fgName = inputEl.closest('.form-group');
-      if (fgName) fgName.style.display = 'none';
-    }
+    const joinFormArea = document.getElementById('joinFormArea');
+    if (joinFormArea) joinFormArea.style.display = 'none';
     const waitingEl = document.getElementById('waitingRoomState');
     if (waitingEl) waitingEl.style.display = 'block';
+
+    const waitTitle = document.getElementById('waitingAssignedShipTitle');
+    if (waitTitle) waitTitle.innerHTML = `🚢 <b>${name}</b>`;
+    const waitSub = document.getElementById('waitingAssignedShipSub');
+    if (waitSub) waitSub.textContent = 'Đang đồng bộ vào ô trống trên Máy Chủ...';
 
     if (socket && socket.connected) {
       socket.emit('player:join', {
         roomId: currentRoomId,
-        teamId: myTeamId,
         playerName: name,
         deviceToken: myDeviceToken,
       });
@@ -759,7 +784,6 @@ function initEventListeners() {
     if (window.firebaseSync && window.firebaseSync.isReady) {
       window.firebaseSync.clientSendAction(currentRoomId, {
         type: 'JOIN',
-        teamId: myTeamId,
         playerName: name,
         deviceToken: myDeviceToken,
       });
@@ -920,7 +944,19 @@ function initEventListeners() {
 function buildPlayerStateFromRoomState(roomState, targetTeamId) {
   if (!roomState || !roomState.teams) return roomState;
   const numTargetId = targetTeamId ? parseInt(targetTeamId, 10) : null;
-  const myTeam = numTargetId ? roomState.teams.find(t => parseInt(t.id, 10) === numTargetId) : null;
+  let myTeam = null;
+  if (myDeviceToken) {
+    myTeam = roomState.teams.find(t => t.deviceToken === myDeviceToken);
+  }
+  if (!myTeam && numTargetId) {
+    myTeam = roomState.teams.find(t => parseInt(t.id, 10) === numTargetId);
+  }
+  if (myTeam) {
+    myTeamId = myTeam.id;
+    localStorage.setItem('dai_hai_chien_team_id', myTeam.id);
+  }
+  const effectiveTeamId = myTeam ? myTeam.id : numTargetId;
+
   return {
     phase: roomState.phase,
     grid: roomState.grid,
@@ -930,10 +966,13 @@ function buildPlayerStateFromRoomState(roomState, targetTeamId) {
       id: t.id,
       name: t.customName || t.name,
       colorHex: t.colorHex,
+      colorName: t.colorName,
       icon: t.icon,
       isBot: t.isBot,
       isConnected: t.isConnected,
+      deviceToken: t.deviceToken,
       isFleetLocked: t.isFleetLocked,
+      isReady: t.isReady,
       shipsRemaining: t.shipsRemaining,
       score: t.score,
       crossfireRemaining: t.crossfireRemaining ?? 1,
@@ -944,7 +983,7 @@ function buildPlayerStateFromRoomState(roomState, targetTeamId) {
     turnNumber: roomState.turnNumber,
     turnTimeRemaining: roomState.turnTimeRemaining || 60,
     turnStartTime: roomState.turnStartTime || Date.now(),
-    isMyTurn: roomState.currentTurnTeamId === targetTeamId && myTeam && !myTeam.isEliminated && roomState.phase === 'BATTLE',
+    isMyTurn: roomState.currentTurnTeamId === effectiveTeamId && myTeam && !myTeam.isEliminated && roomState.phase === 'BATTLE',
     shotsMap: roomState.shotsMap || {},
     lastShotResult: roomState.lastShotResult,
     lastCrossfireRecord: roomState.lastCrossfireRecord,

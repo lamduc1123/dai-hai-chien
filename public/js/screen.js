@@ -271,16 +271,51 @@ function renderProjectorSurvivalBar(state) {
   state.teams.forEach(team => {
     const isCurrentTurn = state.phase === 'BATTLE' && state.currentTurnTeamId === team.id;
     const card = document.createElement('div');
+    const isEmptySlot = state.phase === 'LOBBY' && !team.isConnected && !team.isBot;
+
+    if (isEmptySlot) {
+      card.className = 'proj-team-card empty-slot';
+      card.style.border = '2px dashed #94a3b8';
+      card.style.background = '#f8fafc';
+      card.style.opacity = '0.85';
+      card.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.4rem; opacity: 0.4;">⚪</span>
+          <div>
+            <div style="font-weight: 800; color: #64748b; font-size: 0.92rem;">
+              [ Ô Trống #${team.id} ]
+            </div>
+            <div style="font-size: 0.72rem; color: #94a3b8;">
+              Chờ quét mã QR...
+            </div>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <span style="font-weight: 600; color: #64748b; font-size: 0.75rem; background: #e2e8f0; padding: 3px 8px; border-radius: 4px;">
+            Đang trống
+          </span>
+        </div>
+      `;
+      container.appendChild(card);
+      return;
+    }
+
     card.className = `proj-team-card ${isCurrentTurn ? 'active-turn' : ''} ${team.isEliminated ? 'eliminated' : ''}`;
     if (isCurrentTurn) {
       card.style.borderColor = team.colorHex;
       card.style.background = `${team.colorHex}18`;
       card.style.boxShadow = `0 0 16px ${team.colorHex}66`;
+    } else {
+      card.style.borderColor = team.colorHex;
+      card.style.borderWidth = '2px';
+      card.style.borderStyle = 'solid';
     }
 
     let statusText = '';
     if (team.isEliminated) {
       statusText = '<span style="color: #dc2626; font-weight: 800; font-size: 0.85rem;">☠️ ĐÃ CHÌM</span>';
+    } else if (state.phase === 'LOBBY') {
+      statusText = `<span style="font-weight: 700; color: #16a34a; font-size: 0.8rem;">✓ Sẵn sàng</span>`;
     } else {
       statusText = `<span style="font-weight: 800; color: #15803d; font-size: 0.85rem;">❤️ Còn ${team.shipsRemaining}/${state.config ? state.config.shipsPerPlayer : 2} tàu</span>`;
     }

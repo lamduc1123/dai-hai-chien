@@ -136,28 +136,32 @@ function handleLocalHostAction(actionType, payload) {
     const emptyTeam = currentHostState.teams.find(t => !t.isConnected && !t.isBot);
     if (emptyTeam) {
       emptyTeam.isBot = true;
-      emptyTeam.botName = `Bot Chiến Hạm ${emptyTeam.id}`;
+      emptyTeam.isConnected = true;
+      emptyTeam.isReady = true;
+      emptyTeam.botName = `Bot Hạm Đội ${emptyTeam.id}`;
+      emptyTeam.name = emptyTeam.botName;
       if (currentHostState.phase === 'PLACEMENT') {
         emptyTeam.fleet = window.GameEngine.generateRandomFleetInZone(emptyTeam.zone, currentHostState.config.shipLengths);
         emptyTeam.isFleetLocked = true;
-        emptyTeam.isReady = true;
       }
-      addLogItem(`🤖 Đã thêm Bot vào đội [${emptyTeam.name}]`, 'hit');
+      addLogItem(`🤖 Đã thêm Bot vào vị trí [${emptyTeam.name}]`, 'hit');
       commitLocalState();
     }
   } else if (actionType === 'host:fill_bots') {
     currentHostState.teams.forEach(t => {
       if (!t.isConnected && !t.isBot) {
         t.isBot = true;
-        t.botName = `Bot Chiến Hạm ${t.id}`;
+        t.isConnected = true;
+        t.isReady = true;
+        t.botName = `Bot Hạm Đội ${t.id}`;
+        t.name = t.botName;
         if (currentHostState.phase === 'PLACEMENT') {
           t.fleet = window.GameEngine.generateRandomFleetInZone(t.zone, currentHostState.config.shipLengths);
           t.isFleetLocked = true;
-          t.isReady = true;
         }
       }
     });
-    addLogItem('🤖 Đã lấp đầy tất cả các đội trống bằng Bot!', 'hit');
+    addLogItem('🤖 Đã lấp đầy tất cả các ô trống bằng Bot!', 'hit');
     commitLocalState();
   } else if (actionType === 'host:start_placement') {
     const res = window.GameEngine.startPlacementPhase(currentHostState);
@@ -247,16 +251,40 @@ function handleIncomingFirebaseAction(action) {
   } else if (action.type === 'CROSSFIRE') {
     processLocalCrossfire(targetTeamId, action.centerKey);
   } else if (action.type === 'JOIN') {
-    const team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
+    let team = null;
+    // 1. Kiểm tra xem thiết bị này đã từng nhận slot nào chưa
+    if (action.deviceToken) {
+      team = currentHostState.teams.find(t => t.deviceToken === action.deviceToken);
+    }
+    // 2. Nếu chưa, và có truyền targetTeamId hợp lệ
+    if (!team && targetTeamId) {
+      const candidate = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
+      if (candidate && (!candidate.isConnected || candidate.deviceToken === action.deviceToken)) {
+        team = candidate;
+      }
+    }
+    // 3. Nếu vẫn chưa, tự động lấy ô trống đầu tiên (chưa kết nối và không phải bot)
+    if (!team) {
+      team = currentHostState.teams.find(t => !t.isConnected && !t.isBot);
+    }
+
     if (team) {
       team.isConnected = true;
+      team.deviceToken = action.deviceToken || null;
       if (action.playerName && action.playerName.trim()) {
-        team.customName = action.playerName.trim();
+        team.customName = action.playerName.trim().substring(0, 20);
+        team.name = team.customName;
+      } else if (!team.name || team.name.startsWith('Ô Trống')) {
+        team.customName = `Chiến Hạm #${team.id}`;
         team.name = team.customName;
       }
       team.isBot = false;
-      addLogItem(`🚢 Chiến hạm <b>${team.name}</b> đã vào vị trí sẵn sàng!`, 'hit');
+      team.isReady = true;
+      soundManager.playSonar();
+      addLogItem(`🚢 Chiến hạm <b>${team.name}</b> đã vào [Vị Trí #${team.id}] sẵn sàng!`, 'hit');
       commitLocalState();
+    } else {
+      addLogItem(`⚠️ Người chơi [${action.playerName || 'Ẩn danh'}] không thể tham gia: Phòng đã đủ ${currentHostState.teams.length} đội!`, 'miss');
     }
   } else if (action.type === 'READY') {
     const team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
@@ -588,7 +616,8 @@ function updatePhaseAndControls(state) {
   const quickFireBar = document.getElementById('hostQuickFireBar');
 
   const totalCount = state.teams ? state.teams.length : 0;
-  const readyCount = state.teams ? state.teams.filter(t => t.isReady).length : 0;
+  const connectedCount = state.teams ? state.teams.filter(t => t.isConnected || t.isBot).length : 0;
+  const readyCount = state.teams ? state.teams.filter(t => (t.isConnected || t.isBot) && t.isReady).length : 0;
   const lockedCount = state.teams ? state.teams.filter(t => t.isFleetLocked).length : 0;
   const pLabel = document.getElementById('playerCountLabel');
   if (pLabel) pLabel.textContent = `${totalCount} Đội`;
@@ -598,8 +627,8 @@ function updatePhaseAndControls(state) {
     phaseBadge.style.background = '#e0f2fe';
     phaseBadge.style.color = '#0284c7';
 
-    statusProgressText.textContent = `${readyCount}/${totalCount} Đội Sẵn Sàng`;
-    statusTurnText.textContent = 'Đang chờ người chơi hoặc thêm máy vào phòng';
+    statusProgressText.textContent = `${connectedCount}/${totalCount} Đội Đã Vào (${readyCount} Sẵn Sàng)`;
+    statusTurnText.textContent = connectedCount === 0 ? 'Đang chờ người chơi quét mã QR để nhận ô trống' : `Đã có ${connectedCount}/${totalCount} chiến hạm sẵn sàng`;
 
     btnStartPlacement.style.display = 'inline-flex';
     btnStartBattle.style.display = 'none';
@@ -663,18 +692,52 @@ function renderTeamsRoster(state) {
   state.teams.forEach(team => {
     const isCurrentTurn = state.phase === 'BATTLE' && state.currentTurnTeamId === team.id;
     const card = document.createElement('div');
+    const isEmptySlot = state.phase === 'LOBBY' && !team.isConnected && !team.isBot;
+
+    if (isEmptySlot) {
+      card.className = 'team-roster-card empty-slot';
+      card.style.border = '2px dashed #94a3b8';
+      card.style.background = '#f8fafc';
+      card.style.opacity = '0.9';
+      card.style.padding = '8px 10px';
+      card.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.25rem; opacity: 0.4;">⚪</span>
+          <div>
+            <div style="font-weight: 800; color: #64748b; font-size: 0.85rem; line-height: 1.2;">
+              [ Ô Trống #${team.id} ]
+            </div>
+            <div style="font-size: 0.72rem; color: #94a3b8;">
+              Chờ quét QR & đặt tên...
+            </div>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <span style="font-weight: 600; color: #64748b; font-size: 0.72rem; background: #e2e8f0; padding: 2px 8px; border-radius: 4px;">
+            Đang trống
+          </span>
+        </div>
+      `;
+      container.appendChild(card);
+      return;
+    }
+
     card.className = `team-roster-card ${isCurrentTurn ? 'active-turn' : ''} ${team.isEliminated ? 'eliminated' : ''}`;
     if (isCurrentTurn) {
       card.style.borderColor = team.colorHex;
       card.style.background = `${team.colorHex}15`;
       card.style.boxShadow = `0 0 12px ${team.colorHex}66`;
+    } else {
+      card.style.borderColor = team.colorHex;
+      card.style.borderWidth = '2px';
+      card.style.borderStyle = 'solid';
     }
 
     let statusText = '';
     if (team.isEliminated) {
       statusText = '<span style="color: #dc2626; font-weight: 800; font-size: 0.8rem;">☠️ ĐÃ CHÌM</span>';
     } else if (state.phase === 'LOBBY') {
-      statusText = `<span style="font-weight: 700; color: ${team.isReady ? '#16a34a' : '#64748b'}; font-size: 0.75rem;">${team.isReady ? '✓ Sẵn sàng' : 'Chưa vào'}</span>`;
+      statusText = `<span style="font-weight: 700; color: #16a34a; font-size: 0.75rem;">✓ Sẵn sàng</span>`;
     } else if (state.phase === 'PLACEMENT') {
       statusText = `<span style="font-weight: 700; color: ${team.isFleetLocked ? '#16a34a' : '#d97706'}; font-size: 0.75rem;">${team.isFleetLocked ? '🔒 Đã dàn trận' : '⏳ Đang xếp'}</span>`;
     } else {

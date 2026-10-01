@@ -173,15 +173,28 @@ function joinTeam(roomId, { teamId, playerName, deviceToken, socketId }) {
   const room = getRoom(roomId);
   if (!room) return { success: false, error: 'Phòng không tồn tại' };
 
-  const parsedTeamId = parseInt(teamId, 10);
-  const team = room.gameState.teams.find(t => t.id === parsedTeamId);
+  let team = null;
+  if (deviceToken) {
+    team = room.gameState.teams.find(t => t.deviceToken === deviceToken);
+  }
+  const parsedTeamId = teamId ? parseInt(teamId, 10) : null;
+  if (!team && parsedTeamId) {
+    const candidate = room.gameState.teams.find(t => t.id === parsedTeamId);
+    if (candidate && (!candidate.isConnected || candidate.deviceToken === deviceToken)) {
+      team = candidate;
+    }
+  }
   if (!team) {
-    return { success: false, error: 'Đội không hợp lệ trong cấu hình hiện tại' };
+    team = room.gameState.teams.find(t => !t.isConnected && !t.isBot);
+  }
+  if (!team) {
+    return { success: false, error: 'Phòng đã đủ số lượng người chơi!' };
   }
 
-  if (room.disconnectTimers.has(parsedTeamId)) {
-    clearTimeout(room.disconnectTimers.get(parsedTeamId));
-    room.disconnectTimers.delete(parsedTeamId);
+  const finalTeamId = team.id;
+  if (room.disconnectTimers.has(finalTeamId)) {
+    clearTimeout(room.disconnectTimers.get(finalTeamId));
+    room.disconnectTimers.delete(finalTeamId);
   }
 
   let finalToken = deviceToken;
@@ -191,17 +204,22 @@ function joinTeam(roomId, { teamId, playerName, deviceToken, socketId }) {
 
   team.deviceToken = finalToken;
   team.isConnected = true;
-  team.isBot = false; // Nếu người vào vị trí này thì bỏ cờ bot
+  team.isBot = false;
+  team.isReady = true;
   if (playerName && playerName.trim()) {
     team.customName = playerName.trim().substring(0, 20);
+    team.name = team.customName;
+  } else if (!team.name) {
+    team.name = `Chiến Hạm #${finalTeamId}`;
+    team.customName = team.name;
   }
 
-  room.sockets.teams.set(parsedTeamId, socketId);
-  room.playerSessions.set(finalToken, { teamId: parsedTeamId, lastSeen: Date.now() });
+  room.sockets.teams.set(finalTeamId, socketId);
+  room.playerSessions.set(finalToken, { teamId: finalTeamId, lastSeen: Date.now() });
 
   return {
     success: true,
-    teamId: parsedTeamId,
+    teamId: finalTeamId,
     deviceToken: finalToken,
     team,
     phase: room.gameState.phase,

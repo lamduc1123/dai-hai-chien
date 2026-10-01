@@ -174,36 +174,40 @@
 
     <!-- PHẦN 1: ĐĂNG KÝ VÀ VÀO PHÒNG -->
     <section id="viewLobby" class="glass-panel" style="padding: 16px;">
-      <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 12px; text-align: center;">
-        📱 ĐĂNG KÝ HẠM ĐỘI
+      <h2 style="font-size: 1.15rem; font-weight: 800; color: var(--navy-dark); margin-bottom: 14px; text-align: center;">
+        📱 ĐĂNG KÝ THAM GIA ĐẠI HẢI CHIẾN
       </h2>
 
-      <div class="form-group">
-        <label class="form-label" style="font-weight: 800; color: var(--navy-dark);">🚢 TÊN ĐỘI / TÊN CHIẾN HẠM:</label>
-        <input type="text" id="inputPlayerName" class="form-control" placeholder="Nhập tên chiến hạm (VD: Hắc Long, Đại Bàng, Hạm 01...)" maxlength="20" style="font-weight: 800; text-align: center; font-size: 1rem;">
-      </div>
+      <div id="joinFormArea">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label" style="font-weight: 800; color: var(--navy-dark); font-size: 0.92rem;">
+            🚢 ĐẶT TÊN CHIẾN HẠM (TÊN ĐỘI):
+          </label>
+          <input type="text" id="inputPlayerName" class="form-control" placeholder="Nhập tên hạm đội (VD: Bạch Đằng, Hắc Long, Hạm 01...)" maxlength="20" style="font-weight: 800; text-align: center; font-size: 1.1rem; padding: 12px; border: 2px solid var(--border-ocean);">
+        </div>
 
-      <div class="form-group">
-        <label class="form-label" style="font-weight: 800; color: var(--navy-dark);">Chọn Vị Trí Chiến Hạm:</label>
-        <div id="teamSlotsContainer" style="display: flex; flex-direction: column; gap: 8px;">
-          <!-- Nút chọn đội sinh động bằng JS -->
+        <button id="btnJoinTeam" class="btn btn-primary btn-large" style="width: 100%; font-size: 1.05rem; padding: 14px; font-weight: 900; letter-spacing: 0.5px;">
+          ⚓ XÁC NHẬN THAM GIA
+        </button>
+
+        <div style="font-size: 0.78rem; color: #64748b; text-align: center; margin-top: 10px; line-height: 1.4;">
+          💡 Sau khi bấm tham gia, chiến hạm của bạn sẽ tự động kết nối vào ô trống và hiển thị trực tiếp trên màn hình máy chủ.
         </div>
       </div>
-
-      <button id="btnJoinTeam" class="btn btn-primary btn-large" style="width: 100%; margin-top: 10px;">
-        ⚓ XÁC NHẬN THAM GIA
-      </button>
 
       <!-- Trạng thái chờ sau khi đã vào đội -->
-      <div id="waitingRoomState" style="display: none; margin-top: 16px; text-align: center; border-top: 1px solid var(--border-ocean); padding-top: 16px;">
-        <div style="font-size: 1rem; font-weight: bold; color: var(--navy-dark); margin-bottom: 8px;">
-          Chiến hạm đã vào vị trí thành công!
+      <div id="waitingRoomState" style="display: none; margin-top: 14px; text-align: center; border-top: 1px solid var(--border-ocean); padding-top: 16px;">
+        <div style="font-size: 1.25rem; font-weight: 900; color: var(--navy-dark); margin-bottom: 4px;" id="waitingAssignedShipTitle">
+          ⚓ ĐÃ VÀO VỊ TRÍ CHIẾN ĐẤU!
         </div>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
-          Bấm nút sẵn sàng để thông báo cho máy chủ bắt đầu dàn trận.
-        </p>
-        <button id="btnToggleReady" class="btn btn-success btn-large" style="width: 100%;">
-          ✓ BẤM SẴN SÀNG
+        <div id="waitingAssignedShipSub" style="font-size: 0.95rem; font-weight: 800; color: #0284c7; margin-bottom: 12px;">
+          Đang kết nối Máy Chủ...
+        </div>
+        <div style="background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 0.85rem; color: #0369a1;">
+          ✓ Chiến hạm của bạn đã hiển thị trên màn hình lớn!<br>Vui lòng theo dõi hiệu lệnh của MC để bắt đầu dàn trận.
+        </div>
+        <button id="btnToggleReady" class="btn btn-success btn-large" style="width: 100%; font-size: 1rem; font-weight: 800;">
+          ✓ ĐÃ SẴN SÀNG CHIẾN ĐẤU
         </button>
       </div>
     </section>
