@@ -414,6 +414,16 @@ function createInitialGameState(options = {}) {
     });
   }
 
+  // Khởi tạo danh sách các ô may mắn ngẫu nhiên (tỷ lệ 20% tổng số ô trên hải đồ)
+  const allGridKeys = [];
+  COLS.forEach(c => ROWS.forEach(r => allGridKeys.push(coordToKey(c, r))));
+  for (let i = allGridKeys.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [allGridKeys[i], allGridKeys[j]] = [allGridKeys[j], allGridKeys[i]];
+  }
+  const luckyCellCount = Math.round(allGridKeys.length * 0.20);
+  const luckyCells = allGridKeys.slice(0, luckyCellCount);
+
   return {
     phase: 'LOBBY', // 'LOBBY' -> 'PLACEMENT' -> 'BATTLE' -> 'FINISHED'
     grid: {
@@ -443,6 +453,7 @@ function createInitialGameState(options = {}) {
     turnStartTime: Date.now(),
     shotsHistory: [],
     shotsMap: {},
+    luckyCells,
     winner: null,
     lastShotResult: null,
     lastCrossfireRecord: null,
@@ -689,6 +700,10 @@ function executeSingleShot(gameState, shooterTeamId, targetKey) {
     shooterTeam.score = (shooterTeam.score || 0) + (result === 'SUNK' ? 50 : 20);
   }
 
+  const isLucky = gameState.luckyCells
+    ? gameState.luckyCells.includes(targetKey)
+    : Math.random() < 0.20;
+
   const shotRecord = {
     id: `shot_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
     turnNumber: gameState.turnNumber,
@@ -704,6 +719,10 @@ function executeSingleShot(gameState, shooterTeamId, targetKey) {
     hitTeamName: hitInfo ? (hitInfo.targetTeam.customName || hitInfo.targetTeam.name) : null,
     sunkShip,
     eliminatedTeam,
+    easterEgg: isLucky,
+    isLuckyCell: isLucky,
+    easterEggType: isLucky ? 'BONUS_TURN' : null,
+    easterEggMessage: isLucky ? `🎁 Ô MAY MẮN! Đội ${shooterTeam.customName || shooterTeam.name} bắn trúng ô ngẫu nhiên may mắn [${targetKey}] - Nhận thêm +1 lượt bắn!` : null,
     timestamp: Date.now(),
   };
 
@@ -713,6 +732,8 @@ function executeSingleShot(gameState, shooterTeamId, targetKey) {
     shooterTeamId,
     targetKey,
     sunkShip: sunkShip ? sunkShip.name : null,
+    easterEgg: isLucky,
+    isLuckyCell: isLucky,
     timestamp: Date.now(),
   };
 
@@ -734,14 +755,7 @@ function processShot(gameState, shooterTeamId, targetKey) {
   const shotRes = executeSingleShot(gameState, shooterTeamId, targetKey);
   if (!shotRes.success) return shotRes;
 
-  // 🎁 EASTER EGG: 10% cơ hội nhận thêm 1 lượt bắn!
-  const hasBonusTurn = Math.random() < 0.10;
-  if (hasBonusTurn) {
-    shotRes.shotRecord.easterEgg = true;
-    shotRes.shotRecord.easterEggType = 'BONUS_TURN';
-    shotRes.shotRecord.easterEggMessage = `🎁 EASTER EGG! Đội ${shotRes.shotRecord.shooterName} may mắn nhặt được tiếp tế đạn dược - Nhận thêm 1 lượt bắn!`;
-  }
-
+  const hasBonusTurn = shotRes.shotRecord.easterEgg === true;
   gameState.lastShotResult = shotRes.shotRecord;
 
   const livingTeams = gameState.teams.filter(t => !t.isEliminated);
@@ -919,10 +933,20 @@ function processCrossfire(gameState, shooterTeamId, centerKey) {
     gameState.lastShotResult = crossfireShots[crossfireShots.length - 1];
   }
 
+  const hasLuckyShot = crossfireShots.some(s => s.easterEgg);
+  if (hasLuckyShot) {
+    crossfireRecord.easterEgg = true;
+    crossfireRecord.isLuckyCell = true;
+    crossfireRecord.easterEggMessage = `🎁 Ô MAY MẮN! Tên lửa Chữ Thập bắn trúng ô ngẫu nhiên may mắn - Nhận thêm +1 lượt bắn!`;
+  }
+
   const livingTeams = gameState.teams.filter(t => !t.isEliminated);
   if (livingTeams.length <= 1) {
     gameState.winner = livingTeams.length === 1 ? livingTeams[0] : null;
     gameState.phase = 'FINISHED';
+  } else if (hasLuckyShot) {
+    gameState.turnTimeRemaining = gameState.config.turnDuration || 60;
+    gameState.turnStartTime = Date.now();
   } else {
     advanceTurn(gameState);
   }
@@ -930,6 +954,7 @@ function processCrossfire(gameState, shooterTeamId, centerKey) {
   return {
     success: true,
     crossfireRecord,
+    hasBonusTurn: hasLuckyShot,
     isGameOver: gameState.phase === 'FINISHED',
     winner: gameState.winner,
     nextTurnTeamId: gameState.currentTurnTeamId,

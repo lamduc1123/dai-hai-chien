@@ -741,6 +741,11 @@ function renderOceanMap(state) {
       } else if (shot.result === 'SUNK' && !cell.classList.contains('has-ship')) {
         cell.className = 'ocean-cell shot-sunk';
       }
+
+      if (shot.easterEgg || shot.isLuckyCell) {
+        cell.innerHTML = '<span style="font-size: 0.85em; z-index: 2;">🎁</span>';
+        cell.style.boxShadow = 'inset 0 0 6px #f59e0b';
+      }
     }
   }
 }

@@ -120,6 +120,12 @@ function selectCoordinate(key) {
     return;
   }
 
+  // Chạm lần 2 vào cùng 1 ô -> Khai hỏa ngay lập tức
+  if (selectedTargetKey === key) {
+    fireSelectedTarget();
+    return;
+  }
+
   selectedTargetKey = key;
   const inputEl = document.getElementById('inputDemoCoord');
   if (inputEl) inputEl.value = key;
@@ -342,6 +348,11 @@ function renderOceanGrid() {
         cell.className = 'ocean-cell shot-hit';
       } else if (s.result === 'SUNK' && !cell.classList.contains('has-ship')) {
         cell.className = 'ocean-cell shot-sunk';
+      }
+
+      if (s.easterEgg || s.isLuckyCell) {
+        cell.innerHTML = '<span style="font-size: 0.85em; z-index: 2;">🎁</span>';
+        cell.style.boxShadow = 'inset 0 0 6px #f59e0b';
       }
     }
   }

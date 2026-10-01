@@ -253,6 +253,11 @@ function renderProjectorOceanMap(state) {
       } else if (shot.result === 'HIT' && !cell.classList.contains('has-ship')) {
         cell.className = 'ocean-cell shot-hit';
       }
+
+      if (shot.easterEgg || shot.isLuckyCell) {
+        cell.innerHTML = '<span style="font-size: 0.85em; z-index: 2; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));">🎁</span>';
+        cell.style.boxShadow = 'inset 0 0 6px #f59e0b';
+      }
     }
   }
 }

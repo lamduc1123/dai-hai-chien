@@ -279,24 +279,24 @@
       <!-- CHỌN Ô BẰNG CÁCH NHẬP TỌA ĐỘ -->
       <div class="glass-panel" style="padding: 10px; background: #ffffff;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <div style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark);">🎯 NHẬP TỌA ĐỘ BẮN NHANH:</div>
-          <div id="selectedTargetDisplay" class="target-key-box" style="padding: 2px 10px; font-size: 1rem;">--</div>
+          <div style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark);">🎯 TỌA ĐỘ ĐANG NHẮM:</div>
+          <div id="selectedTargetDisplay" class="target-key-box" style="padding: 2px 10px; font-size: 1rem; font-weight: 900; color: #dc2626;">--</div>
         </div>
         <div style="display: flex; gap: 8px;">
           <input type="text" id="inputManualCoord" placeholder="Nhập VD: B14, D8, K20" maxlength="4" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 800; font-size: 1.05rem; text-transform: uppercase; text-align: center;">
-          <button id="btnApplyCoord" class="btn btn-outline" style="padding: 8px 14px; font-weight: 800; font-size: 0.85rem; border-color: #0284c7; color: #0284c7;">
-            XÁC NHẬN Ô
+          <button id="btnApplyCoord" class="btn btn-danger" style="padding: 8px 14px; font-weight: 800; font-size: 0.85rem;">
+            🔥 BẮN TỌA ĐỘ
           </button>
         </div>
-        <div id="selectedTargetText" style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">
-          Chạm vào ô trên hải đồ hoặc nhập tọa độ ở trên
+        <div id="selectedTargetText" style="font-size: 0.82rem; color: #dc2626; font-weight: 800; margin-top: 6px; text-align: center; background: #fef2f2; padding: 6px; border-radius: 6px; border: 1px dashed #fca5a5;">
+          👆 CHẠM 2 LẦN VÀO Ô TRÊN HẢI ĐỒ ĐỂ KHAI HỎA BẮN!
         </div>
       </div>
 
       <!-- ĐIỀU KHIỂN ZOOM & ĐẠI HẢI ĐỒ 400 Ô -->
       <div class="glass-panel" style="padding: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <span style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark);">🗺️ HẢI ĐỒ 400 Ô (A-T × 1-20)</span>
+          <span style="font-size: 0.8rem; font-weight: 800; color: var(--navy-dark);">🗺️ HẢI ĐỒ 400 Ô (Chạm 2 lần để bắn)</span>
           <div style="display: flex; gap: 4px;">
             <button id="btnZoomIn" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.72rem;">🔍+ Phóng to</button>
             <button id="btnZoomOut" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.72rem;">🔍- Thu nhỏ</button>
@@ -304,17 +304,12 @@
           </div>
         </div>
 
-        <div class="ocean-map-wrapper" id="mobileMapWrapper" style="overflow: auto; max-height: 48vh; border: 1px solid #cbd5e1; border-radius: 6px;">
+        <div class="ocean-map-wrapper" id="mobileMapWrapper" style="overflow: auto; max-height: 56vh; border: 1px solid #cbd5e1; border-radius: 6px;">
           <div id="battleGrid" class="ocean-grid" style="transition: transform 0.2s ease; transform-origin: top left;">
             <!-- Render bằng join.js -->
           </div>
         </div>
       </div>
-
-      <!-- Nút Hành Động Lớn (Khai Hỏa / Quét Radar / Bắn Chữ Thập) -->
-      <button id="btnFire" class="btn btn-danger btn-large" disabled style="padding: 16px; font-size: 1.15rem; font-weight: 900; letter-spacing: 1px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);">
-        🚀 KHAI HỎA TÊN LỬA!
-      </button>
 
       <!-- Tình trạng hạm đội của mình -->
       <div class="glass-panel" style="padding: 12px;">

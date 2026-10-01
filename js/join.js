@@ -360,16 +360,14 @@ function renderBattleView(state) {
 
   if (isMyTurn) {
     banner.className = 'turn-banner my-turn';
-    banner.textContent = '🚨 ĐẾN LƯỢT CHỈ HUY! CHỌN Ô HOẶC NHẬP TỌA ĐỘ ĐỂ TÁC CHIẾN!';
+    banner.textContent = '🚨 ĐẾN LƯỢT BẠN! CHẠM 2 LẦN VÀO Ô ĐỂ BẮN!';
     if (navigator.vibrate) {
       navigator.vibrate([150, 50, 150]);
     }
-    btnFire.disabled = !selectedTargetKey;
   } else {
     banner.className = 'turn-banner wait-turn';
     const activeTeam = state.teamsOverview ? state.teamsOverview.find(t => t.id === state.currentTurnTeamId) : null;
     banner.textContent = `⏳ ĐANG CHỜ ${activeTeam ? activeTeam.name : 'ĐỐI THỦ'} KHAI HỎA...`;
-    btnFire.disabled = true;
   }
 
   // Khởi tạo lưới chiến đấu 20x20 nếu chưa có
@@ -432,6 +430,11 @@ function updateGridCellVisuals(container, state, myTeam) {
       } else if (shot.result === 'SUNK' && !cell.classList.contains('has-ship')) {
         cell.className = 'ocean-cell shot-sunk';
       }
+
+      if (shot.easterEgg || shot.isLuckyCell) {
+        cell.innerHTML = '<span style="font-size: 0.85em; z-index: 2;">🎁</span>';
+        cell.style.boxShadow = 'inset 0 0 6px #f59e0b';
+      }
     }
   }
 
@@ -484,21 +487,95 @@ function getTargetAreaHighlightKeys() {
   return set;
 }
 
+function executeFireAction(targetKey) {
+  if (!targetKey || !currentRoomId || !myTeamId) return;
+  if (!myPlayerState || !myPlayerState.isMyTurn) {
+    alert('Chưa đến lượt của bạn!');
+    return;
+  }
+
+  if (currentWeaponMode === 'CROSSFIRE') {
+    if (socket && socket.connected) {
+      socket.emit('player:crossfire', {
+        roomId: currentRoomId,
+        teamId: myTeamId,
+        centerKey: targetKey,
+      });
+    }
+    if (window.firebaseSync && window.firebaseSync.isReady) {
+      window.firebaseSync.clientSendAction(currentRoomId, {
+        type: 'CROSSFIRE',
+        teamId: myTeamId,
+        centerKey: targetKey,
+      });
+    }
+    currentWeaponMode = 'NORMAL';
+    updateSkillButtonsUI();
+  } else {
+    // Bắn thường
+    if (socket && socket.connected) {
+      socket.emit('player:fire', {
+        roomId: currentRoomId,
+        teamId: myTeamId,
+        targetKey: targetKey,
+      });
+    }
+    if (window.firebaseSync && window.firebaseSync.isReady) {
+      window.firebaseSync.clientSendAction(currentRoomId, {
+        type: 'FIRE',
+        teamId: myTeamId,
+        targetKey: targetKey,
+      });
+    }
+  }
+
+  if (navigator.vibrate) navigator.vibrate([60, 40, 120]);
+  selectedTargetKey = null;
+
+  const disp = document.getElementById('selectedTargetDisplay');
+  if (disp) disp.textContent = '--';
+  const txt = document.getElementById('selectedTargetText');
+  if (txt) {
+    txt.innerHTML = `🚀 <b style="color: #dc2626;">ĐÃ KHAI HỎA [${targetKey}]!</b> Đang truyền tín hiệu...`;
+  }
+
+  const container = document.getElementById('battleGrid');
+  if (container && myPlayerState) {
+    updateGridCellVisuals(container, myPlayerState, myPlayerState.myTeam);
+  }
+}
+
 function selectTargetCoordinate(key) {
-  if (!myPlayerState || !myPlayerState.isMyTurn) return;
+  if (!myPlayerState || !myPlayerState.isMyTurn) {
+    const txt = document.getElementById('selectedTargetText');
+    if (txt) txt.textContent = '⏳ Chưa đến lượt bắn của bạn!';
+    return;
+  }
 
   if (currentWeaponMode === 'NORMAL' && myPlayerState.shotsMap && myPlayerState.shotsMap[key]) {
     alert('Tọa độ này đã bị bắn trước đó! Hãy chọn ô khác.');
     return;
   }
 
+  // 🔥 NHẤN 2 LẦN VÀO CÙNG 1 Ô -> KHAI HỎA BẮN NGAY LẬP TỨC!
+  if (selectedTargetKey === key) {
+    executeFireAction(key);
+    return;
+  }
+
+  // Lần chạm đầu tiên: Nhắm ô và báo người chơi chạm lần nữa để bắn
   selectedTargetKey = key;
-  document.getElementById('selectedTargetDisplay').textContent = key;
-  document.getElementById('selectedTargetText').textContent = `Tọa độ xác định: Cột ${key[0]}, Hàng ${key.substring(1)}`;
-  document.getElementById('btnFire').disabled = false;
+  const disp = document.getElementById('selectedTargetDisplay');
+  if (disp) disp.textContent = key;
+  const txt = document.getElementById('selectedTargetText');
+  if (txt) {
+    txt.innerHTML = `🎯 Đã nhắm <b style="color: #dc2626;">[${key}]</b>. <b>CHẠM LẦN NỮA ĐỂ BẮN! 🔥</b>`;
+  }
 
   const inputManual = document.getElementById('inputManualCoord');
   if (inputManual) inputManual.value = key;
+
+  if (navigator.vibrate) navigator.vibrate(30);
 
   // Cập nhật lại hình ảnh ô trên bản đồ
   const container = document.getElementById('battleGrid');
@@ -690,19 +767,10 @@ function initEventListeners() {
   // Nút Kỹ Năng / Vũ Khí
   const btnSkillNormal = document.getElementById('btnSkillNormal');
   const btnSkillCrossfire = document.getElementById('btnSkillCrossfire');
-  const btnFire = document.getElementById('btnFire');
 
   function updateSkillButtonsUI() {
     if (btnSkillNormal) btnSkillNormal.className = currentWeaponMode === 'NORMAL' ? 'btn btn-primary' : 'btn btn-outline';
     if (btnSkillCrossfire) btnSkillCrossfire.className = currentWeaponMode === 'CROSSFIRE' ? 'btn btn-primary' : 'btn btn-outline';
-
-    if (currentWeaponMode === 'NORMAL') {
-      btnFire.textContent = '🚀 KHAI HỎA TÊN LỬA!';
-      btnFire.style.background = '#dc2626';
-    } else if (currentWeaponMode === 'CROSSFIRE') {
-      btnFire.textContent = '💥 BẮN TÊN LỬA CHỮ THẬP (+)!';
-      btnFire.style.background = '#ea580c';
-    }
 
     const container = document.getElementById('battleGrid');
     if (container && myPlayerState) {
@@ -728,7 +796,7 @@ function initEventListeners() {
     });
   }
 
-  // Nhập Tọa Độ Nhanh
+  // Nhập Tọa Độ Nhanh & Bắn
   const inputManual = document.getElementById('inputManualCoord');
   const btnApply = document.getElementById('btnApplyCoord');
 
@@ -742,15 +810,23 @@ function initEventListeners() {
       return;
     }
 
-    selectTargetCoordinate(val);
+    if (currentWeaponMode === 'NORMAL' && myPlayerState && myPlayerState.shotsMap && myPlayerState.shotsMap[val]) {
+      alert('Tọa độ này đã bị bắn trước đó! Hãy chọn ô khác.');
+      return;
+    }
+
+    // Bắn thẳng tọa độ đã nhập
+    executeFireAction(val);
   }
 
-  btnApply.addEventListener('click', applyManualInput);
-  inputManual.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      applyManualInput();
-    }
-  });
+  if (btnApply) btnApply.addEventListener('click', applyManualInput);
+  if (inputManual) {
+    inputManual.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        applyManualInput();
+      }
+    });
+  }
 
   // Điều khiển Zoom
   const battleGrid = document.getElementById('battleGrid');
@@ -768,49 +844,6 @@ function initEventListeners() {
     currentZoomLevel = 1.0;
     battleGrid.style.transform = `scale(1)`;
   });
-
-  // Nút Khai Hỏa Lớn (Tác Chiến)
-  btnFire.addEventListener('click', () => {
-    if (!selectedTargetKey || !currentRoomId || !myTeamId) return;
-
-    if (currentWeaponMode === 'CROSSFIRE') {
-      if (socket && socket.connected) {
-        socket.emit('player:crossfire', {
-          roomId: currentRoomId,
-          teamId: myTeamId,
-          centerKey: selectedTargetKey,
-        });
-      }
-      if (window.firebaseSync && window.firebaseSync.isReady) {
-        window.firebaseSync.clientSendAction(currentRoomId, {
-          type: 'CROSSFIRE',
-          teamId: myTeamId,
-          centerKey: selectedTargetKey,
-        });
-      }
-      currentWeaponMode = 'NORMAL';
-      updateSkillButtonsUI();
-    } else {
-      // Bắn thường
-      if (socket && socket.connected) {
-        socket.emit('player:fire', {
-          roomId: currentRoomId,
-          teamId: myTeamId,
-          targetKey: selectedTargetKey,
-        });
-      }
-      if (window.firebaseSync && window.firebaseSync.isReady) {
-        window.firebaseSync.clientSendAction(currentRoomId, {
-          type: 'FIRE',
-          teamId: myTeamId,
-          targetKey: selectedTargetKey,
-        });
-      }
-    }
-
-    selectedTargetKey = null;
-    document.getElementById('selectedTargetDisplay').textContent = '--';
-    btnFire.disabled = true;
   });
 }
 
