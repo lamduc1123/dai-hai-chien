@@ -219,20 +219,22 @@ function commitLocalState() {
 
 function handleIncomingFirebaseAction(action) {
   if (!action || !action.type || !currentRoomId) return;
+  const targetTeamId = action.teamId !== undefined && action.teamId !== null ? parseInt(action.teamId, 10) : null;
+  action.teamId = targetTeamId;
 
   if (socket && socket.connected) {
     if (action.type === 'FIRE') {
-      socket.emit('player:fire', { roomId: currentRoomId, teamId: action.teamId, targetKey: action.targetKey });
+      socket.emit('player:fire', { roomId: currentRoomId, teamId: targetTeamId, targetKey: action.targetKey });
     } else if (action.type === 'CROSSFIRE') {
-      socket.emit('player:crossfire', { roomId: currentRoomId, teamId: action.teamId, centerKey: action.centerKey });
+      socket.emit('player:crossfire', { roomId: currentRoomId, teamId: targetTeamId, centerKey: action.centerKey });
     } else if (action.type === 'JOIN') {
-      socket.emit('player:join', { roomId: currentRoomId, teamId: action.teamId, playerName: action.playerName, deviceToken: action.deviceToken });
+      socket.emit('player:join', { roomId: currentRoomId, teamId: targetTeamId, playerName: action.playerName, deviceToken: action.deviceToken });
     } else if (action.type === 'READY') {
-      socket.emit('player:ready', { roomId: currentRoomId, teamId: action.teamId });
+      socket.emit('player:ready', { roomId: currentRoomId, teamId: targetTeamId });
     } else if (action.type === 'AUTO_PLACE') {
-      socket.emit('player:auto_place', { roomId: currentRoomId, teamId: action.teamId });
+      socket.emit('player:auto_place', { roomId: currentRoomId, teamId: targetTeamId });
     } else if (action.type === 'LOCK_FLEET') {
-      socket.emit('player:lock_fleet', { roomId: currentRoomId, teamId: action.teamId, fleet: action.fleet });
+      socket.emit('player:lock_fleet', { roomId: currentRoomId, teamId: targetTeamId, fleet: action.fleet });
     }
     return;
   }
@@ -241,11 +243,11 @@ function handleIncomingFirebaseAction(action) {
   if (!currentHostState || !window.GameEngine) return;
 
   if (action.type === 'FIRE') {
-    processLocalShot(action.teamId, action.targetKey);
+    processLocalShot(targetTeamId, action.targetKey);
   } else if (action.type === 'CROSSFIRE') {
-    processLocalCrossfire(action.teamId, action.centerKey);
+    processLocalCrossfire(targetTeamId, action.centerKey);
   } else if (action.type === 'JOIN') {
-    const team = currentHostState.teams.find(t => t.id === action.teamId);
+    const team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
     if (team) {
       team.isConnected = true;
       if (action.playerName && action.playerName.trim()) {
@@ -257,13 +259,13 @@ function handleIncomingFirebaseAction(action) {
       commitLocalState();
     }
   } else if (action.type === 'READY') {
-    const team = currentHostState.teams.find(t => t.id === action.teamId);
+    const team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
     if (team) {
       team.isReady = !team.isReady;
       commitLocalState();
     }
   } else if (action.type === 'AUTO_PLACE') {
-    const team = currentHostState.teams.find(t => t.id === action.teamId);
+    const team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
     if (team && currentHostState.phase === 'PLACEMENT') {
       const enemyCells = new Set();
       currentHostState.teams.forEach(other => {
@@ -278,7 +280,7 @@ function handleIncomingFirebaseAction(action) {
       commitLocalState();
     }
   } else if (action.type === 'LOCK_FLEET') {
-    const team = currentHostState.teams.find(t => t.id === action.teamId);
+    const team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
     if (team && currentHostState.phase === 'PLACEMENT') {
       const enemyCells = new Set();
       currentHostState.teams.forEach(other => {
@@ -302,11 +304,12 @@ function handleIncomingFirebaseAction(action) {
 
 function processLocalShot(shooterTeamId, targetKey) {
   if (currentHostState.phase !== 'BATTLE' || currentHostState.phase === 'GAME_OVER') return;
-  const shooterTeam = currentHostState.teams.find(t => t.id === shooterTeamId);
+  const numShooterId = parseInt(shooterTeamId, 10);
+  const shooterTeam = currentHostState.teams.find(t => parseInt(t.id, 10) === numShooterId);
   if (!shooterTeam || shooterTeam.isEliminated) return;
-  if (currentHostState.currentTurnTeamId !== shooterTeam.id) return;
+  if (parseInt(currentHostState.currentTurnTeamId, 10) !== shooterTeam.id) return;
 
-  const result = window.GameEngine.processShot(currentHostState, shooterTeamId, targetKey);
+  const result = window.GameEngine.processShot(currentHostState, shooterTeam.id, targetKey);
   if (result.success) {
     handleShotAnimation(result.shotRecord);
     if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId) {
@@ -319,7 +322,12 @@ function processLocalShot(shooterTeamId, targetKey) {
 
 function processLocalCrossfire(shooterTeamId, centerKey) {
   if (currentHostState.phase !== 'BATTLE' || currentHostState.phase === 'GAME_OVER') return;
-  const res = window.GameEngine.processCrossfire(currentHostState, shooterTeamId, centerKey);
+  const numShooterId = parseInt(shooterTeamId, 10);
+  const shooterTeam = currentHostState.teams.find(t => parseInt(t.id, 10) === numShooterId);
+  if (!shooterTeam || shooterTeam.isEliminated) return;
+  if (parseInt(currentHostState.currentTurnTeamId, 10) !== shooterTeam.id) return;
+
+  const res = window.GameEngine.processCrossfire(currentHostState, shooterTeam.id, centerKey);
   if (res.success) {
     handleCrossfireAnimation(res.crossfireRecord);
     if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId) {
