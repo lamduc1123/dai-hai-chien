@@ -49,6 +49,13 @@ document.addEventListener('DOMContentLoaded', () => {
   initEventListeners();
   startMobileTurnTicker();
 
+  window.addEventListener('resize', () => {
+    fitPlacementGridToScreen();
+  });
+  window.addEventListener('orientationchange', () => {
+    setTimeout(fitPlacementGridToScreen, 120);
+  });
+
   if (window.firebaseSync && window.firebaseSync.init() && currentRoomId) {
     window.firebaseSync.clientSubscribeState(currentRoomId, (roomState) => {
       if (roomState) {
@@ -141,8 +148,11 @@ function updatePlayerUI(state) {
       COLS = [...state.grid.cols];
       ROWS = [...state.grid.rows];
       const pGrid = document.getElementById('placementGrid');
-      const bGrid = document.getElementById('battleOceanGrid');
-      if (pGrid) buildGridInContainer(pGrid, handlePlacementCellClick);
+      const bGrid = document.getElementById('battleGrid');
+      if (pGrid) {
+        buildGridInContainer(pGrid, handlePlacementCellClick);
+        fitPlacementGridToScreen();
+      }
       if (bGrid) buildGridInContainer(bGrid, handleBattleCellClick);
     }
   }
@@ -235,6 +245,7 @@ function updatePlayerUI(state) {
 
   // NẾU NGƯỜI CHƠI CHƯA CÓ ĐỘI -> HIỂN THỊ FORM NHẬP TÊN THAM GIA
   if (!myTeam) {
+    document.body.classList.remove('mode-placement');
     viewLobby.style.display = 'block';
     viewPlacement.style.display = 'none';
     viewBattle.style.display = 'none';
@@ -246,6 +257,7 @@ function updatePlayerUI(state) {
 
   // ĐÃ CÓ ĐỘI -> HIỂN THỊ THEO GIAI ĐOẠN TRẬN ĐẤU
   if (state.phase === 'LOBBY') {
+    document.body.classList.remove('mode-placement');
     viewLobby.style.display = 'block';
     viewPlacement.style.display = 'none';
     viewBattle.style.display = 'none';
@@ -253,13 +265,17 @@ function updatePlayerUI(state) {
     if (joinFormArea) joinFormArea.style.display = 'none';
     if (waitingRoomState) waitingRoomState.style.display = 'block';
   } else if (state.phase === 'PLACEMENT') {
+    document.body.classList.add('mode-placement');
     viewLobby.style.display = 'none';
-    viewPlacement.style.display = 'block';
+    viewPlacement.style.display = 'flex';
     viewBattle.style.display = 'none';
     viewFinished.style.display = 'none';
 
     renderPlacementView(state);
+    requestAnimationFrame(fitPlacementGridToScreen);
+    setTimeout(fitPlacementGridToScreen, 60);
   } else if (state.phase === 'BATTLE') {
+    document.body.classList.remove('mode-placement');
     viewLobby.style.display = 'none';
     viewPlacement.style.display = 'none';
     viewBattle.style.display = 'flex';
@@ -267,6 +283,7 @@ function updatePlayerUI(state) {
 
     renderBattleView(state);
   } else if (state.phase === 'FINISHED' || state.phase === 'GAME_OVER') {
+    document.body.classList.remove('mode-placement');
     viewLobby.style.display = 'none';
     viewPlacement.style.display = 'none';
     viewBattle.style.display = 'none';
@@ -339,13 +356,73 @@ function renderTeamSlots(teams) {
   });
 }
 
+function handlePlacementCellClick(key) {
+  if (!myPlayerState || !myPlayerState.myTeam) return;
+  const myTeam = myPlayerState.myTeam;
+  if (!myTeam.isFleetLocked && window.GameEngine) {
+    const shipLengths = (myPlayerState.config && myPlayerState.config.shipLengths) || [4, 3];
+    myTeam.fleet = window.GameEngine.generateRandomFleetOpenOcean(shipLengths);
+    renderPlacementView(myPlayerState);
+    if (socket && socket.connected) {
+      socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
+    }
+    if (window.firebaseSync && window.firebaseSync.isReady) {
+      window.firebaseSync.clientSendAction(currentRoomId, { type: 'AUTO_PLACE', teamId: myTeamId });
+    }
+  }
+}
+
+function handleBattleCellClick(key) {
+  selectTargetCoordinate(key);
+}
+
+function fitPlacementGridToScreen() {
+  const grid = document.getElementById('placementGrid');
+  const wrapper = document.getElementById('placementMapWrapper') || (grid ? grid.parentElement : null);
+  if (!wrapper || !grid || wrapper.offsetParent === null) return;
+
+  const numCols = (COLS && COLS.length) ? COLS.length : 20;
+  const numRows = (ROWS && ROWS.length) ? ROWS.length : 20;
+  if (!numCols || !numRows) return;
+
+  const rect = wrapper.getBoundingClientRect();
+  const pad = 4;
+  const availW = Math.max(50, rect.width - pad);
+  const availH = Math.max(50, rect.height - pad);
+
+  // Dynamic header sizes for mobile screen
+  const headerColW = Math.max(12, Math.min(22, Math.floor(availW / (numCols + 1.5))));
+  const headerRowH = Math.max(12, Math.min(20, Math.floor(availH / (numRows + 1.5))));
+  const gap = 1;
+
+  const remainingW = availW - headerColW - (numCols * gap);
+  const remainingH = availH - headerRowH - (numRows * gap);
+
+  let cellSize = Math.floor(Math.min(remainingW / numCols, remainingH / numRows));
+  cellSize = Math.max(6, cellSize);
+
+  grid.style.minWidth = '0px';
+  grid.style.gridTemplateColumns = `${headerColW}px repeat(${numCols}, ${cellSize}px)`;
+  grid.style.gridTemplateRows = `${headerRowH}px repeat(${numRows}, ${cellSize}px)`;
+  grid.style.gap = `${gap}px`;
+  grid.style.width = 'fit-content';
+  grid.style.height = 'fit-content';
+
+  // Responsive font size for headers based on cellSize
+  const fontSz = Math.max(7, Math.min(11, Math.floor(cellSize * 0.72)));
+  grid.querySelectorAll('.ocean-col-header, .ocean-row-header').forEach(h => {
+    h.style.fontSize = `${fontSz}px`;
+    h.style.lineHeight = `${cellSize}px`;
+  });
+}
+
 function renderPlacementView(state) {
   const myTeam = state.myTeam;
   if (!myTeam) return;
 
   const hint = document.getElementById('placementZoneHint');
   if (hint) {
-    hint.textContent = '🗺️ Đại dương 400 ô mở tự do: Bấm "🎲 Xếp Tự Động" để đổi vị trí chiến thuật hoặc chạm ô để xếp lại.';
+    hint.textContent = 'Chạm ô hoặc bấm nút để đổi vị trí';
   }
 
   // Tự động sinh hạm đội ban đầu nếu chưa có tàu
@@ -356,13 +433,7 @@ function renderPlacementView(state) {
 
   const container = document.getElementById('placementGrid');
   if (container.children.length === 0) {
-    buildGridInContainer(container, (key) => {
-      // Chạm vào ô bất kỳ để xếp lại đội hình ngẫu nhiên quanh ô đó
-      if (!myTeam.isFleetLocked && window.GameEngine) {
-        myTeam.fleet = window.GameEngine.generateRandomFleetOpenOcean(shipLengths);
-        renderPlacementView(state);
-      }
-    });
+    buildGridInContainer(container, handlePlacementCellClick);
   }
 
   container.querySelectorAll('.ocean-cell').forEach(c => {
@@ -390,23 +461,18 @@ function renderPlacementView(state) {
   if (btnLock) {
     if (myTeam.isFleetLocked) {
       btnLock.textContent = '🔒 ĐÃ KHÓA HẠM ĐỘI (CHỜ KHỞI TRANH)';
-      btnLock.className = 'btn btn-outline';
+      btnLock.className = 'btn btn-outline btn-lock-fleet';
       btnLock.disabled = true;
     } else {
       btnLock.textContent = '🔒 KHÓA HẠM ĐỘI & SẴN SÀNG';
-      btnLock.className = 'btn btn-success btn-large';
+      btnLock.className = 'btn btn-success btn-large btn-lock-fleet';
       btnLock.disabled = !myTeam.fleet || myTeam.fleet.length === 0;
     }
   }
 
-  // Cuộn vào trung tâm hạm đội của mình
-  if (myTeam.fleet && myTeam.fleet.length > 0 && myTeam.fleet[0].cells.length > 0) {
-    const firstCellKey = myTeam.fleet[0].cells[0];
-    const firstCell = container.querySelector(`[data-key="${firstCellKey}"]`);
-    if (firstCell) {
-      firstCell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-    }
-  }
+  // Căn chỉnh hải đồ vừa trọn vẹn màn hình điện thoại 100% không cuộn
+  requestAnimationFrame(fitPlacementGridToScreen);
+  setTimeout(fitPlacementGridToScreen, 50);
 }
 
 function renderBattleView(state) {
@@ -680,8 +746,12 @@ function renderMyFleetStatus(myTeam) {
 
 function buildGridInContainer(container, onClickCell) {
   container.innerHTML = '';
-  container.style.gridTemplateColumns = `26px repeat(${COLS.length}, minmax(22px, 1fr))`;
-  container.style.gridTemplateRows = `22px repeat(${ROWS.length}, minmax(22px, 1fr))`;
+  if (container.id === 'placementGrid') {
+    container.style.minWidth = '0px';
+  } else {
+    container.style.gridTemplateColumns = `26px repeat(${COLS.length}, minmax(22px, 1fr))`;
+    container.style.gridTemplateRows = `22px repeat(${ROWS.length}, minmax(22px, 1fr))`;
+  }
 
   const corner = document.createElement('div');
   corner.className = 'ocean-header-corner';
@@ -719,6 +789,10 @@ function buildGridInContainer(container, onClickCell) {
 
       container.appendChild(cell);
     }
+  }
+
+  if (container.id === 'placementGrid') {
+    requestAnimationFrame(fitPlacementGridToScreen);
   }
 }
 

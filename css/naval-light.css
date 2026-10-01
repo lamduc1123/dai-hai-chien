@@ -545,3 +545,136 @@ body {
   font-size: 2rem;
   filter: drop-shadow(0 4px 10px rgba(239, 68, 68, 0.6));
 }
+
+/* ==========================================================================
+   TỐI ƯU GIAO DIỆN DÀN TRẬN TRÊN MOBILE (100% TRỌN 1 KHUNG HÌNH, KHÔNG CUỘN)
+   ========================================================================== */
+
+/* Hỗ trợ toàn bộ thiết bị Apple iOS (Safari) và Android (Chrome) */
+body.mode-placement {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  touch-action: none;
+}
+
+body.mode-placement .mobile-header {
+  padding: 6px 12px !important;
+  min-height: 38px !important;
+  flex-shrink: 0 !important;
+  border-bottom: 1px solid rgba(14, 165, 233, 0.2) !important;
+}
+
+body.mode-placement .mobile-container {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: 4px 6px !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  gap: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.placement-container {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  padding: 6px 8px !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  gap: 4px !important;
+  box-sizing: border-box !important;
+}
+
+.placement-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px 2px 4px 2px;
+}
+
+.placement-heading {
+  font-size: 0.92rem;
+  font-weight: 900;
+  color: var(--navy-dark);
+  line-height: 1.2;
+}
+
+.placement-subtext {
+  font-size: 0.72rem;
+  color: #0284c7;
+  font-weight: 700;
+}
+
+.btn-auto-place {
+  font-size: 0.78rem !important;
+  padding: 6px 12px !important;
+  font-weight: 800 !important;
+  background: #0284c7 !important;
+  border-radius: 6px !important;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+}
+
+.placement-map-wrapper {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  padding: 4px !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+}
+
+.placement-grid {
+  min-width: 0 !important;
+  width: fit-content !important;
+  height: fit-content !important;
+  margin: auto !important;
+  box-sizing: border-box !important;
+}
+
+.placement-bottombar {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.btn-lock-fleet {
+  width: 100% !important;
+  padding: 9px 12px !important;
+  font-size: 0.92rem !important;
+  font-weight: 900 !important;
+  border-radius: 8px !important;
+  margin: 0 !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
+.placement-fleet-info {
+  font-size: 0.7rem;
+  color: #64748b;
+  text-align: center;
+  font-weight: 700;
+}

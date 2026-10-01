@@ -12,6 +12,135 @@
       touch-action: manipulation;
     }
 
+    /* Tối ưu toàn diện chế độ Dàn trận trên Mobile: Vừa vặn 1 màn hình 100%, chống cuộn tuyệt đối */
+    body.mode-placement {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      touch-action: none;
+    }
+
+    body.mode-placement .mobile-header {
+      padding: 6px 12px !important;
+      min-height: 38px !important;
+      flex-shrink: 0 !important;
+      border-bottom: 1px solid rgba(14, 165, 233, 0.2);
+    }
+
+    body.mode-placement .mobile-container {
+      flex: 1 1 0% !important;
+      min-height: 0 !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      width: 100% !important;
+      padding: 4px 6px !important;
+      margin: 0 auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+      gap: 0 !important;
+      box-sizing: border-box !important;
+    }
+
+    .placement-container {
+      flex: 1 1 0% !important;
+      min-height: 0 !important;
+      height: 100% !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: space-between !important;
+      padding: 6px 8px !important;
+      margin: 0 !important;
+      overflow: hidden !important;
+      gap: 4px !important;
+      box-sizing: border-box !important;
+    }
+
+    .placement-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      padding: 2px 2px 4px 2px;
+    }
+
+    .placement-heading {
+      font-size: 0.92rem;
+      font-weight: 900;
+      color: var(--navy-dark);
+      line-height: 1.2;
+    }
+
+    .placement-subtext {
+      font-size: 0.72rem;
+      color: #0284c7;
+      font-weight: 700;
+    }
+
+    .btn-auto-place {
+      font-size: 0.78rem !important;
+      padding: 6px 12px !important;
+      font-weight: 800 !important;
+      background: #0284c7 !important;
+      border-radius: 6px !important;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+    }
+
+    .placement-map-wrapper {
+      flex: 1 1 0% !important;
+      min-height: 0 !important;
+      width: 100% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      overflow: hidden !important;
+      padding: 4px !important;
+      margin: 0 auto !important;
+      box-sizing: border-box !important;
+    }
+
+    .placement-grid {
+      min-width: 0 !important;
+      width: fit-content !important;
+      height: fit-content !important;
+      margin: auto !important;
+      box-sizing: border-box !important;
+    }
+
+    .placement-bottombar {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-top: 2px;
+    }
+
+    .btn-lock-fleet {
+      width: 100% !important;
+      padding: 9px 12px !important;
+      font-size: 0.92rem !important;
+      font-weight: 900 !important;
+      border-radius: 8px !important;
+      margin: 0 !important;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+    }
+
+    .placement-fleet-info {
+      font-size: 0.7rem;
+      color: #64748b;
+      text-align: center;
+      font-weight: 700;
+    }
+
     .mobile-header {
       position: sticky;
       top: 0;
@@ -212,34 +341,34 @@
       </div>
     </section>
 
-    <!-- PHẦN 2: DÀN TRẬN CHIẾN HẠM BÍ MẬT -->
-    <section id="viewPlacement" class="glass-panel" style="display: none; padding: 14px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <div>
-          <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--navy-dark); margin: 0;">🗺️ DÀN TRẬN CHIẾN HẠM</h2>
-          <div id="placementZoneHint" style="font-size: 0.8rem; color: var(--navy-primary); font-weight: bold; margin-top: 2px;">
-            Hải phận của bạn: ...
-          </div>
+    <!-- PHẦN 2: DÀN TRẬN CHIẾN HẠM BÍ MẬT (TỐI ƯU 1 KHUNG HÌNH KHÔNG CUỘN) -->
+    <section id="viewPlacement" class="glass-panel placement-container" style="display: none;">
+      <!-- Thanh công cụ dàn trận gọn gàng -->
+      <div class="placement-topbar">
+        <div class="placement-title-box">
+          <div class="placement-heading">🗺️ DÀN TRẬN HẠM ĐỘI</div>
+          <div id="placementZoneHint" class="placement-subtext">Chạm ô hoặc bấm nút để đổi vị trí</div>
         </div>
-        <button id="btnAutoPlace" class="btn btn-primary" style="font-size: 0.85rem; padding: 8px 14px; font-weight: bold; background: #0284c7;">
+        <button id="btnAutoPlace" class="btn btn-primary btn-auto-place" type="button">
           🎲 Xếp Tự Động
         </button>
       </div>
 
-      <div style="background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 0.8rem; color: #0369a1;">
-        💡 <b>Chiến thuật</b>: Toàn bộ 400 ô Đại Dương mở tự do! Bấm <b>"🎲 Xếp Tự Động"</b> để hệ thống bố trí chiến hạm bí mật không trùng đối phương, hoặc chạm ô để chọn khu vực, sau đó bấm <b>"Khóa Hạm Đội"</b>.
-      </div>
-
-      <div class="ocean-map-wrapper" style="overflow: auto; max-height: 480px; border-radius: 8px;">
-        <div id="placementGrid" class="ocean-grid" style="transition: transform 0.2s;">
+      <!-- Khung hải đồ tự động co giãn vừa khít 100% màn hình điện thoại -->
+      <div class="ocean-map-wrapper placement-map-wrapper" id="placementMapWrapper">
+        <div id="placementGrid" class="ocean-grid placement-grid">
           <!-- Render bằng join.js -->
         </div>
       </div>
 
-      <div style="margin-top: 14px;">
-        <button id="btnLockFleet" class="btn btn-success btn-large" style="width: 100%; font-size: 1rem;">
+      <!-- Nút Khóa Hạm Đội & Tóm tắt hạm đội -->
+      <div class="placement-bottombar">
+        <button id="btnLockFleet" class="btn btn-success btn-large btn-lock-fleet" type="button">
           🔒 KHÓA HẠM ĐỘI & SẴN SÀNG
         </button>
+        <div id="placementFleetSummary" class="placement-fleet-info">
+          ⚓ 1 Tàu sân bay (4 ô) • 1 Tuần dương hạm (3 ô)
+        </div>
       </div>
     </section>
 
