@@ -358,11 +358,11 @@ io.on('connection', (socket) => {
   });
 
   // 12. Người chơi bấm Sẵn Sàng
-  socket.on('player:ready', ({ roomId, teamId }) => {
+  socket.on('player:ready', ({ roomId, teamId, isReady }) => {
     const room = getRoom(roomId);
     if (!room) return;
 
-    toggleTeamReady(roomId, teamId);
+    toggleTeamReady(roomId, teamId, isReady);
     broadcastRoomState(room);
   });
 
@@ -387,8 +387,8 @@ io.on('connection', (socket) => {
   });
 
   // 14. Người chơi khóa hạm đội
-  socket.on('player:lock_fleet', ({ roomId, teamId, fleet }) => {
-    const res = lockTeamFleet(roomId, teamId, fleet);
+  socket.on('player:lock_fleet', ({ roomId, teamId, fleet, isFleetLocked, isReady }) => {
+    const res = lockTeamFleet(roomId, teamId, fleet, isFleetLocked, isReady);
     if (!res.success) {
       return socket.emit('player:placement_error', { error: res.error });
     }

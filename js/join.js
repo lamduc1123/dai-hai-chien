@@ -1214,9 +1214,46 @@ function initEventListeners() {
   });
 
   // Nút Khóa Hạm Đội & Sẵn Sàng (Placement) - Hỗ trợ cả 2 nút trên và dưới
-  const handleToggleLockFleet = () => {
-    if (!currentRoomId || !myTeamId || !myPlayerState || !myPlayerState.myTeam) return;
-    const myTeam = myPlayerState.myTeam;
+  const handleToggleLockFleet = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+
+    let teamId = myTeamId;
+    if (!teamId && myPlayerState && myPlayerState.myTeam) {
+      teamId = myPlayerState.myTeam.id;
+    }
+    if (!teamId) {
+      const stored = localStorage.getItem('dai_hai_chien_team_id');
+      if (stored) teamId = parseInt(stored, 10);
+    }
+    if (!teamId && selectedSlotId) {
+      teamId = selectedSlotId;
+    }
+    if (!teamId && myPlayerState && myPlayerState.teamsOverview) {
+      const mine = myPlayerState.teamsOverview.find(t => t.isConnected && t.deviceToken && t.deviceToken === myDeviceToken);
+      if (mine) teamId = mine.id;
+    }
+
+    let myTeam = (myPlayerState && myPlayerState.myTeam) || null;
+    if (!myTeam && myPlayerState && myPlayerState.teamsOverview && teamId) {
+      myTeam = myPlayerState.teamsOverview.find(t => parseInt(t.id, 10) === parseInt(teamId, 10));
+    }
+
+    if (!myTeam) {
+      console.warn('handleToggleLockFleet: Không tìm thấy đội của thiết bị này');
+      return;
+    }
+
+    myTeamId = teamId;
+    if (myPlayerState) myPlayerState.myTeam = myTeam;
+
+    // Đảm bảo đã có hạm đội nếu chưa có
+    if (!myTeam.fleet || myTeam.fleet.length === 0) {
+      if (window.GameEngine) {
+        const shipLengths = (myPlayerState && myPlayerState.config && myPlayerState.config.shipLengths) || [4, 3];
+        myTeam.fleet = window.GameEngine.generateRandomFleetOpenOcean(shipLengths);
+      }
+    }
+
     // Đảo trạng thái khóa hạm đội & sẵn sàng
     myTeam.isFleetLocked = !myTeam.isFleetLocked;
     myTeam.isReady = myTeam.isFleetLocked;
@@ -1225,36 +1262,48 @@ function initEventListeners() {
     if (myTeam.isFleetLocked && soundManager) {
       soundManager.playSonar();
     }
+    if (navigator.vibrate) navigator.vibrate(50);
 
+    const isLocked = myTeam.isFleetLocked;
+    const isReady = isLocked;
     const fleet = myTeam.fleet;
+
     if (socket && socket.connected) {
-      socket.emit('player:lock_fleet', { roomId: currentRoomId, teamId: myTeamId, fleet });
-      if (myTeam.isFleetLocked) {
-        socket.emit('player:ready', { roomId: currentRoomId, teamId: myTeamId });
-      }
+      socket.emit('player:lock_fleet', { roomId: currentRoomId, teamId, fleet, isFleetLocked: isLocked, isReady });
+      socket.emit('player:ready', { roomId: currentRoomId, teamId, isReady });
     }
-    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId && myTeamId) {
+
+    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId) {
       window.firebaseSync.clientSendAction(currentRoomId, {
-        type: myTeam.isFleetLocked ? 'LOCK_FLEET' : 'UPDATE_FLEET',
-        teamId: myTeamId,
+        type: 'LOCK_FLEET',
+        teamId,
         fleet,
+        isFleetLocked: isLocked,
+        isReady,
         deviceToken: myDeviceToken,
       });
-      if (myTeam.isFleetLocked) {
-        window.firebaseSync.clientSendAction(currentRoomId, {
-          type: 'READY',
-          teamId: myTeamId,
-          deviceToken: myDeviceToken,
-        });
-      }
     }
   };
 
+  const bindTapOrClick = (el, handler) => {
+    if (!el) return;
+    let lastTap = 0;
+    el.addEventListener('touchend', (e) => {
+      lastTap = Date.now();
+      e.preventDefault();
+      handler(e);
+    }, { passive: false });
+    el.addEventListener('click', (e) => {
+      if (Date.now() - lastTap < 400) return;
+      handler(e);
+    });
+  };
+
   const btnLockFleetEl = document.getElementById('btnLockFleet');
-  if (btnLockFleetEl) btnLockFleetEl.addEventListener('click', handleToggleLockFleet);
+  if (btnLockFleetEl) bindTapOrClick(btnLockFleetEl, handleToggleLockFleet);
 
   const btnLockFleetTopEl = document.getElementById('btnLockFleetTop');
-  if (btnLockFleetTopEl) btnLockFleetTopEl.addEventListener('click', handleToggleLockFleet);
+  if (btnLockFleetTopEl) bindTapOrClick(btnLockFleetTopEl, handleToggleLockFleet);
 
   // Nút Bật/Tắt Nhạc Nền Mobile
   const btnMobileBgm = document.getElementById('btnMobileBgm');
@@ -1410,6 +1459,18 @@ function buildPlayerStateFromRoomState(roomState, targetTeamId) {
   let myTeam = null;
   if (myDeviceToken) {
     myTeam = roomState.teams.find(t => t.isConnected && t.deviceToken && t.deviceToken === myDeviceToken);
+  }
+  if (!myTeam && myDeviceToken && targetTeamId) {
+    const candidate = roomState.teams.find(t => parseInt(t.id, 10) === parseInt(targetTeamId, 10));
+    if (candidate && (!candidate.deviceToken || candidate.deviceToken === myDeviceToken)) {
+      myTeam = candidate;
+    }
+  }
+  if (!myTeam && myDeviceToken && selectedSlotId) {
+    const candidate = roomState.teams.find(t => parseInt(t.id, 10) === parseInt(selectedSlotId, 10));
+    if (candidate && (!candidate.deviceToken || candidate.deviceToken === myDeviceToken)) {
+      myTeam = candidate;
+    }
   }
   if (myTeam) {
     myTeamId = myTeam.id;

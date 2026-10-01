@@ -254,12 +254,20 @@ function leaveTeam(roomId, { teamId, deviceToken }) {
   return true;
 }
 
-function toggleTeamReady(roomId, teamId) {
+function toggleTeamReady(roomId, teamId, explicitReady) {
   const room = getRoom(roomId);
   if (!room) return false;
-  const team = room.gameState.teams.find(t => t.id === teamId);
+  const parsedId = parseInt(teamId, 10);
+  const team = room.gameState.teams.find(t => t.id === parsedId);
   if (!team) return false;
-  team.isReady = !team.isReady;
+  if (explicitReady !== undefined) {
+    team.isReady = !!explicitReady;
+  } else {
+    team.isReady = !team.isReady;
+  }
+  if (room.gameState.phase === 'PLACEMENT') {
+    team.isFleetLocked = team.isReady;
+  }
   return true;
 }
 
@@ -272,7 +280,8 @@ function startPlacement(roomId) {
 function autoPlaceTeamFleet(roomId, teamId) {
   const room = getRoom(roomId);
   if (!room) return { success: false, error: 'Phòng không tồn tại' };
-  const team = room.gameState.teams.find(t => t.id === teamId);
+  const parsedId = parseInt(teamId, 10);
+  const team = room.gameState.teams.find(t => t.id === parsedId);
   if (!team) return { success: false, error: 'Không tìm thấy đội' };
 
   const enemyCells = new Set();
@@ -288,11 +297,18 @@ function autoPlaceTeamFleet(roomId, teamId) {
   return { success: true, fleet: team.fleet };
 }
 
-function lockTeamFleet(roomId, teamId, fleet) {
+function lockTeamFleet(roomId, teamId, fleet, isFleetLocked, explicitReady) {
   const room = getRoom(roomId);
   if (!room) return { success: false, error: 'Phòng không tồn tại' };
-  const team = room.gameState.teams.find(t => t.id === teamId);
+  const parsedId = parseInt(teamId, 10);
+  const team = room.gameState.teams.find(t => t.id === parsedId);
   if (!team) return { success: false, error: 'Không tìm thấy đội' };
+
+  if (isFleetLocked === false) {
+    team.isFleetLocked = false;
+    team.isReady = explicitReady !== undefined ? !!explicitReady : false;
+    return { success: true, fleet: team.fleet };
+  }
 
   const enemyCells = new Set();
   room.gameState.teams.forEach(other => {
@@ -306,7 +322,7 @@ function lockTeamFleet(roomId, teamId, fleet) {
     if (validation.valid) {
       team.fleet = fleet.map((s, idx) => ({
         id: `ship_${idx + 1}`,
-        name: s.cells.length === 4 ? `Tàu Sân Bay ${idx + 1}` : `Tuần Dương Hạm ${idx + 1}`,
+        name: s.cells.length === 4 ? `Tàu Sân Bay ${idx + 1}` : (s.cells.length === 2 ? `Tàu Tuần Tra ${idx + 1}` : `Tuần Dương Hạm ${idx + 1}`),
         size: s.cells.length,
         orientation: s.orientation || 'horizontal',
         cells: s.cells,

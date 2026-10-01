@@ -316,28 +316,75 @@ class SoundManager {
     osc.stop(now + 1.2);
   }
 
-  // Tiếng tên lửa phóng đi
+  // Tiếng Tên Lửa Khai Hỏa / Phóng Đi (Realistic Naval VLS Missile Rocket Ignition & Jet Roar)
   playMissile() {
     if (!this.enabled) return;
     this.init();
     if (!this.ctx) return;
 
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
     const now = this.ctx.currentTime;
 
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(180, now);
-    osc.frequency.exponentialRampToValueAtTime(850, now + 0.45);
+    // 1. Tiếng phụt lửa khai hỏa ban đầu (Booster ignition pop)
+    const pop = this.ctx.createOscillator();
+    const popGain = this.ctx.createGain();
+    pop.type = 'triangle';
+    pop.frequency.setValueAtTime(260, now);
+    pop.frequency.exponentialRampToValueAtTime(70, now + 0.12);
 
-    gain.gain.setValueAtTime(0.3, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+    popGain.gain.setValueAtTime(0.45, now);
+    popGain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
 
-    osc.connect(gain);
-    gain.connect(this.sfxGain);
+    pop.connect(popGain);
+    popGain.connect(this.sfxGain);
+    pop.start(now);
+    pop.stop(now + 0.15);
 
-    osc.start(now);
-    osc.stop(now + 0.6);
+    // 2. Tiếng gầm xé gió của động cơ phản lực tên lửa (Rocket motor propellant jet roar)
+    if (this.noiseBuffer) {
+      const rocketNoise = this.ctx.createBufferSource();
+      rocketNoise.buffer = this.noiseBuffer;
+
+      const bandpass = this.ctx.createBiquadFilter();
+      bandpass.type = 'bandpass';
+      bandpass.frequency.setValueAtTime(280, now);
+      bandpass.frequency.exponentialRampToValueAtTime(1800, now + 0.55);
+      bandpass.Q.value = 3.0;
+
+      const rocketGain = this.ctx.createGain();
+      rocketGain.gain.setValueAtTime(0.2, now);
+      rocketGain.gain.linearRampToValueAtTime(0.85, now + 0.15);
+      rocketGain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+
+      rocketNoise.connect(bandpass);
+      bandpass.connect(rocketGain);
+      rocketGain.connect(this.sfxGain);
+
+      rocketNoise.start(now);
+      rocketNoise.stop(now + 0.8);
+    }
+
+    // 3. Tiếng turbine rít siêu thanh bay vút lên bầu trời (Supersonic jet whoosh)
+    const whoosh = this.ctx.createOscillator();
+    const whooshGain = this.ctx.createGain();
+    whoosh.type = 'sawtooth';
+    whoosh.frequency.setValueAtTime(340, now + 0.05);
+    whoosh.frequency.exponentialRampToValueAtTime(1600, now + 0.6);
+
+    const whooshFilter = this.ctx.createBiquadFilter();
+    whooshFilter.type = 'lowpass';
+    whooshFilter.frequency.setValueAtTime(700, now + 0.05);
+    whooshFilter.frequency.exponentialRampToValueAtTime(2200, now + 0.5);
+
+    whooshGain.gain.setValueAtTime(0.05, now + 0.05);
+    whooshGain.gain.linearRampToValueAtTime(0.35, now + 0.2);
+    whooshGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+    whoosh.connect(whooshFilter);
+    whooshFilter.connect(whooshGain);
+    whooshGain.connect(this.sfxGain);
+
+    whoosh.start(now + 0.05);
+    whoosh.stop(now + 0.72);
   }
 
   // Tiếng Chuông báo động
