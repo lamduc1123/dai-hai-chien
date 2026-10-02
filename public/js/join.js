@@ -265,6 +265,9 @@ function updatePlayerUI(state) {
 
   if (myTeam) {
     myTeamId = myTeam.id;
+    if ((!myTeam.fleet || myTeam.fleet.length === 0) && myPlayerState && myPlayerState.myTeam && myPlayerState.myTeam.fleet && myPlayerState.myTeam.fleet.length > 0) {
+      myTeam.fleet = myPlayerState.myTeam.fleet;
+    }
     state.myTeam = myTeam;
     safeStorage.setItem('dai_hai_chien_team_id', myTeam.id);
   } else {
@@ -491,28 +494,159 @@ function renderTeamSlots(teams) {
   });
 }
 
+let selectedPlacementShipIdx = -1;
+
+function rotateShipInFleet(myTeam, shipIdx) {
+  const ship = myTeam.fleet[shipIdx];
+  if (!ship || !ship.cells || ship.cells.length < 2) return false;
+
+  const length = ship.cells.length;
+  const headKey = ship.cells[0];
+  const colLetter = headKey.match(/^[A-Z]+/)[0];
+  const rowNum = parseInt(headKey.replace(/^[A-Z]+/, ''), 10);
+  const colIdx = COLS.indexOf(colLetter);
+  const rowIdx = ROWS.indexOf(rowNum);
+
+  if (colIdx === -1 || rowIdx === -1) return false;
+
+  const secondKey = ship.cells[1];
+  const isHorizontal = !secondKey.startsWith(colLetter);
+  const newHorizontal = !isHorizontal;
+
+  const newCells = [];
+  for (let step = 0; step < length; step++) {
+    const c = newHorizontal ? colIdx + step : colIdx;
+    const r = newHorizontal ? rowIdx : rowIdx + step;
+    if (c < 0 || c >= COLS.length || r < 0 || r >= ROWS.length) {
+      showTurnToast('⚠️ Vượt biên hải đồ, không thể xoay tàu!');
+      return false;
+    }
+    newCells.push(`${COLS[c]}${ROWS[r]}`);
+  }
+
+  // Kiểm tra va chạm với tàu khác
+  for (let i = 0; i < myTeam.fleet.length; i++) {
+    if (i === shipIdx) continue;
+    const other = myTeam.fleet[i];
+    if (other && other.cells) {
+      for (const k of newCells) {
+        if (other.cells.includes(k)) {
+          showTurnToast('⚠️ Bị vướng tàu khác, không thể xoay!');
+          return false;
+        }
+      }
+    }
+  }
+
+  ship.cells = newCells;
+  if (soundManager) soundManager.playSonar();
+  if (navigator.vibrate) navigator.vibrate(40);
+  showTurnToast(`🔄 Đã xoay tàu ${newHorizontal ? 'Hàng Ngang' : 'Hàng Dọc'}!`);
+  return true;
+}
+
+function moveShipInFleet(myTeam, shipIdx, targetKey) {
+  const ship = myTeam.fleet[shipIdx];
+  if (!ship || !ship.cells || ship.cells.length === 0) return false;
+
+  const length = ship.cells.length;
+  const colLetter = targetKey.match(/^[A-Z]+/)[0];
+  const rowNum = parseInt(targetKey.replace(/^[A-Z]+/, ''), 10);
+  const colIdx = COLS.indexOf(colLetter);
+  const rowIdx = ROWS.indexOf(rowNum);
+
+  if (colIdx === -1 || rowIdx === -1) return false;
+
+  let isHorizontal = true;
+  if (ship.cells.length >= 2) {
+    isHorizontal = !ship.cells[1].startsWith(ship.cells[0].match(/^[A-Z]+/)[0]);
+  }
+
+  const newCells = [];
+  for (let step = 0; step < length; step++) {
+    const c = isHorizontal ? colIdx + step : colIdx;
+    const r = isHorizontal ? rowIdx : rowIdx + step;
+    if (c < 0 || c >= COLS.length || r < 0 || r >= ROWS.length) {
+      showTurnToast('⚠️ Vượt biên hải đồ!');
+      return false;
+    }
+    newCells.push(`${COLS[c]}${ROWS[r]}`);
+  }
+
+  // Kiểm tra va chạm với tàu khác
+  for (let i = 0; i < myTeam.fleet.length; i++) {
+    if (i === shipIdx) continue;
+    const other = myTeam.fleet[i];
+    if (other && other.cells) {
+      for (const k of newCells) {
+        if (other.cells.includes(k)) {
+          showTurnToast('⚠️ Không thể đặt đè lên tàu khác!');
+          return false;
+        }
+      }
+    }
+  }
+
+  ship.cells = newCells;
+  if (soundManager) soundManager.playSonar();
+  if (navigator.vibrate) navigator.vibrate(40);
+  showTurnToast(`⚓ Đã chuyển vị trí ${ship.name}!`);
+  return true;
+}
+
 function handlePlacementCellClick(key) {
   if (!myPlayerState || !myPlayerState.myTeam) return;
   const myTeam = myPlayerState.myTeam;
-  if (window.GameEngine) {
-    if (window.GameEngine.setGridDimensions) {
-      window.GameEngine.setGridDimensions(COLS.length, ROWS.length);
-    }
+  if (myTeam.isFleetLocked) {
+    showTurnToast('🔒 Hạm đội đã khóa. Bấm "Mở khóa" để chỉnh sửa vị trí!');
+    return;
+  }
+
+  if (!myTeam.fleet || myTeam.fleet.length === 0) {
     const shipLengths = (myPlayerState.config && myPlayerState.config.shipLengths) || [4, 3];
-    myTeam.isFleetLocked = false;
     myTeam.fleet = window.GameEngine.generateRandomFleetOpenOcean(shipLengths);
-    renderPlacementView(myPlayerState);
-    if (socket && socket.connected) {
-      socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
+  }
+
+  // Kiểm tra xem ô được bấm có thuộc tàu nào không
+  let clickedShipIdx = -1;
+  myTeam.fleet.forEach((ship, idx) => {
+    if (ship.cells && ship.cells.includes(key)) {
+      clickedShipIdx = idx;
     }
-    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId && myTeamId) {
-      window.firebaseSync.clientSendAction(currentRoomId, {
-        type: 'AUTO_PLACE',
-        teamId: myTeamId,
-        fleet: myTeam.fleet,
-        deviceToken: myDeviceToken,
-      });
+  });
+
+  if (clickedShipIdx !== -1) {
+    // Chạm vào một chiếc tàu
+    if (selectedPlacementShipIdx === clickedShipIdx) {
+      // Chạm lần 2 vào cùng tàu: XOAY 90 ĐỘ
+      rotateShipInFleet(myTeam, clickedShipIdx);
+    } else {
+      // Chọn tàu này
+      selectedPlacementShipIdx = clickedShipIdx;
+      showTurnToast(`⚓ Đã chọn ${myTeam.fleet[clickedShipIdx].name}. Chạm lại để xoay 90°, hoặc chạm ô trống để dời tàu!`);
     }
+  } else {
+    // Chạm vào ô trống
+    if (selectedPlacementShipIdx !== -1 && selectedPlacementShipIdx < myTeam.fleet.length) {
+      // Dời tàu đang chọn tới ô này
+      moveShipInFleet(myTeam, selectedPlacementShipIdx, key);
+    } else {
+      // Tự động chọn chiếc tàu đầu tiên
+      selectedPlacementShipIdx = 0;
+      showTurnToast(`⚓ Đã chọn ${myTeam.fleet[0].name}. Chạm ô trống để di chuyển tàu!`);
+    }
+  }
+
+  renderPlacementView(myPlayerState);
+
+  // Gửi cập nhật lên máy chủ khi người chơi thao tác thủ công
+  if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId && myTeamId) {
+    window.firebaseSync.clientSendAction(currentRoomId, {
+      type: 'UPDATE_FLEET',
+      teamId: myTeamId,
+      fleet: myTeam.fleet,
+      deviceToken: myDeviceToken,
+    });
   }
 }
 
@@ -588,51 +722,29 @@ function renderPlacementView(state) {
   const myTeam = state.myTeam;
   if (!myTeam) return;
 
-  const hint = document.getElementById('placementZoneHint');
-  if (hint) {
-    hint.textContent = 'Chạm ô hoặc bấm nút để đổi vị trí';
-  }
-
   const container = document.getElementById('placementGrid');
   const expectedCells = (COLS.length + 1) * (ROWS.length + 1);
   if (container.children.length !== expectedCells) {
     buildGridInContainer(container, handlePlacementCellClick);
   }
 
-  // Tự động sinh hạm đội ban đầu nếu chưa có tàu hoặc tọa độ nằm ngoài kích thước hải đồ hiện tại
+  // Nếu hạm đội chưa có, sinh ngẫu nhiên ban đầu 1 lần trong bộ nhớ (không gửi action mạng trong hàm render)
   const shipLengths = (state.config && state.config.shipLengths) || [4, 3];
-  let hasOutOfBounds = false;
-  if (myTeam.fleet && myTeam.fleet.length > 0) {
-    for (const ship of myTeam.fleet) {
-      if (!ship.cells || !Array.isArray(ship.cells)) {
-        hasOutOfBounds = true;
-        break;
-      }
-      for (const cellKey of ship.cells) {
-        if (!container.querySelector(`[data-key="${cellKey}"]`)) {
-          hasOutOfBounds = true;
-          break;
-        }
-      }
-      if (hasOutOfBounds) break;
-    }
-  }
-
-  if ((!myTeam.fleet || myTeam.fleet.length === 0 || hasOutOfBounds) && window.GameEngine) {
+  if ((!myTeam.fleet || myTeam.fleet.length === 0) && window.GameEngine) {
     if (window.GameEngine.setGridDimensions) {
       window.GameEngine.setGridDimensions(COLS.length, ROWS.length);
     }
     myTeam.fleet = window.GameEngine.generateRandomFleetOpenOcean(shipLengths);
-    if (socket && socket.connected) {
-      socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
-    }
-    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId && myTeamId) {
-      window.firebaseSync.clientSendAction(currentRoomId, {
-        type: 'UPDATE_FLEET',
-        teamId: myTeamId,
-        fleet: myTeam.fleet,
-        deviceToken: myDeviceToken,
-      });
+  }
+
+  const hint = document.getElementById('placementZoneHint');
+  if (hint) {
+    if (myTeam.isFleetLocked) {
+      hint.textContent = '🔒 Hạm đội đã sẵn sàng! Bấm nút để mở khóa nếu muốn xếp lại.';
+    } else if (selectedPlacementShipIdx !== -1 && myTeam.fleet && myTeam.fleet[selectedPlacementShipIdx]) {
+      hint.textContent = `⚓ Đang chọn: ${myTeam.fleet[selectedPlacementShipIdx].name} (Chạm tiếp để xoay 90° • Chạm ô trống để dời)`;
+    } else {
+      hint.textContent = 'Chạm vào tàu để xoay 90° hoặc chạm ô trống để dời vị trí';
     }
   }
 
@@ -640,19 +752,24 @@ function renderPlacementView(state) {
     c.className = 'ocean-cell';
     c.style.backgroundColor = '';
     c.style.borderColor = '';
+    c.style.boxShadow = '';
     c.innerHTML = '';
   });
 
-  // Hiển thị chiến hạm liền khối 3 ô hoặc 4 ô
+  // Hiển thị chiến hạm liền khối 2 ô, 3 ô hoặc 4 ô (kèm viền sáng khi đang chọn)
   if (myTeam.fleet) {
-    myTeam.fleet.forEach(ship => {
+    myTeam.fleet.forEach((ship, sIdx) => {
+      const isSelected = (sIdx === selectedPlacementShipIdx && !myTeam.isFleetLocked);
       ship.cells.forEach(k => {
         const cell = container.querySelector(`[data-key="${k}"]`);
         if (!cell) return;
         const partClass = window.GameEngine.getShipPartClass(ship, k);
         cell.classList.add('has-ship');
         if (partClass) partClass.split(' ').filter(Boolean).forEach(cls => cell.classList.add(cls));
-        cell.style.borderColor = myTeam.colorHex;
+        cell.style.borderColor = isSelected ? '#f59e0b' : myTeam.colorHex;
+        if (isSelected) {
+          cell.style.boxShadow = '0 0 10px #f59e0b, inset 0 0 6px #fef08a';
+        }
       });
     });
   }
@@ -1428,9 +1545,13 @@ function initEventListeners() {
         window.GameEngine.setGridDimensions(COLS.length, ROWS.length);
       }
       const shipLengths = (myPlayerState.config && myPlayerState.config.shipLengths) || [4, 3];
+      selectedPlacementShipIdx = -1;
       myPlayerState.myTeam.isFleetLocked = false;
       myPlayerState.myTeam.fleet = window.GameEngine.generateRandomFleetOpenOcean(shipLengths);
       renderPlacementView(myPlayerState);
+      if (soundManager) soundManager.playSonar();
+      if (navigator.vibrate) navigator.vibrate(40);
+      showTurnToast('🎲 Đã xếp ngẫu nhiên đội hình mới!');
     }
     if (socket && socket.connected) {
       socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
@@ -1489,6 +1610,7 @@ function initEventListeners() {
     // Đảo trạng thái khóa hạm đội & sẵn sàng
     myTeam.isFleetLocked = !myTeam.isFleetLocked;
     myTeam.isReady = myTeam.isFleetLocked;
+    selectedPlacementShipIdx = -1;
     renderPlacementView(myPlayerState);
 
     if (myTeam.isFleetLocked && soundManager) {
@@ -1722,6 +1844,9 @@ function buildPlayerStateFromRoomState(roomState, targetTeamId) {
   if (myTeam) {
     myTeamId = myTeam.id;
     safeStorage.setItem('dai_hai_chien_team_id', myTeam.id);
+    if ((!myTeam.fleet || myTeam.fleet.length === 0) && myPlayerState && myPlayerState.myTeam && myPlayerState.myTeam.fleet && myPlayerState.myTeam.fleet.length > 0) {
+      myTeam.fleet = myPlayerState.myTeam.fleet;
+    }
   }
   const effectiveTeamId = myTeam ? myTeam.id : null;
 
@@ -1743,6 +1868,7 @@ function buildPlayerStateFromRoomState(roomState, targetTeamId) {
       isReady: t.isReady,
       shipsRemaining: t.shipsRemaining,
       score: t.score,
+      fleet: t.fleet || [],
       crossfireRemaining: t.crossfireRemaining ?? 1,
       isEliminated: t.isEliminated,
     })),
