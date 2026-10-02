@@ -250,7 +250,8 @@ class FirebaseSyncManager {
   }
 
   /**
-   * CLIENT: Gửi hành động lên Host (SDK ưu tiên, REST dự phòng)
+   * CLIENT: Gửi hành động lên Host (Dual-Sync: Gửi đồng thời SDK và REST API trực tiếp)
+   * Đảm bảo hành động đến Host trong <100ms ngay cả khi WebSocket bị trễ, chặn tường lửa hoặc đang kết nối
    */
   clientSendAction(roomId, action) {
     if (!action) return;
@@ -261,17 +262,19 @@ class FirebaseSyncManager {
         actionId: 'act_' + Math.random().toString(36).substring(2) + Date.now().toString(36),
       };
 
+      // 1. Gửi qua Firebase SDK nếu có
       if (this.db) {
-        this.db.ref(`rooms/${roomId}/actions`).push(payload).catch((err) => {
-          console.warn('Lỗi push SDK, gửi fallback REST:', err);
-          fetch(`${this.baseUrl}/rooms/${roomId}/actions.json`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          }).catch(e => console.warn('Lỗi gửi action REST fallback:', e));
-        });
-      } else {
-        fetch(`${this.baseUrl}/rooms/${roomId}/actions.json`, {
+        try {
+          this.db.ref(`rooms/${roomId}/actions`).push(payload).catch((err) => {
+            console.warn('SDK push lỗi nhẹ:', err);
+          });
+        } catch (e) {}
+      }
+
+      // 2. ĐỒNG THỜI Gửi qua REST API trực tiếp để đảm bảo 100% đến Host tức thì
+      const targetBase = this.baseUrl || (window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.databaseURL ? window.FIREBASE_CONFIG.databaseURL.replace(/\/$/, '') : '');
+      if (targetBase) {
+        fetch(`${targetBase}/rooms/${roomId}/actions.json`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),

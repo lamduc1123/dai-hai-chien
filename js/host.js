@@ -327,10 +327,19 @@ function handleIncomingFirebaseAction(action) {
       team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
     }
     if (team) {
+      team.isConnected = true;
+      if (action.deviceToken && !team.deviceToken) {
+        team.deviceToken = action.deviceToken;
+      }
+      if (action.playerName && (!team.customName || team.customName.startsWith('Chiến Hạm #'))) {
+        team.customName = action.playerName.trim().substring(0, 20);
+        team.name = team.customName;
+      }
+      team.isBot = false;
       if (action.isReady !== undefined) {
         team.isReady = !!action.isReady;
       } else {
-        team.isReady = !team.isReady;
+        team.isReady = true;
       }
       if (currentHostState.phase === 'PLACEMENT') {
         team.isFleetLocked = team.isReady;
@@ -1434,18 +1443,26 @@ function closeFirebaseModal() {
   document.getElementById('modalFirebase').classList.remove('active');
 }
 
-function loadNetworkAndQR() {
-  let joinUrl = `${window.location.origin}${window.location.pathname.replace('host.html', 'join.html')}?room=${currentRoomId || 'PHONG-01'}`;
-
-  // Kiểm tra nếu pathname chưa có join.html
-  if (!joinUrl.includes('join.html')) {
-    joinUrl = `${window.location.origin}/join.html?room=${currentRoomId || 'PHONG-01'}`;
+function getJoinUrl() {
+  let path = window.location.pathname || '';
+  if (path.endsWith('host.html')) {
+    path = path.replace(/host\.html$/, 'join.html');
+  } else if (path.endsWith('/')) {
+    path = path + 'join.html';
+  } else if (path.includes('.')) {
+    path = path.substring(0, path.lastIndexOf('/') + 1) + 'join.html';
+  } else {
+    path = path + '/join.html';
   }
+  return `${window.location.origin}${path}?room=${encodeURIComponent(currentRoomId || 'PHONG-01')}`;
+}
 
+function loadNetworkAndQR() {
+  const joinUrl = getJoinUrl();
   applyQRToUI(joinUrl);
 
   // Thử lấy joinUrl từ API local nếu chạy bằng node server
-  fetch(`/api/network-info?room=${currentRoomId || ''}`)
+  fetch(`/api/network-info?room=${encodeURIComponent(currentRoomId || '')}`)
     .then(r => r.ok ? r.json() : null)
     .then(data => {
       if (data && data.joinUrl) {

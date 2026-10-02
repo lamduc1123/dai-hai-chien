@@ -453,8 +453,11 @@
             <img id="qrBigImage" src="" alt="Mã QR Tham Gia" style="width: 210px; height: 210px; display: block; margin: 0 auto;">
           </div>
           <div style="margin-top: 10px;">
-            <input id="qrCopyUrlInput" type="text" class="form-control" readonly style="text-align: center; font-weight: bold; font-size: 0.8rem; padding: 6px; margin-bottom: 6px;">
-            <button id="btnCopyUrl" class="btn btn-outline" style="width: 100%; font-size: 0.82rem; padding: 6px 12px;">📋 Sao Chép Đường Link</button>
+            <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-align: left; margin-bottom: 3px;">
+              🔗 Link tham gia (dành cho Máy tính / Laptop / Trình duyệt):
+            </div>
+            <input id="qrCopyUrlInput" type="text" class="form-control" readonly style="text-align: left; direction: ltr; font-weight: bold; font-size: 0.8rem; padding: 8px; margin-bottom: 6px; width: 100%; word-break: break-all; font-family: monospace; background: #f8fafc; border: 1.5px solid #0284c7;" onclick="this.select();">
+            <button id="btnCopyUrl" class="btn btn-primary" style="width: 100%; font-size: 0.85rem; font-weight: 800; padding: 8px 12px;">📋 Sao Chép Đường Link Cho Laptop</button>
           </div>
         </div>
 

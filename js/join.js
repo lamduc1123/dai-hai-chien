@@ -262,11 +262,13 @@ function updatePlayerUI(state) {
     const btnReady = document.getElementById('btnToggleReady');
     if (btnReady) {
       if (myTeam.isReady) {
-        btnReady.textContent = '✓ ĐÃ SẴN SÀNG (CHỜ BẮT ĐẦU)';
-        btnReady.className = 'btn btn-outline';
+        btnReady.innerHTML = '✓ BẠN ĐÃ SẴN SÀNG (CHỜ MC BẮT ĐẦU)';
+        btnReady.style.background = '#059669';
+        btnReady.style.color = '#ffffff';
       } else {
-        btnReady.textContent = '✓ BẤM SẴN SÀNG';
-        btnReady.className = 'btn btn-success';
+        btnReady.innerHTML = '⏳ BẤM ĐỂ BÁO SẴN SÀNG';
+        btnReady.style.background = '#e2e8f0';
+        btnReady.style.color = '#334155';
       }
     }
   }
@@ -281,6 +283,18 @@ function updatePlayerUI(state) {
 
   // NẾU NGƯỜI CHƠI CHƯA CÓ ĐỘI -> HIỂN THỊ FORM NHẬP TÊN THAM GIA
   if (!myTeam) {
+    if (myTeamId) {
+      // Người chơi đã tham gia hạm đội ở phiên này, giữ nguyên giao diện phòng chờ chờ MC bắt đầu
+      document.body.classList.remove('mode-placement');
+      viewLobby.style.display = 'block';
+      viewPlacement.style.display = 'none';
+      viewBattle.style.display = 'none';
+      viewFinished.style.display = 'none';
+      if (joinFormArea) joinFormArea.style.display = 'none';
+      if (waitingRoomState) waitingRoomState.style.display = 'block';
+      return;
+    }
+
     document.body.classList.remove('mode-placement');
     viewLobby.style.display = 'block';
     viewPlacement.style.display = 'none';
@@ -1135,6 +1149,15 @@ function startMobileTurnTicker() {
 function initEventListeners() {
   // Nút Tham Gia Đội
   const joinTeamAction = () => {
+    // 1. Tự động xác định selectedSlotId nếu chưa chọn
+    if (!selectedSlotId) {
+      if (myPlayerState && myPlayerState.teamsOverview) {
+        const firstAvail = myPlayerState.teamsOverview.find(t => !t.isConnected && !t.isBot);
+        if (firstAvail) selectedSlotId = firstAvail.id;
+      }
+      if (!selectedSlotId) selectedSlotId = 1;
+    }
+
     const inputEl = document.getElementById('inputPlayerName');
     let name = (inputEl && inputEl.value.trim()) ? inputEl.value.trim() : '';
 
@@ -1154,6 +1177,11 @@ function initEventListeners() {
     }
     localStorage.setItem('dai_hai_chien_name', name);
 
+    // Gán ngay lập tức myTeamId và lưu phiên để không bị reset giao diện
+    myTeamId = selectedSlotId;
+    localStorage.setItem('dai_hai_chien_team_id', myTeamId);
+
+    // Cập nhật giao diện phòng chờ ngay lập tức
     const joinFormArea = document.getElementById('joinFormArea');
     if (joinFormArea) joinFormArea.style.display = 'none';
     const waitingEl = document.getElementById('waitingRoomState');
@@ -1162,23 +1190,46 @@ function initEventListeners() {
     const waitTitle = document.getElementById('waitingAssignedShipTitle');
     if (waitTitle) waitTitle.innerHTML = `🚢 <b>${name}</b>`;
     const waitSub = document.getElementById('waitingAssignedShipSub');
-    waitSub.textContent = `Đang kết nối vào Vị trí #${selectedSlotId || 'trống'} trên Máy Chủ...`;
+    if (waitSub) waitSub.innerHTML = `🟢 <b>ĐÃ VÀO VỊ TRÍ #${myTeamId} & ĐÃ SẴN SÀNG!</b>`;
 
+    const btnReady = document.getElementById('btnToggleReady');
+    if (btnReady) {
+      btnReady.innerHTML = '✓ BẠN ĐÃ SẴN SÀNG (CHỜ MC BẮT ĐẦU)';
+      btnReady.style.background = '#059669';
+      btnReady.style.color = '#ffffff';
+    }
+
+    // Gửi sự kiện Socket (nếu có server node)
     if (socket && socket.connected) {
       socket.emit('player:join', {
         roomId: currentRoomId,
-        teamId: selectedSlotId,
+        teamId: myTeamId,
         playerName: name,
         deviceToken: myDeviceToken,
+        isReady: true,
+      });
+      socket.emit('player:ready', {
+        roomId: currentRoomId,
+        teamId: myTeamId,
+        isReady: true,
       });
     }
 
-    if (window.firebaseSync && window.firebaseSync.isReady) {
+    // Gửi sự kiện Firebase Realtime Database (Dual-sync WebSocket + REST)
+    if (window.firebaseSync) {
       window.firebaseSync.clientSendAction(currentRoomId, {
         type: 'JOIN',
-        teamId: selectedSlotId,
+        teamId: myTeamId,
         playerName: name,
         deviceToken: myDeviceToken,
+        isReady: true,
+      });
+      window.firebaseSync.clientSendAction(currentRoomId, {
+        type: 'READY',
+        teamId: myTeamId,
+        playerName: name,
+        deviceToken: myDeviceToken,
+        isReady: true,
       });
     }
   };
@@ -1224,14 +1275,15 @@ function initEventListeners() {
     btnLeaveRoom.addEventListener('click', () => {
       if (!confirm('Bạn có chắc chắn muốn rời phòng và hủy vị trí chiến hạm này?')) return;
 
-      if (myTeamId) {
+      const targetLeaveId = myTeamId || selectedSlotId;
+      if (targetLeaveId) {
         if (socket && socket.connected) {
-          socket.emit('player:leave', { roomId: currentRoomId, teamId: myTeamId, deviceToken: myDeviceToken });
+          socket.emit('player:leave', { roomId: currentRoomId, teamId: targetLeaveId, deviceToken: myDeviceToken });
         }
-        if (window.firebaseSync && window.firebaseSync.isReady) {
+        if (window.firebaseSync) {
           window.firebaseSync.clientSendAction(currentRoomId, {
             type: 'LEAVE',
-            teamId: myTeamId,
+            teamId: targetLeaveId,
             deviceToken: myDeviceToken,
           });
         }
@@ -1256,16 +1308,33 @@ function initEventListeners() {
   const btnToggleReady = document.getElementById('btnToggleReady');
   if (btnToggleReady) {
     btnToggleReady.addEventListener('click', () => {
-      if (!currentRoomId || !myTeamId) return;
-      btnToggleReady.innerHTML = '✓ ĐÃ BÁO SẴN SÀNG (CHỜ MÁY CHỦ BẮT ĐẦU)';
-      btnToggleReady.style.background = '#059669';
-      btnToggleReady.style.color = '#ffffff';
+      const targetId = myTeamId || selectedSlotId;
+      if (!currentRoomId || !targetId) return;
+
+      const currentTeam = myPlayerState && myPlayerState.teamsOverview ? myPlayerState.teamsOverview.find(t => t.id === targetId) : null;
+      const currentlyReady = currentTeam ? !!currentTeam.isReady : true;
+      const nextReady = !currentlyReady;
+
+      if (nextReady) {
+        btnToggleReady.innerHTML = '✓ BẠN ĐÃ SẴN SÀNG (CHỜ MC BẮT ĐẦU)';
+        btnToggleReady.style.background = '#059669';
+        btnToggleReady.style.color = '#ffffff';
+      } else {
+        btnToggleReady.innerHTML = '⏳ BẤM ĐỂ BÁO SẴN SÀNG';
+        btnToggleReady.style.background = '#e2e8f0';
+        btnToggleReady.style.color = '#334155';
+      }
 
       if (socket && socket.connected) {
-        socket.emit('player:ready', { roomId: currentRoomId, teamId: myTeamId });
+        socket.emit('player:ready', { roomId: currentRoomId, teamId: targetId, isReady: nextReady });
       }
-      if (window.firebaseSync && window.firebaseSync.isReady) {
-        window.firebaseSync.clientSendAction(currentRoomId, { type: 'READY', teamId: myTeamId });
+      if (window.firebaseSync) {
+        window.firebaseSync.clientSendAction(currentRoomId, {
+          type: 'READY',
+          teamId: targetId,
+          deviceToken: myDeviceToken,
+          isReady: nextReady,
+        });
       }
     });
   }

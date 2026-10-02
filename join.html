@@ -279,6 +279,17 @@
 
     /* GIAO DIỆN TỐI ƯU CHO MÁY TÍNH / LAPTOP (MÀN HÌNH RỘNG >= 768px) */
     @media (min-width: 768px) {
+      .mobile-container {
+        max-width: 760px;
+        margin: 20px auto;
+      }
+
+      #viewLobby {
+        padding: 28px !important;
+        border-radius: 16px !important;
+        box-shadow: 0 12px 36px rgba(2, 132, 199, 0.12) !important;
+      }
+
       body.mode-placement,
       body.mode-battle {
         position: relative !important;
@@ -291,6 +302,7 @@
         max-width: 1440px !important;
         padding: 8px 16px !important;
         height: calc(100vh - 54px) !important;
+        margin: 0 auto !important;
       }
 
       .placement-container,
@@ -426,7 +438,7 @@
             </label>
             <span id="selectedSlotBadge" style="color: #0284c7; font-weight: 900; font-size: 0.8rem;">Đang chọn ô trống</span>
           </div>
-          <div id="teamSlotsContainer" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div id="teamSlotsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
             <!-- Render danh sách đội khả dụng -->
           </div>
         </div>
@@ -438,36 +450,36 @@
           <input type="text" id="inputPlayerName" class="form-control" placeholder="Nhập tên hạm đội (VD: Bạch Đằng, Hắc Long, Hạm 01...)" maxlength="20" style="font-weight: 800; text-align: center; font-size: 1.05rem; padding: 12px; border: 2px solid var(--border-ocean);">
         </div>
 
-        <button id="btnJoinTeam" class="btn btn-primary btn-large" style="width: 100%; font-size: 1.05rem; padding: 14px; font-weight: 900; letter-spacing: 0.5px;">
+        <button id="btnJoinTeam" class="btn btn-primary btn-large" style="width: 100%; font-size: 1.05rem; padding: 14px; font-weight: 900; letter-spacing: 0.5px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);">
           ⚓ XÁC NHẬN THAM GIA
         </button>
 
         <div style="font-size: 0.78rem; color: #64748b; text-align: center; margin-top: 10px; line-height: 1.4;">
-          💡 Chọn vị trí chiến hạm và đặt tên đội của bạn, sau đó bấm Xác Nhận Tham Gia để hiển thị lên màn hình máy chủ.
+          💡 Chọn vị trí chiến hạm và đặt tên đội của bạn, sau đó bấm Xác Nhận Tham Gia để hiển thị và sẵn sàng trên màn hình máy chủ.
         </div>
       </div>
 
       <!-- Trạng thái chờ sau khi đã vào đội -->
       <div id="waitingRoomState" style="display: none; margin-top: 14px; text-align: center; border-top: 1px solid var(--border-ocean); padding-top: 16px;">
-        <div style="font-size: 1.25rem; font-weight: 900; color: var(--navy-dark); margin-bottom: 4px;" id="waitingAssignedShipTitle">
+        <div style="font-size: 1.35rem; font-weight: 900; color: var(--navy-dark); margin-bottom: 4px;" id="waitingAssignedShipTitle">
           ⚓ ĐÃ VÀO VỊ TRÍ CHIẾN ĐẤU!
         </div>
-        <div id="waitingAssignedShipSub" style="font-size: 0.95rem; font-weight: 800; color: #0284c7; margin-bottom: 12px;">
-          Đang kết nối Máy Chủ...
+        <div id="waitingAssignedShipSub" style="font-size: 1rem; font-weight: 800; color: #15803d; margin-bottom: 12px;">
+          🟢 ĐÃ KẾT NỐI & ĐÃ SẴN SÀNG!
         </div>
-        <div style="background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 0.85rem; color: #0369a1;">
-          ✓ Chiến hạm của bạn đã hiển thị trên màn hình lớn!<br>Vui lòng theo dõi hiệu lệnh của MC để bắt đầu dàn trận.
+        <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 12px; margin-bottom: 14px; font-size: 0.88rem; color: #15803d; line-height: 1.5;">
+          ✓ Chiến hạm của bạn đã báo <b>SẴN SÀNG</b> trên màn hình Máy Chủ!<br>Vui lòng theo dõi hiệu lệnh của MC để bắt đầu trận đấu.
         </div>
-        <button id="btnToggleReady" class="btn btn-success btn-large" style="width: 100%; font-size: 1rem; font-weight: 800;">
-          ✓ ĐÃ SẴN SÀNG CHIẾN ĐẤU
+        <button id="btnToggleReady" class="btn btn-success btn-large" style="width: 100%; font-size: 1.05rem; font-weight: 900; padding: 14px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.45); letter-spacing: 0.3px;">
+          ✓ BẠN ĐÃ SẴN SÀNG (CHỜ MC BẮT ĐẦU)
         </button>
 
-        <div style="display: flex; gap: 8px; margin-top: 10px;">
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
           <button id="btnChangeTeam" class="btn btn-outline" type="button" style="flex: 1; font-size: 0.85rem; font-weight: 700; padding: 10px 8px; border-color: #94a3b8; color: #475569;">
-            🔄 Đổi Tên / Đổi Đội
+            🔄 Đổi Tên / Đổi Vị Trí
           </button>
           <button id="btnLeaveRoom" class="btn btn-outline" type="button" style="font-size: 0.85rem; font-weight: 700; padding: 10px 12px; border-color: #ef4444; color: #ef4444;">
-            🚪 Rời Phòng
+            🚪 Hủy Vị Trí
           </button>
         </div>
       </div>
