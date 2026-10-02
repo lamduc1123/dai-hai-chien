@@ -617,10 +617,8 @@ function renderPlacementView(state) {
   if (hint) {
     if (myTeam.isFleetLocked) {
       hint.textContent = '🔒 Hạm đội đã sẵn sàng! Bấm nút để mở khóa nếu muốn xếp lại.';
-    } else if (selectedPlacementShipIdx !== -1 && myTeam.fleet && myTeam.fleet[selectedPlacementShipIdx]) {
-      hint.textContent = `⚓ Đang chọn: ${myTeam.fleet[selectedPlacementShipIdx].name} (Chạm tiếp để xoay 90° • Chạm ô trống để dời)`;
     } else {
-      hint.textContent = 'Chạm vào tàu để xoay 90° hoặc chạm ô trống để dời vị trí';
+      hint.textContent = '🎲 Chạm vào ô bất kỳ để máy tự động đổi vị trí hạm đội';
     }
   }
 
@@ -632,20 +630,16 @@ function renderPlacementView(state) {
     c.innerHTML = '';
   });
 
-  // Hiển thị chiến hạm liền khối 2 ô, 3 ô hoặc 4 ô (kèm viền sáng khi đang chọn)
+  // Hiển thị chiến hạm liền khối 2 ô, 3 ô hoặc 4 ô theo màu hạm đội
   if (myTeam.fleet) {
-    myTeam.fleet.forEach((ship, sIdx) => {
-      const isSelected = (sIdx === selectedPlacementShipIdx && !myTeam.isFleetLocked);
+    myTeam.fleet.forEach((ship) => {
       ship.cells.forEach(k => {
         const cell = container.querySelector(`[data-key="${k}"]`);
         if (!cell) return;
         const partClass = window.GameEngine.getShipPartClass(ship, k);
         cell.classList.add('has-ship');
         if (partClass) partClass.split(' ').filter(Boolean).forEach(cls => cell.classList.add(cls));
-        cell.style.borderColor = isSelected ? '#f59e0b' : myTeam.colorHex;
-        if (isSelected) {
-          cell.style.boxShadow = '0 0 10px #f59e0b, inset 0 0 6px #fef08a';
-        }
+        cell.style.borderColor = myTeam.colorHex;
       });
     });
   }
@@ -1421,7 +1415,6 @@ function initEventListeners() {
         window.GameEngine.setGridDimensions(COLS.length, ROWS.length);
       }
       const shipLengths = (myPlayerState.config && myPlayerState.config.shipLengths) || [4, 3];
-      selectedPlacementShipIdx = -1;
       myPlayerState.myTeam.isFleetLocked = false;
       myPlayerState.myTeam.fleet = window.GameEngine.generateRandomFleetOpenOcean(shipLengths);
       renderPlacementView(myPlayerState);
@@ -1486,7 +1479,6 @@ function initEventListeners() {
     // Đảo trạng thái khóa hạm đội & sẵn sàng
     myTeam.isFleetLocked = !myTeam.isFleetLocked;
     myTeam.isReady = myTeam.isFleetLocked;
-    selectedPlacementShipIdx = -1;
     renderPlacementView(myPlayerState);
 
     if (myTeam.isFleetLocked && soundManager) {

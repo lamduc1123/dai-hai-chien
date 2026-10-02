@@ -287,19 +287,19 @@ function handleIncomingFirebaseAction(action) {
     }
 
     let team = null;
-    // 1. Nếu có targetTeamId và slot đó trống hoặc chính là thiết bị này
+    // 1. Ưu tiên theo targetTeamId
     if (targetTeamId) {
       const candidate = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
-      if (candidate && (!candidate.isConnected || candidate.deviceToken === action.deviceToken || action.isRejoin)) {
+      if (candidate) {
         team = candidate;
       }
     }
-    // 2. Nếu không, giữ lại oldTeam nếu có
+    // 2. Nếu không có targetTeamId, khớp theo deviceToken
     if (!team && oldTeam) {
       team = oldTeam;
     }
-    // 3. Nếu vẫn chưa, tự động lấy ô trống đầu tiên (chưa kết nối và không phải bot)
-    if (!team && !action.isRejoin) {
+    // 3. Nếu chưa có, gán vào ô trống đầu tiên (chưa kết nối và không phải bot)
+    if (!team) {
       team = currentHostState.teams.find(t => !t.isConnected && !t.isBot);
     }
 
@@ -324,29 +324,27 @@ function handleIncomingFirebaseAction(action) {
         team.name = team.customName;
       }
       team.isBot = false;
-      if (currentHostState.phase === 'LOBBY') {
-        team.isReady = true;
-      }
+      team.isReady = action.isReady !== undefined ? !!action.isReady : true;
       soundManager.playSonar();
-      addLogItem(`🚢 Chiến hạm <b>${team.name}</b> đã vào [Vị Trí #${team.id}] sẵn sàng!`, 'hit');
+      addLogItem(`🚢 Chiến hạm <b>${team.name}</b> đã vào [Vị Trí #${team.id}] và SẴN SÀNG!`, 'hit');
       commitLocalState();
     } else {
       addLogItem(`⚠️ Người chơi [${action.playerName || 'Ẩn danh'}] không thể tham gia: Phòng đã đủ ${currentHostState.teams.length} đội!`, 'miss');
     }
   } else if (action.type === 'READY') {
     let team = null;
-    if (action.deviceToken) {
-      team = currentHostState.teams.find(t => t.deviceToken === action.deviceToken);
-    }
-    if (!team && targetTeamId) {
+    if (targetTeamId) {
       team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
+    }
+    if (!team && action.deviceToken) {
+      team = currentHostState.teams.find(t => t.deviceToken === action.deviceToken);
     }
     if (team) {
       team.isConnected = true;
-      if (action.deviceToken && !team.deviceToken) {
+      if (action.deviceToken) {
         team.deviceToken = action.deviceToken;
       }
-      if (action.playerName && (!team.customName || team.customName.startsWith('Chiến Hạm #'))) {
+      if (action.playerName && action.playerName.trim()) {
         team.customName = action.playerName.trim().substring(0, 20);
         team.name = team.customName;
       }
