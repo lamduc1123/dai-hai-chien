@@ -791,30 +791,38 @@ function executeSingleShot(gameState, shooterTeamId, targetKey) {
     result = 'HIT';
     const { targetTeam, ship } = hitInfo;
 
+    if (!Array.isArray(ship.hits)) {
+      ship.hits = [];
+    }
+    const shipSize = ship.size || (ship.cells ? ship.cells.length : 1);
+    ship.size = shipSize;
+
     if (!ship.hits.includes(targetKey)) {
       ship.hits.push(targetKey);
     }
     targetTeam.hitCellsCount = (targetTeam.hitCellsCount || 0) + 1;
 
-    if (ship.hits.length === ship.size) {
+    if (ship.hits.length >= ship.size) {
       ship.isSunk = true;
       sunkShip = {
-        name: ship.name,
+        name: ship.name || `Chiến hạm (${ship.size} ô)`,
         size: ship.size,
         teamId: targetTeam.id,
         teamName: targetTeam.customName || targetTeam.name,
-        cells: ship.cells,
+        cells: ship.cells || [],
       };
       targetTeam.shipsRemaining = Math.max(0, targetTeam.shipsRemaining - 1);
       result = 'SUNK';
 
       // Cập nhật tất cả các ô của chiến hạm này thành 'SUNK' để toàn bộ người chơi thấy LỬA ĐEN / TRO TÀN
-      ship.cells.forEach(k => {
-        if (gameState.shotsMap[k]) {
-          gameState.shotsMap[k].result = 'SUNK';
-          gameState.shotsMap[k].sunkShip = ship.name;
-        }
-      });
+      if (Array.isArray(ship.cells)) {
+        ship.cells.forEach(k => {
+          if (gameState.shotsMap[k]) {
+            gameState.shotsMap[k].result = 'SUNK';
+            gameState.shotsMap[k].sunkShip = ship.name;
+          }
+        });
+      }
 
       if (targetTeam.shipsRemaining === 0) {
         targetTeam.isEliminated = true;
@@ -964,7 +972,7 @@ function processRadarScan(gameState, shooterTeamId, centerKey) {
     if (team.id === shooterTeamId || team.isEliminated) continue;
     for (const ship of team.fleet) {
       if (ship.isSunk) continue;
-      const match = ship.cells.filter(cell => scannedSet.has(cell) && !ship.hits.includes(cell));
+      const match = ship.cells.filter(cell => scannedSet.has(cell) && (!ship.hits || !ship.hits.includes(cell)));
       detectedCount += match.length;
     }
   }
@@ -1137,8 +1145,10 @@ function undoLastShot(gameState) {
     if (hitTeam) {
       hitTeam.hitCellsCount = Math.max(0, (hitTeam.hitCellsCount || 1) - 1);
       for (const ship of hitTeam.fleet) {
-        if (ship.cells.includes(lastShot.targetKey)) {
-          ship.hits = ship.hits.filter(k => k !== lastShot.targetKey);
+        if (ship.cells && ship.cells.includes(lastShot.targetKey)) {
+          if (Array.isArray(ship.hits)) {
+            ship.hits = ship.hits.filter(k => k !== lastShot.targetKey);
+          }
           if (ship.isSunk) {
             ship.isSunk = false;
             hitTeam.shipsRemaining++;
