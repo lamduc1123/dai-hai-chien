@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   soundManager.init();
 
   const urlParams = new URLSearchParams(window.location.search);
-  currentRoomId = urlParams.get('room') || 'PHONG-01';
+  currentRoomId = (urlParams.get('room') || 'PHONG-01').trim().toUpperCase();
   document.getElementById('roomCodeText').textContent = currentRoomId;
 
   initGrid();

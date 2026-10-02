@@ -81,10 +81,10 @@ class FirebaseSyncManager {
       }
     }
 
-    // 2. REST Polling Fallback (chạy siêu nhanh mỗi 300ms)
+    // 2. REST Polling Fallback (chạy siêu nhanh mỗi 300ms, không dùng cache trình duyệt)
     const actionInterval = setInterval(async () => {
       try {
-        const res = await fetch(`${this.baseUrl}/rooms/${roomId}/actions.json`);
+        const res = await fetch(`${this.baseUrl}/rooms/${roomId}/actions.json`, { cache: 'no-cache' });
         if (!res.ok) return;
         const data = await res.json();
         if (data && typeof data === 'object') {
@@ -165,7 +165,7 @@ class FirebaseSyncManager {
 
     const computeStateHash = (st) => {
       if (!st) return '';
-      const teamsStr = st.teams ? st.teams.map(t => `${t.id}:${t.isConnected ? 1 : 0}:${t.isReady ? 1 : 0}:${t.isFleetLocked ? 1 : 0}:${(t.fleet && t.fleet.length) || 0}:${t.name || ''}`).join(';') : '';
+      const teamsStr = st.teams ? st.teams.map(t => `${t.id}:${t.isConnected ? 1 : 0}:${t.isReady ? 1 : 0}:${t.isFleetLocked ? 1 : 0}:${(t.fleet && t.fleet.length) || 0}:${t.deviceToken || ''}:${t.customName || t.name || ''}`).join(';') : '';
       return `${st.phase}_${st.turnNumber}_${st.currentTurnTeamId}_${st.shotsHistory ? st.shotsHistory.length : 0}_${teamsStr}`;
     };
 
@@ -186,8 +186,8 @@ class FirebaseSyncManager {
       }
     }
 
-    // 2. Fetch ngay lập tức lần đầu qua REST
-    fetch(`${this.baseUrl}/rooms/${roomId}/state.json`)
+    // 2. Fetch ngay lập tức lần đầu qua REST (bỏ qua cache)
+    fetch(`${this.baseUrl}/rooms/${roomId}/state.json`, { cache: 'no-cache' })
       .then(res => res.json())
       .then(state => {
         if (state && onStateUpdate) {
@@ -197,10 +197,10 @@ class FirebaseSyncManager {
       })
       .catch(() => {});
 
-    // 3. REST Polling Fallback định kỳ mỗi 350ms
+    // 3. REST Polling Fallback định kỳ mỗi 350ms (không cache)
     const pollInterval = setInterval(async () => {
       try {
-        const res = await fetch(`${this.baseUrl}/rooms/${roomId}/state.json`);
+        const res = await fetch(`${this.baseUrl}/rooms/${roomId}/state.json`, { cache: 'no-cache' });
         if (!res.ok) return;
         const state = await res.json();
         if (state && onStateUpdate) {
@@ -236,7 +236,7 @@ class FirebaseSyncManager {
 
     const effectInterval = setInterval(async () => {
       try {
-        const res = await fetch(`${this.baseUrl}/rooms/${roomId}/effects/lastShot.json`);
+        const res = await fetch(`${this.baseUrl}/rooms/${roomId}/effects/lastShot.json`, { cache: 'no-cache' });
         if (!res.ok) return;
         const effect = await res.json();
         if (effect && effect.effectId && effect.effectId > this.lastEffectId) {

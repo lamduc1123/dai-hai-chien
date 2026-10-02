@@ -2,9 +2,12 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>⚓ Điều Khiển Chiến Hạm - Đại Hải Chiến</title>
-  <link rel="stylesheet" href="css/naval-light.css">
+  <link rel="stylesheet" href="css/naval-light.css?v=3.2">
   <style>
     body {
       background: #f0f7ff;
@@ -107,23 +110,25 @@
     .placement-map-wrapper,
     .battle-map-wrapper {
       flex: 1 1 0% !important;
+      min-width: 0 !important;
       min-height: 0 !important;
-      width: 100% !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
       overflow: hidden !important;
-      padding: 0 !important;
+      padding: 4px !important;
       margin: 0 auto !important;
       box-sizing: border-box !important;
       touch-action: none;
-      background: rgba(255, 255, 255, 0.4);
-      border-radius: 8px;
-      border: 1px solid rgba(14, 165, 233, 0.25);
+      background: radial-gradient(circle at center, #0284c7 0%, #0369a1 45%, #075985 75%, #0c4a6e 100%) !important;
+      border-radius: 10px;
+      border: 2px solid #0369a1 !important;
+      box-shadow: inset 0 2px 14px rgba(2, 44, 76, 0.45), 0 4px 16px rgba(14, 165, 233, 0.18) !important;
     }
 
     .placement-grid,
     .battle-grid {
+      display: grid !important;
       min-width: 0 !important;
       width: fit-content !important;
       height: fit-content !important;
@@ -333,6 +338,8 @@
       .placement-map-wrapper,
       .battle-map-wrapper {
         flex: 1 1 0% !important;
+        min-width: 0 !important;
+        width: auto !important;
         height: 100% !important;
         min-height: 480px !important;
       }
@@ -392,10 +399,10 @@
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="js/firebase-config.js"></script>
-  <script src="js/game-engine.js"></script>
-  <script src="js/firebase-sync.js"></script>
-  <script src="js/audio.js"></script>
+  <script src="js/firebase-config.js?v=3.2"></script>
+  <script src="js/game-engine.js?v=3.2"></script>
+  <script src="js/firebase-sync.js?v=3.2"></script>
+  <script src="js/audio.js?v=3.2"></script>
 </head>
 <body>
 
@@ -431,15 +438,24 @@
       </h2>
 
       <div id="joinFormArea">
-        <div style="margin-bottom: 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label class="form-label" style="margin: 0; font-weight: 800; color: var(--navy-dark); font-size: 0.88rem;">
-              🎯 CHỌN VỊ TRÍ CHIẾN HẠM:
-            </label>
-            <span id="selectedSlotBadge" style="color: #0284c7; font-weight: 900; font-size: 0.8rem;">Đang chọn ô trống</span>
+        <!-- Vị trí tự động được chỉ định -->
+        <div style="margin-bottom: 14px; background: #e0f2fe; border: 1.5px solid #0284c7; border-radius: 10px; padding: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 800; color: #0369a1; font-size: 0.85rem;">🎯 VỊ TRÍ CHIẾN HẠM:</span>
+            <span id="selectedSlotBadge" style="background: #0284c7; color: #ffffff; font-weight: 900; font-size: 0.82rem; padding: 3px 12px; border-radius: 20px;">Đang tìm ô trống...</span>
           </div>
-          <div id="teamSlotsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
-            <!-- Render danh sách đội khả dụng -->
+          <div id="autoSlotHint" style="font-size: 0.76rem; color: #0369a1; font-weight: 700; margin-top: 4px;">
+            ⚡ Hệ thống tự động xếp bạn vào ô trống khả dụng để tránh trùng với người khác.
+          </div>
+          <div style="margin-top: 8px; text-align: right;">
+            <button id="btnToggleManualSlots" type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 0.72rem; border-color: #0284c7; color: #0284c7; font-weight: 700;">
+              Tùy chọn đổi vị trí ▼
+            </button>
+          </div>
+          <div id="manualSlotsDropdown" style="display: none; margin-top: 10px; border-top: 1px dashed #7dd3fc; padding-top: 8px;">
+            <div id="teamSlotsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
+              <!-- Render danh sách đội khả dụng -->
+            </div>
           </div>
         </div>
 
@@ -447,7 +463,7 @@
           <label class="form-label" style="font-weight: 800; color: var(--navy-dark); font-size: 0.88rem;">
             🚢 ĐẶT TÊN CHIẾN HẠM (TÊN ĐỘI):
           </label>
-          <input type="text" id="inputPlayerName" class="form-control" placeholder="Nhập tên hạm đội (VD: Bạch Đằng, Hắc Long, Hạm 01...)" maxlength="20" style="font-weight: 800; text-align: center; font-size: 1.05rem; padding: 12px; border: 2px solid var(--border-ocean);">
+          <input type="text" id="inputPlayerName" class="form-control" placeholder="Nhập tên hạm đội (VD: Bạch Đằng, Hắc Long...)" maxlength="20" style="font-weight: 800; text-align: center; font-size: 1.05rem; padding: 12px; border: 2px solid var(--border-ocean);">
         </div>
 
         <button id="btnJoinTeam" class="btn btn-primary btn-large" style="width: 100%; font-size: 1.05rem; padding: 14px; font-weight: 900; letter-spacing: 0.5px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);">
@@ -639,6 +655,6 @@
 
   </div>
 
-  <script src="js/join.js"></script>
+  <script src="js/join.js?v=3.2"></script>
 </body>
 </html>

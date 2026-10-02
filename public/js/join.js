@@ -7,20 +7,26 @@ const ALL_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
 let COLS = ALL_LETTERS.slice(0, 20);
 let ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
 
+const safeStorage = {
+  getItem: (k) => { try { return localStorage.getItem(k); } catch(e) { return null; } },
+  setItem: (k, v) => { try { localStorage.setItem(k, v); } catch(e) {} },
+  removeItem: (k) => { try { localStorage.removeItem(k); } catch(e) {} }
+};
+
 let socket = null;
 let currentRoomId = 'PHONG-01';
 let myTeamId = null;
 let selectedSlotId = null;
-const savedStoredTeamId = localStorage.getItem('dai_hai_chien_team_id');
+const savedStoredTeamId = safeStorage.getItem('dai_hai_chien_team_id');
 if (savedStoredTeamId) {
   myTeamId = parseInt(savedStoredTeamId, 10);
   selectedSlotId = myTeamId;
 }
-let savedPlayerName = localStorage.getItem('dai_hai_chien_name') || '';
-let myDeviceToken = localStorage.getItem('dai_hai_chien_token');
+let savedPlayerName = safeStorage.getItem('dai_hai_chien_name') || '';
+let myDeviceToken = safeStorage.getItem('dai_hai_chien_token');
 if (!myDeviceToken) {
   myDeviceToken = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-  localStorage.setItem('dai_hai_chien_token', myDeviceToken);
+  safeStorage.setItem('dai_hai_chien_token', myDeviceToken);
 }
 let myPlayerState = null;
 let soundManager = null;
@@ -46,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
   soundManager.init();
 
   const urlParams = new URLSearchParams(window.location.search);
-  currentRoomId = urlParams.get('room') || 'PHONG-01';
+  currentRoomId = (urlParams.get('room') || 'PHONG-01').trim().toUpperCase();
 
   renderTeamSlots(DEFAULT_TEAMS_FALLBACK);
   initSocket();
@@ -147,7 +153,7 @@ function initSocket() {
     socket.on('player:joined', (data) => {
       myTeamId = data.teamId;
       myDeviceToken = data.deviceToken;
-      localStorage.setItem('dai_hai_chien_token', myDeviceToken);
+      safeStorage.setItem('dai_hai_chien_token', myDeviceToken);
 
       document.getElementById('btnJoinTeam').style.display = 'none';
       document.getElementById('waitingRoomState').style.display = 'block';
@@ -220,12 +226,12 @@ function updatePlayerUI(state) {
   if (myTeam) {
     myTeamId = myTeam.id;
     state.myTeam = myTeam;
-    localStorage.setItem('dai_hai_chien_team_id', myTeam.id);
+    safeStorage.setItem('dai_hai_chien_team_id', myTeam.id);
   } else {
     if (state.phase === 'LOBBY' && !selectedSlotId) {
       myTeamId = null;
       state.myTeam = null;
-      localStorage.removeItem('dai_hai_chien_team_id');
+      safeStorage.removeItem('dai_hai_chien_team_id');
     }
   }
 
@@ -477,7 +483,9 @@ function handleBattleCellClick(key) {
 function fitPlacementGridToScreen() {
   const grid = document.getElementById('placementGrid');
   const wrapper = document.getElementById('placementMapWrapper') || (grid ? grid.parentElement : null);
-  if (!wrapper || !grid || wrapper.offsetParent === null) return;
+  if (!wrapper || !grid) return;
+
+  grid.style.display = 'grid';
 
   const numCols = (COLS && COLS.length) ? COLS.length : 20;
   const numRows = (ROWS && ROWS.length) ? ROWS.length : 20;
@@ -485,8 +493,18 @@ function fitPlacementGridToScreen() {
 
   const rect = wrapper.getBoundingClientRect();
   const pad = 4;
-  const availW = Math.max(50, Math.floor((rect.width || wrapper.clientWidth) - pad));
-  const availH = Math.max(50, Math.floor((rect.height || wrapper.clientHeight) - pad));
+  let availW = Math.floor((rect.width || wrapper.clientWidth || 0) - pad);
+  let availH = Math.floor((rect.height || wrapper.clientHeight || 0) - pad);
+
+  if (availW < 60 || availH < 60) {
+    if (!window._placementFitRetry) {
+      window._placementFitRetry = setTimeout(() => {
+        window._placementFitRetry = null;
+        fitPlacementGridToScreen();
+      }, 50);
+    }
+    return;
+  }
 
   const gap = 1;
   const headerColW = Math.max(10, Math.min(18, Math.floor(availW / (numCols + 1.2))));
@@ -845,7 +863,9 @@ function showTurnToast(msg) {
 function fitBattleGridToScreen() {
   const grid = document.getElementById('battleGrid');
   const wrapper = document.getElementById('mobileMapWrapper') || (grid ? grid.parentElement : null);
-  if (!wrapper || !grid || wrapper.offsetParent === null) return;
+  if (!wrapper || !grid) return;
+
+  grid.style.display = 'grid';
 
   const numCols = (COLS && COLS.length) ? COLS.length : 20;
   const numRows = (ROWS && ROWS.length) ? ROWS.length : 20;
@@ -853,8 +873,18 @@ function fitBattleGridToScreen() {
 
   const rect = wrapper.getBoundingClientRect();
   const pad = 4;
-  const availW = Math.max(50, Math.floor((rect.width || wrapper.clientWidth) - pad));
-  const availH = Math.max(50, Math.floor((rect.height || wrapper.clientHeight) - pad));
+  let availW = Math.floor((rect.width || wrapper.clientWidth || 0) - pad);
+  let availH = Math.floor((rect.height || wrapper.clientHeight || 0) - pad);
+
+  if (availW < 60 || availH < 60) {
+    if (!window._battleFitRetry) {
+      window._battleFitRetry = setTimeout(() => {
+        window._battleFitRetry = null;
+        fitBattleGridToScreen();
+      }, 50);
+    }
+    return;
+  }
 
   const gap = 1;
   const headerColW = Math.max(10, Math.min(18, Math.floor(availW / (numCols + 1.2))));
@@ -1174,13 +1204,13 @@ function initEventListeners() {
 
     if (!myDeviceToken) {
       myDeviceToken = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-      localStorage.setItem('dai_hai_chien_token', myDeviceToken);
+      safeStorage.setItem('dai_hai_chien_token', myDeviceToken);
     }
-    localStorage.setItem('dai_hai_chien_name', name);
+    safeStorage.setItem('dai_hai_chien_name', name);
 
     // Gán ngay lập tức myTeamId và lưu phiên để không bị reset giao diện
     myTeamId = selectedSlotId;
-    localStorage.setItem('dai_hai_chien_team_id', myTeamId);
+    safeStorage.setItem('dai_hai_chien_team_id', myTeamId);
 
     // Cập nhật giao diện phòng chờ ngay lập tức
     const joinFormArea = document.getElementById('joinFormArea');
@@ -1240,6 +1270,16 @@ function initEventListeners() {
     btnJoinEl.addEventListener('click', joinTeamAction);
   }
 
+  const btnToggleManualSlots = document.getElementById('btnToggleManualSlots');
+  const manualSlotsDropdown = document.getElementById('manualSlotsDropdown');
+  if (btnToggleManualSlots && manualSlotsDropdown) {
+    btnToggleManualSlots.addEventListener('click', () => {
+      const isHidden = manualSlotsDropdown.style.display === 'none';
+      manualSlotsDropdown.style.display = isHidden ? 'block' : 'none';
+      btnToggleManualSlots.innerHTML = isHidden ? 'Ẩn tùy chọn ▲' : 'Tùy chọn đổi vị trí ▼';
+    });
+  }
+
   const inputNameEl = document.getElementById('inputPlayerName');
   if (inputNameEl) {
     inputNameEl.addEventListener('keydown', (e) => {
@@ -1292,7 +1332,7 @@ function initEventListeners() {
 
       myTeamId = null;
       selectedSlotId = null;
-      localStorage.removeItem('dai_hai_chien_team_id');
+      safeStorage.removeItem('dai_hai_chien_team_id');
 
       const joinFormArea = document.getElementById('joinFormArea');
       const waitingEl = document.getElementById('waitingRoomState');
@@ -1374,7 +1414,7 @@ function initEventListeners() {
       teamId = myPlayerState.myTeam.id;
     }
     if (!teamId) {
-      const stored = localStorage.getItem('dai_hai_chien_team_id');
+      const stored = safeStorage.getItem('dai_hai_chien_team_id');
       if (stored) teamId = parseInt(stored, 10);
     }
     if (!teamId && selectedSlotId) {
@@ -1641,7 +1681,7 @@ function buildPlayerStateFromRoomState(roomState, targetTeamId) {
   }
   if (myTeam) {
     myTeamId = myTeam.id;
-    localStorage.setItem('dai_hai_chien_team_id', myTeam.id);
+    safeStorage.setItem('dai_hai_chien_team_id', myTeam.id);
   }
   const effectiveTeamId = myTeam ? myTeam.id : null;
 
