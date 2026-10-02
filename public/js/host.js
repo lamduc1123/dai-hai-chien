@@ -415,22 +415,10 @@ function handleIncomingFirebaseAction(action) {
       const isReady = action.isReady !== undefined ? !!action.isReady : isLocked;
 
       if (isLocked) {
-        const enemyCells = new Set();
-        currentHostState.teams.forEach(other => {
-          if (other.id !== team.id && other.isFleetLocked && other.fleet && other.fleet.length > 0) {
-            other.fleet.forEach(s => s.cells && s.cells.forEach(k => enemyCells.add(k)));
-          }
-        });
-
         if (action.fleet && Array.isArray(action.fleet) && action.fleet.length > 0) {
-          const validation = window.GameEngine.validateCustomFleet(action.fleet, currentHostState.config.shipLengths, enemyCells);
-          if (validation.valid) {
-            team.fleet = action.fleet;
-          } else {
-            team.fleet = window.GameEngine.generateRandomFleetOpenOcean(currentHostState.config.shipLengths, enemyCells);
-          }
+          team.fleet = action.fleet;
         } else if (!team.fleet || team.fleet.length === 0) {
-          team.fleet = window.GameEngine.generateRandomFleetOpenOcean(currentHostState.config.shipLengths, enemyCells);
+          team.fleet = window.GameEngine.generateRandomFleetOpenOcean(currentHostState.config.shipLengths);
         }
         team.isFleetLocked = true;
         team.isReady = true;

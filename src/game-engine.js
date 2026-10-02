@@ -563,9 +563,9 @@ function startBattlePhase(gameState, manualOrder = null) {
   // Thuật toán kiểm tra và bảo đảm tuyệt đối không trùng lặp ô giữa các hạm đội
   const masterOccupiedCells = new Set();
 
-  // 1. Ưu tiên giữ nguyên vị trí của các đội đã Khóa (isFleetLocked) nếu không có xung đột
+  // 1. ƯU TIÊN TUYỆT ĐỐI: Giữ nguyên 100% vị trí hạm đội của NGƯỜI CHƠI THẬT đã khóa
   gameState.teams.forEach(team => {
-    if (team.isFleetLocked && team.fleet && team.fleet.length > 0) {
+    if (!team.isBot && team.isFleetLocked && team.fleet && team.fleet.length > 0) {
       let hasConflict = false;
       for (const ship of team.fleet) {
         if (!ship.cells) continue;
@@ -581,7 +581,7 @@ function startBattlePhase(gameState, manualOrder = null) {
       if (!hasConflict) {
         team.fleet.forEach(s => s.cells && s.cells.forEach(k => masterOccupiedCells.add(k)));
       } else {
-        // Có xung đột: Tự động xếp lại đảm bảo không trùng với các đội đã khóa trước
+        // Chỉ khi 2 người chơi thật khóa trùng đúng 1 ô, đội sau mới đổi sang ô trống khác
         team.fleet = generateRandomFleetOpenOcean(gameState.config.shipLengths, masterOccupiedCells);
         team.fleet.forEach(s => s.cells && s.cells.forEach(k => masterOccupiedCells.add(k)));
       }
@@ -590,10 +590,38 @@ function startBattlePhase(gameState, manualOrder = null) {
     }
   });
 
-  // 2. Với các đội chưa khóa hoặc chưa có hạm đội, tự động xếp ngẫu nhiên trên các ô còn trống
+  // 2. Với người chơi thật chưa khóa hoặc chưa có hạm đội
   gameState.teams.forEach(team => {
-    if (!team.isFleetLocked || !team.fleet || team.fleet.length === 0) {
+    if (!team.isBot && (!team.isFleetLocked || !team.fleet || team.fleet.length === 0)) {
       team.fleet = generateRandomFleetOpenOcean(gameState.config.shipLengths, masterOccupiedCells);
+      team.fleet.forEach(s => s.cells && s.cells.forEach(k => masterOccupiedCells.add(k)));
+      team.isFleetLocked = true;
+      team.isReady = true;
+    }
+  });
+
+  // 3. Với BOT: Luôn xếp vào các ô đại dương còn trống (không bao giờ chiếm vị trí của người chơi thật)
+  gameState.teams.forEach(team => {
+    if (team.isBot) {
+      let hasConflict = false;
+      if (team.fleet && team.fleet.length > 0) {
+        for (const ship of team.fleet) {
+          if (!ship.cells) continue;
+          for (const cellKey of ship.cells) {
+            if (masterOccupiedCells.has(cellKey)) {
+              hasConflict = true;
+              break;
+            }
+          }
+          if (hasConflict) break;
+        }
+      } else {
+        hasConflict = true;
+      }
+
+      if (hasConflict) {
+        team.fleet = generateRandomFleetOpenOcean(gameState.config.shipLengths, masterOccupiedCells);
+      }
       team.fleet.forEach(s => s.cells && s.cells.forEach(k => masterOccupiedCells.add(k)));
       team.isFleetLocked = true;
       team.isReady = true;
