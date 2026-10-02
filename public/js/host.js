@@ -281,21 +281,36 @@ function handleIncomingFirebaseAction(action) {
       commitLocalState();
     }
   } else if (action.type === 'JOIN' || action.type === 'RECONNECT') {
-    let team = null;
-    // 1. Kiểm tra xem thiết bị này đã từng nhận slot nào chưa
+    let oldTeam = null;
     if (action.deviceToken) {
-      team = currentHostState.teams.find(t => t.deviceToken === action.deviceToken);
+      oldTeam = currentHostState.teams.find(t => t.deviceToken === action.deviceToken);
     }
-    // 2. Nếu chưa, hoặc đang re-join vào đúng targetTeamId
+
+    let team = null;
+    // 1. Nếu có targetTeamId và slot đó trống hoặc chính là thiết bị này
     if (targetTeamId) {
       const candidate = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
-      if (candidate && (!candidate.deviceToken || candidate.deviceToken === action.deviceToken || action.isRejoin || !candidate.isConnected)) {
+      if (candidate && (!candidate.isConnected || candidate.deviceToken === action.deviceToken || action.isRejoin)) {
         team = candidate;
       }
+    }
+    // 2. Nếu không, giữ lại oldTeam nếu có
+    if (!team && oldTeam) {
+      team = oldTeam;
     }
     // 3. Nếu vẫn chưa, tự động lấy ô trống đầu tiên (chưa kết nối và không phải bot)
     if (!team && !action.isRejoin) {
       team = currentHostState.teams.find(t => !t.isConnected && !t.isBot);
+    }
+
+    // Nếu người chơi chuyển sang slot khác, giải phóng slot cũ để tránh trùng lặp
+    if (oldTeam && team && oldTeam.id !== team.id) {
+      oldTeam.isConnected = false;
+      oldTeam.deviceToken = null;
+      oldTeam.isReady = false;
+      oldTeam.customName = '';
+      const defaultMeta = window.GameEngine && window.GameEngine.DEFAULT_TEAMS ? window.GameEngine.DEFAULT_TEAMS[oldTeam.id - 1] : null;
+      oldTeam.name = defaultMeta ? defaultMeta.name : `Chiến Hạm #${oldTeam.id}`;
     }
 
     if (team) {

@@ -139,12 +139,7 @@
     }
 
     .placement-bottombar {
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      padding: 4px 2px 2px 2px;
-      z-index: 10;
+      display: none !important;
     }
 
     .btn-lock-fleet {
@@ -282,120 +277,31 @@
       background: #f1f5f9;
     }
 
-    /* GIAO DIỆN TỐI ƯU CHO MÁY TÍNH / LAPTOP (MÀN HÌNH RỘNG >= 768px) */
+    /* TỐI ƯU HÓA ĐỘC QUYỀN CHO GIAO DIỆN DI ĐỘNG (MOBILE-FIRST) */
+    .mobile-container {
+      max-width: 440px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+
     @media (min-width: 768px) {
+      body {
+        background: #0c4a6e;
+      }
       .mobile-container {
-        max-width: 760px;
-        margin: 20px auto;
-      }
-
-      #viewLobby {
-        padding: 28px !important;
-        border-radius: 16px !important;
-        box-shadow: 0 12px 36px rgba(2, 132, 199, 0.12) !important;
-      }
-
-      body.mode-placement,
-      body.mode-battle {
-        position: relative !important;
-        height: 100vh !important;
-        overflow-y: hidden !important;
-      }
-
-      body.mode-placement .mobile-container,
-      body.mode-battle .mobile-container {
-        max-width: 1440px !important;
-        padding: 8px 16px !important;
-        height: calc(100vh - 54px) !important;
-        margin: 0 auto !important;
-      }
-
-      .placement-container,
-      .battle-container {
-        flex-direction: row !important;
-        gap: 14px !important;
-        align-items: stretch !important;
-        height: 100% !important;
-        justify-content: flex-start !important;
-      }
-
-      .placement-controls-pane,
-      .battle-controls-pane {
-        width: 320px !important;
-        flex-shrink: 0 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 10px !important;
-        background: #ffffff;
-        border: 1px solid var(--border-ocean);
-        border-radius: 10px;
-        padding: 14px;
-        box-shadow: 0 4px 14px rgba(14, 165, 233, 0.1);
-        height: 100%;
-        overflow-y: auto;
-      }
-
-      .placement-map-wrapper,
-      .battle-map-wrapper {
-        flex: 1 1 0% !important;
-        min-width: 0 !important;
-        width: auto !important;
-        height: 100% !important;
-        min-height: 480px !important;
-      }
-
-      .desktop-combat-info,
-      .desktop-placement-info {
-        display: block !important;
-      }
-
-      .mobile-only-strip {
-        display: none !important;
-      }
-
-      .battle-control-strip {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 8px !important;
-      }
-
-      .weapon-switch-group {
-        width: 100%;
-        display: grid !important;
-        grid-template-columns: 1fr 1fr;
-        gap: 6px;
-      }
-
-      .btn-weapon-sm {
-        justify-content: center;
-        padding: 8px 10px !important;
-        font-size: 0.85rem !important;
-      }
-
-      .target-action-group {
-        display: flex;
-        gap: 8px;
-        margin-top: 4px;
-      }
-
-      .btn-fire-direct {
-        flex: 1;
-        padding: 10px !important;
-        font-size: 1rem !important;
-      }
-
-      .manual-coord-strip {
-        display: flex;
-        gap: 6px;
-      }
-
-      .manual-coord-strip input {
-        flex: 1;
-        font-size: 0.95rem !important;
-        padding: 8px !important;
+        margin: 16px auto;
+        border-radius: 24px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 2px #0284c7;
+        overflow: hidden;
+        min-height: calc(100vh - 32px);
+        background: #f0f7ff;
       }
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -405,6 +311,39 @@
   <script src="js/audio.js?v=3.2"></script>
 </head>
 <body>
+
+  <!-- Modal Chặn/Thông báo Chế độ Máy Tính / Laptop: Yêu cầu chuyển sang Điện Thoại -->
+  <div id="desktopNotSupportedModal" style="display: none; position: fixed; inset: 0; background: rgba(12, 74, 110, 0.96); z-index: 99999; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(8px);">
+    <div style="max-width: 440px; width: 100%; background: #ffffff; color: #0f172a; padding: 28px 20px; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); text-align: center; border: 2px solid #38bdf8;">
+      <div style="font-size: 3.2rem; line-height: 1; margin-bottom: 10px;">📱</div>
+      <h2 style="font-size: 1.3rem; font-weight: 900; color: #0369a1; margin: 0 0 8px 0; text-transform: uppercase;">
+        Dành Riêng Cho Điện Thoại
+      </h2>
+      <p style="font-size: 0.88rem; color: #475569; line-height: 1.5; margin: 0 0 16px 0;">
+        Để đảm bảo hải đồ hiển thị chuẩn xác, chống lag và thao tác ngắm bắn tốt nhất, <b>Đại Hải Chiến hiện chỉ hỗ trợ người chơi trên Điện Thoại Di Động</b>.
+      </p>
+
+      <div style="background: #f0f9ff; border: 2px dashed #0284c7; border-radius: 14px; padding: 14px; margin-bottom: 16px;">
+        <div style="font-size: 0.8rem; font-weight: 800; color: #0369a1; margin-bottom: 8px;">
+          📸 DÙNG ĐIỆN THOẠI QUÉT MÃ ĐỂ VÀO PHÒNG:
+        </div>
+        <div style="display: flex; justify-content: center; margin: 4px 0;">
+          <img id="desktopQrImg" src="" alt="QR Code" style="width: 170px; height: 170px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; padding: 4px;">
+        </div>
+        <div id="desktopRoomLabel" style="font-size: 0.82rem; font-weight: 900; color: #0c4a6e; margin-top: 6px;">
+          PHÒNG: PHONG-01
+        </div>
+      </div>
+
+      <div style="font-size: 0.74rem; color: #64748b; line-height: 1.4; margin-bottom: 12px;">
+        Mẹo: Mở Camera điện thoại hoặc Zalo quét trực tiếp mã QR trên.
+      </div>
+
+      <button id="btnBypassDesktopCheck" type="button" class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 12px; border-color: #cbd5e1; color: #64748b; font-weight: 700; border-radius: 6px;">
+        🖥️ Tôi là MC/Tester - Tiếp tục giả lập điện thoại trên PC
+      </button>
+    </div>
+  </div>
 
   <!-- Thanh tiêu đề di động -->
   <header class="mobile-header">

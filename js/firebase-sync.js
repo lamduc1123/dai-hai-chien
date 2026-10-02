@@ -165,8 +165,9 @@ class FirebaseSyncManager {
 
     const computeStateHash = (st) => {
       if (!st) return '';
-      const teamsStr = st.teams ? st.teams.map(t => `${t.id}:${t.isConnected ? 1 : 0}:${t.isReady ? 1 : 0}:${t.isFleetLocked ? 1 : 0}:${(t.fleet && t.fleet.length) || 0}:${t.deviceToken || ''}:${t.customName || t.name || ''}`).join(';') : '';
-      return `${st.phase}_${st.turnNumber}_${st.currentTurnTeamId}_${st.shotsHistory ? st.shotsHistory.length : 0}_${teamsStr}`;
+      const teamsStr = st.teams ? st.teams.map(t => `${t.id}:${t.isConnected ? 1 : 0}:${t.isReady ? 1 : 0}:${t.isFleetLocked ? 1 : 0}:${t.shipsRemaining || 0}:${t.isEliminated ? 1 : 0}:${(t.fleet && t.fleet.length) || 0}:${t.deviceToken || ''}:${t.customName || t.name || ''}`).join(';') : '';
+      const shotsCount = (st.shotsHistory ? st.shotsHistory.length : 0) + (st.shotsMap ? Object.keys(st.shotsMap).length : 0);
+      return `${st.phase}_${st.turnNumber}_${st.currentTurnTeamId}_${st.turnStartTime || 0}_${shotsCount}_${teamsStr}_${st.winner ? st.winner.id : 0}`;
     };
 
     // 1. SDK Listener

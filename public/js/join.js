@@ -51,8 +51,48 @@ document.addEventListener('DOMContentLoaded', () => {
   soundManager = new SoundManager();
   soundManager.init();
 
+  // Mở khóa âm thanh Web Audio ngay khi có cử chỉ chạm đầu tiên trên điện thoại (chống câm tiếng trên Safari/Chrome)
+  const unlockAudio = () => {
+    if (soundManager && soundManager.ctx && soundManager.ctx.state === 'suspended') {
+      soundManager.ctx.resume();
+    }
+    document.removeEventListener('touchstart', unlockAudio);
+    document.removeEventListener('click', unlockAudio);
+  };
+  document.addEventListener('touchstart', unlockAudio, { passive: true });
+  document.addEventListener('click', unlockAudio, { passive: true });
+
   const urlParams = new URLSearchParams(window.location.search);
   currentRoomId = (urlParams.get('room') || 'PHONG-01').trim().toUpperCase();
+
+  // Kiểm tra thiết bị: Nếu người chơi mở bằng PC/Laptop, hiển thị bảng hướng dẫn quét QR bằng điện thoại
+  const checkDesktopDevice = () => {
+    const isDesktop = window.innerWidth >= 820 && !('ontouchstart' in window);
+    const modal = document.getElementById('desktopNotSupportedModal');
+    const bypassBtn = document.getElementById('btnBypassDesktopCheck');
+    const qrImg = document.getElementById('desktopQrImg');
+    const roomLabel = document.getElementById('desktopRoomLabel');
+
+    if (isDesktop && modal) {
+      modal.style.display = 'flex';
+      if (roomLabel) roomLabel.textContent = `PHÒNG: ${currentRoomId}`;
+      if (window.QRCode && qrImg) {
+        window.QRCode.toDataURL(window.location.href, { width: 220, margin: 1 }, (err, url) => {
+          if (!err && url) qrImg.src = url;
+        });
+      }
+      if (bypassBtn) {
+        bypassBtn.addEventListener('click', () => {
+          modal.style.display = 'none';
+          setTimeout(() => {
+            fitPlacementGridToScreen();
+            fitBattleGridToScreen();
+          }, 80);
+        });
+      }
+    }
+  };
+  checkDesktopDevice();
 
   renderTeamSlots(DEFAULT_TEAMS_FALLBACK);
   initSocket();
