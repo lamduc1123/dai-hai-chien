@@ -67,7 +67,9 @@ class FirebaseSyncManager {
         const listener = actionsRef.on('child_added', (snapshot) => {
           const action = snapshot.val();
           const actionKey = snapshot.key;
-          if (action && !this.processedActionIds.has(actionKey)) {
+          const uid = (action && action.actionId) || actionKey;
+          if (action && !this.processedActionIds.has(uid)) {
+            this.processedActionIds.add(uid);
             this.processedActionIds.add(actionKey);
             if (onActionReceived) onActionReceived(action);
             snapshot.ref.remove().catch(() => {});
@@ -87,9 +89,11 @@ class FirebaseSyncManager {
         const data = await res.json();
         if (data && typeof data === 'object') {
           for (const key of Object.keys(data)) {
-            if (!this.processedActionIds.has(key)) {
+            const act = data[key];
+            const uid = (act && act.actionId) || key;
+            if (!this.processedActionIds.has(uid) && !this.processedActionIds.has(key)) {
+              this.processedActionIds.add(uid);
               this.processedActionIds.add(key);
-              const act = data[key];
               if (onActionReceived) onActionReceived(act);
               // Xóa action sau khi xử lý
               fetch(`${this.baseUrl}/rooms/${roomId}/actions/${key}.json`, { method: 'DELETE' }).catch(() => {});
@@ -246,7 +250,7 @@ class FirebaseSyncManager {
   }
 
   /**
-   * CLIENT: Gửi hành động lên Host (SDK + REST POST)
+   * CLIENT: Gửi hành động lên Host (SDK ưu tiên, REST dự phòng)
    */
   clientSendAction(roomId, action) {
     if (!action) return;
@@ -254,17 +258,25 @@ class FirebaseSyncManager {
       const payload = {
         ...action,
         timestamp: Date.now(),
+        actionId: 'act_' + Math.random().toString(36).substring(2) + Date.now().toString(36),
       };
 
       if (this.db) {
-        this.db.ref(`rooms/${roomId}/actions`).push(payload).catch(() => {});
+        this.db.ref(`rooms/${roomId}/actions`).push(payload).catch((err) => {
+          console.warn('Lỗi push SDK, gửi fallback REST:', err);
+          fetch(`${this.baseUrl}/rooms/${roomId}/actions.json`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          }).catch(e => console.warn('Lỗi gửi action REST fallback:', e));
+        });
+      } else {
+        fetch(`${this.baseUrl}/rooms/${roomId}/actions.json`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }).catch(e => console.warn('Lỗi gửi action REST:', e));
       }
-
-      fetch(`${this.baseUrl}/rooms/${roomId}/actions.json`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).catch(e => console.warn('Lỗi gửi action REST:', e));
 
     } catch (err) {
       console.error('Lỗi gửi hành động lên Firebase:', err);

@@ -332,24 +332,24 @@ body {
   to { transform: scale(1.05); box-shadow: 0 0 14px rgba(220, 38, 38, 0.8); }
 }
 
-/* Cell States */
-/* Phát bắn trượt (MISS): Dấu X màu xám đen quân sự chìm trong nước */
+/* Phát bắn trượt (MISS): Dấu X màu đỏ tươi nổi bật dễ nhìn trên biển */
 .ocean-cell.shot-miss {
-  background: rgba(255, 255, 255, 0.12) !important;
-  border-color: rgba(255, 255, 255, 0.35) !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
   cursor: default;
 }
 
 .ocean-cell.shot-miss::after {
   content: '';
-  width: 58%;
-  height: 58%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M9 9 L31 31 M31 9 L9 31' stroke='%23334155' stroke-width='6.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  width: 62%;
+  height: 62%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M8 8 L32 32 M32 8 L8 32' stroke='%23ef4444' stroke-width='6.5' stroke-linecap='round'/%3E%3C/svg%3E");
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
   display: block;
-  opacity: 0.95;
+  opacity: 1;
+  filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.6));
 }
 
 /* Phát bắn trúng (HIT): Đám mây nổ rực lửa màu cam - vàng hoạt họa */

@@ -312,7 +312,7 @@ function lockTeamFleet(roomId, teamId, fleet, isFleetLocked, explicitReady) {
 
   const enemyCells = new Set();
   room.gameState.teams.forEach(other => {
-    if (other.id !== team.id && other.fleet && other.fleet.length > 0) {
+    if (other.id !== team.id && other.isFleetLocked && other.fleet && other.fleet.length > 0) {
       other.fleet.forEach(s => s.cells && s.cells.forEach(k => enemyCells.add(k)));
     }
   });

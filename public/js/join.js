@@ -10,6 +10,12 @@ let ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
 let socket = null;
 let currentRoomId = 'PHONG-01';
 let myTeamId = null;
+const savedStoredTeamId = localStorage.getItem('dai_hai_chien_team_id');
+if (savedStoredTeamId) {
+  myTeamId = parseInt(savedStoredTeamId, 10);
+  selectedSlotId = myTeamId;
+}
+let savedPlayerName = localStorage.getItem('dai_hai_chien_name') || '';
 let myDeviceToken = localStorage.getItem('dai_hai_chien_token');
 if (!myDeviceToken) {
   myDeviceToken = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -19,7 +25,6 @@ let myPlayerState = null;
 let soundManager = null;
 let turnTickerInterval = null;
 
-let selectedSlotId = null;
 let selectedTargetKey = null;
 let currentWeaponMode = 'NORMAL'; // 'NORMAL', 'RADAR', 'CROSSFIRE'
 let currentZoomLevel = 1.0;
@@ -64,6 +69,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (window.firebaseSync && window.firebaseSync.init() && currentRoomId) {
+    if (myTeamId) {
+      window.firebaseSync.clientSendAction(currentRoomId, {
+        type: 'JOIN',
+        teamId: myTeamId,
+        playerName: savedPlayerName,
+        deviceToken: myDeviceToken,
+        isRejoin: true,
+      });
+    }
+
     window.firebaseSync.clientSubscribeState(currentRoomId, (roomState) => {
       if (roomState) {
         const pState = buildPlayerStateFromRoomState(roomState, myTeamId);
@@ -115,7 +130,17 @@ function initSocket() {
     socket = io({ timeout: 2500, reconnectionAttempts: 3 });
 
     if (currentRoomId) {
-      socket.emit('player:get_lobby_info', { roomId: currentRoomId });
+      if (myTeamId) {
+        socket.emit('player:join', {
+          roomId: currentRoomId,
+          teamId: myTeamId,
+          playerName: savedPlayerName,
+          deviceToken: myDeviceToken,
+          isRejoin: true,
+        });
+      } else {
+        socket.emit('player:get_lobby_info', { roomId: currentRoomId });
+      }
     }
 
     socket.on('player:joined', (data) => {
@@ -170,30 +195,37 @@ function updatePlayerUI(state) {
     window.GameEngine.setGridDimensions(COLS.length, ROWS.length);
   }
 
-  // CHỈ KHỚP ĐỘI CỦA THIẾT BỊ NÀY KHI:
-  // 1. myDeviceToken hợp lệ
-  // 2. VÀ team trên Máy Chủ đang kết nối (isConnected === true)
-  // 3. VÀ deviceToken của team đó TRÙNG KHỚP với myDeviceToken của máy này
+  const targetId = myTeamId || (savedStoredTeamId ? parseInt(savedStoredTeamId, 10) : null);
+
   let myTeam = state.myTeam || null;
   if (myTeam && myTeam.deviceToken && myDeviceToken && myTeam.deviceToken !== myDeviceToken) {
     myTeam = null;
   }
+  // 1. Khớp theo deviceToken
   if (!myTeam && myDeviceToken && state.teamsOverview) {
-    const verified = state.teamsOverview.find(t => t.isConnected && t.deviceToken && t.deviceToken === myDeviceToken);
+    const verified = state.teamsOverview.find(t => t.deviceToken && t.deviceToken === myDeviceToken);
     if (verified) {
       myTeam = verified;
     }
   }
+  // 2. Khớp theo targetId đã lưu trong session (khi đang dàn trận/chiến đấu hoặc slot chưa bị ai nhận)
+  if (!myTeam && targetId && state.teamsOverview) {
+    const candidate = state.teamsOverview.find(t => parseInt(t.id, 10) === targetId);
+    if (candidate && (!candidate.deviceToken || candidate.deviceToken === myDeviceToken || state.phase !== 'LOBBY')) {
+      myTeam = candidate;
+    }
+  }
 
-  // Tuyệt đối không nhận vơ đội nếu không khớp token thiết bị
   if (myTeam) {
     myTeamId = myTeam.id;
     state.myTeam = myTeam;
     localStorage.setItem('dai_hai_chien_team_id', myTeam.id);
   } else {
-    myTeamId = null;
-    state.myTeam = null;
-    localStorage.removeItem('dai_hai_chien_team_id');
+    if (state.phase === 'LOBBY' && !selectedSlotId) {
+      myTeamId = null;
+      state.myTeam = null;
+      localStorage.removeItem('dai_hai_chien_team_id');
+    }
   }
 
   // Luôn cập nhật trạng thái danh sách các vị trí đội ở form đăng ký
@@ -451,15 +483,26 @@ function fitPlacementGridToScreen() {
   let cellSize = Math.floor(Math.min(remainingW / numCols, remainingH / numRows));
   cellSize = Math.max(6, cellSize);
 
+  const totalGridW = headerColW + (numCols * cellSize) + (numCols * gap);
+  const totalGridH = headerRowH + (numRows * cellSize) + (numRows * gap);
+
   wrapper.style.overflow = 'hidden';
+  wrapper.scrollTop = 0;
+  wrapper.scrollLeft = 0;
+
   grid.style.transform = 'none';
   grid.style.minWidth = '0px';
   grid.style.gridTemplateColumns = `${headerColW}px repeat(${numCols}, ${cellSize}px)`;
   grid.style.gridTemplateRows = `${headerRowH}px repeat(${numRows}, ${cellSize}px)`;
   grid.style.gap = `${gap}px`;
-  grid.style.width = 'fit-content';
-  grid.style.height = 'fit-content';
+  grid.style.width = `${totalGridW}px`;
+  grid.style.height = `${totalGridH}px`;
+  grid.style.maxWidth = `${totalGridW}px`;
+  grid.style.maxHeight = `${totalGridH}px`;
   grid.style.margin = 'auto';
+  grid.style.placeSelf = 'center';
+  grid.style.alignSelf = 'center';
+  grid.style.justifySelf = 'center';
 
   const fontSz = Math.max(6, Math.min(11, Math.floor(cellSize * 0.7)));
   grid.querySelectorAll('.ocean-col-header, .ocean-row-header').forEach(h => {
@@ -565,7 +608,14 @@ function renderPlacementView(state) {
   const summaryEl = document.getElementById('placementFleetSummary');
   if (summaryEl && myTeam.fleet) {
     const totalCells = myTeam.fleet.reduce((acc, s) => acc + (s.cells ? s.cells.length : 0), 0);
-    summaryEl.textContent = `⚓ Hạm đội: ${myTeam.fleet.length} chiến hạm (${totalCells} ô tác chiến)`;
+    const count4 = myTeam.fleet.filter(s => s.cells && s.cells.length === 4).length;
+    const count3 = myTeam.fleet.filter(s => s.cells && s.cells.length === 3).length;
+    const count2 = myTeam.fleet.filter(s => s.cells && s.cells.length === 2).length;
+    const parts = [];
+    if (count4 > 0) parts.push(`${count4} Tàu sân bay (4 ô)`);
+    if (count3 > 0) parts.push(`${count3} Tuần dương (3 ô)`);
+    if (count2 > 0) parts.push(`${count2} Tuần tra (2 ô)`);
+    summaryEl.textContent = `⚓ Hạm đội: ${myTeam.fleet.length} tàu (${parts.join(' • ') || (totalCells + ' ô')})`;
   }
 
   // Căn chỉnh hải đồ vừa trọn vẹn màn hình điện thoại 100% không cuộn
@@ -634,6 +684,23 @@ function renderBattleView(state) {
   // Cập nhật trạng thái từng ô
   if (container) {
     updateGridCellVisuals(container, state, myTeam);
+  }
+
+  // Hiển thị danh sách hạm đội trên Desktop
+  const desktopFleetEl = document.getElementById('desktopFleetList');
+  if (desktopFleetEl && myTeam && myTeam.fleet) {
+    desktopFleetEl.innerHTML = myTeam.fleet.map(s => {
+      const isSunk = s.isSunk;
+      const hitsCount = (s.hits && s.hits.length) || 0;
+      const icon = s.cells.length === 4 ? '🚢' : (s.cells.length === 3 ? '🛳️' : '🚤');
+      const statusStr = isSunk
+        ? '<span style="color: #dc2626; font-weight: 800;">☠️ ĐÃ CHÌM</span>'
+        : (hitsCount > 0 ? `<span style="color: #ea580c; font-weight: 800;">💥 Bị bắn ${hitsCount}/${s.cells.length}</span>` : '<span style="color: #16a34a; font-weight: 800;">🟢 AN TOÀN</span>');
+      return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px dashed #e2e8f0;">
+        <span>${icon} <b>${s.name || ('Tàu ' + s.cells.length + ' ô')}</b></span>
+        <span>${statusStr}</span>
+      </div>`;
+    }).join('');
   }
 
   // Căn chỉnh hải đồ vừa trọn vẹn màn hình điện thoại 100% không cuộn
@@ -784,18 +851,29 @@ function fitBattleGridToScreen() {
   let baseCellSize = Math.floor(Math.min(remainingW / numCols, remainingH / numRows));
   baseCellSize = Math.max(6, baseCellSize);
 
+  const totalGridW = headerColW + (numCols * baseCellSize) + (numCols * gap);
+  const totalGridH = headerRowH + (numRows * baseCellSize) + (numRows * gap);
+
   // Khi Zoom <= 1.05: Tự động khóa toàn màn hình 100%, căn giữa tuyệt đối không cuộn
   if (currentZoomLevel <= 1.05) {
     currentZoomLevel = 1.0;
     wrapper.style.overflow = 'hidden';
+    wrapper.scrollTop = 0;
+    wrapper.scrollLeft = 0;
+
     grid.style.transform = 'none';
     grid.style.minWidth = '0px';
     grid.style.gridTemplateColumns = `${headerColW}px repeat(${numCols}, ${baseCellSize}px)`;
     grid.style.gridTemplateRows = `${headerRowH}px repeat(${numRows}, ${baseCellSize}px)`;
     grid.style.gap = `${gap}px`;
-    grid.style.width = 'fit-content';
-    grid.style.height = 'fit-content';
+    grid.style.width = `${totalGridW}px`;
+    grid.style.height = `${totalGridH}px`;
+    grid.style.maxWidth = `${totalGridW}px`;
+    grid.style.maxHeight = `${totalGridH}px`;
     grid.style.margin = 'auto';
+    grid.style.placeSelf = 'center';
+    grid.style.alignSelf = 'center';
+    grid.style.justifySelf = 'center';
 
     const fontSz = Math.max(6, Math.min(11, Math.floor(baseCellSize * 0.7)));
     grid.querySelectorAll('.ocean-col-header, .ocean-row-header').forEach(h => {
@@ -808,14 +886,18 @@ function fitBattleGridToScreen() {
     const zoomedCellSize = Math.max(baseCellSize, Math.round(baseCellSize * currentZoomLevel));
     const zoomedColW = Math.max(headerColW, Math.round(headerColW * currentZoomLevel));
     const zoomedRowH = Math.max(headerRowH, Math.round(headerRowH * currentZoomLevel));
+    const zoomedTotalW = zoomedColW + (numCols * zoomedCellSize) + (numCols * gap);
+    const zoomedTotalH = zoomedRowH + (numRows * zoomedCellSize) + (numRows * gap);
 
     grid.style.transform = 'none';
     grid.style.minWidth = '0px';
     grid.style.gridTemplateColumns = `${zoomedColW}px repeat(${numCols}, ${zoomedCellSize}px)`;
     grid.style.gridTemplateRows = `${zoomedRowH}px repeat(${numRows}, ${zoomedCellSize}px)`;
     grid.style.gap = `${gap}px`;
-    grid.style.width = 'fit-content';
-    grid.style.height = 'fit-content';
+    grid.style.width = `${zoomedTotalW}px`;
+    grid.style.height = `${zoomedTotalH}px`;
+    grid.style.maxWidth = `${zoomedTotalW}px`;
+    grid.style.maxHeight = `${zoomedTotalH}px`;
     grid.style.margin = '0 auto';
 
     const fontSz = Math.max(8, Math.min(16, Math.floor(zoomedCellSize * 0.68)));
@@ -1382,6 +1464,19 @@ function initEventListeners() {
     });
   }
 
+  // Phím tắt Desktop: Bấm Space để bắn nếu không đang gõ text
+  window.addEventListener('keydown', (e) => {
+    const activeEl = document.activeElement;
+    const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+
+    if (e.code === 'Space' && !isTyping) {
+      e.preventDefault();
+      if (myPlayerState && myPlayerState.isMyTurn && selectedTargetKey) {
+        executeFireAction(selectedTargetKey);
+      }
+    }
+  });
+
   // Nút Khai Hỏa Trực Tiếp
   const btnFireDirect = document.getElementById('btnFireDirect');
   if (btnFireDirect) {
@@ -1456,17 +1551,19 @@ function setupPinchToZoom(wrapper, onZoomChange) {
 function buildPlayerStateFromRoomState(roomState, targetTeamId) {
   if (!roomState || !roomState.teams) return roomState;
 
+  const targetId = targetTeamId || myTeamId || (savedStoredTeamId ? parseInt(savedStoredTeamId, 10) : null);
+
   let myTeam = null;
   if (myDeviceToken) {
-    myTeam = roomState.teams.find(t => t.isConnected && t.deviceToken && t.deviceToken === myDeviceToken);
+    myTeam = roomState.teams.find(t => t.deviceToken && t.deviceToken === myDeviceToken);
   }
-  if (!myTeam && myDeviceToken && targetTeamId) {
-    const candidate = roomState.teams.find(t => parseInt(t.id, 10) === parseInt(targetTeamId, 10));
-    if (candidate && (!candidate.deviceToken || candidate.deviceToken === myDeviceToken)) {
+  if (!myTeam && targetId) {
+    const candidate = roomState.teams.find(t => parseInt(t.id, 10) === parseInt(targetId, 10));
+    if (candidate && (!candidate.deviceToken || candidate.deviceToken === myDeviceToken || roomState.phase !== 'LOBBY')) {
       myTeam = candidate;
     }
   }
-  if (!myTeam && myDeviceToken && selectedSlotId) {
+  if (!myTeam && selectedSlotId) {
     const candidate = roomState.teams.find(t => parseInt(t.id, 10) === parseInt(selectedSlotId, 10));
     if (candidate && (!candidate.deviceToken || candidate.deviceToken === myDeviceToken)) {
       myTeam = candidate;
@@ -1475,9 +1572,6 @@ function buildPlayerStateFromRoomState(roomState, targetTeamId) {
   if (myTeam) {
     myTeamId = myTeam.id;
     localStorage.setItem('dai_hai_chien_team_id', myTeam.id);
-  } else {
-    myTeamId = null;
-    localStorage.removeItem('dai_hai_chien_team_id');
   }
   const effectiveTeamId = myTeam ? myTeam.id : null;
 

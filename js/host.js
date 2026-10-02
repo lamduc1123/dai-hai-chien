@@ -213,7 +213,9 @@ function handleLocalHostAction(actionType, payload) {
       gridRows: tempGridRows,
       playerCount: payload.playerCount || tempPlayerCount,
       shipsPerPlayer: payload.shipsPerPlayer || tempShipsPerPlayer,
-      shipConfigMode: payload.shipConfigMode || 'mix34',
+      shipConfigMode: payload.shipConfigMode || 'custom',
+      customShipCounts: payload.customShipCounts,
+      customShipLengths: payload.customShipLengths,
       turnOrderMode: payload.turnOrderMode || 'random',
     });
     addLogItem(`⚙️ Cập nhật cấu hình: Hải đồ ${tempGridCols}×${tempGridRows} (${tempGridCols * tempGridRows} ô), ${currentHostState.config.playerCount} Đội, ${currentHostState.config.shipsPerPlayer} tàu/đội`, 'hit');
@@ -278,27 +280,27 @@ function handleIncomingFirebaseAction(action) {
       addLogItem(`👋 Chiến hạm <b>${oldName}</b> đã rời [Vị Trí #${team.id}]. Ô này hiện đang trống!`, 'miss');
       commitLocalState();
     }
-  } else if (action.type === 'JOIN') {
+  } else if (action.type === 'JOIN' || action.type === 'RECONNECT') {
     let team = null;
     // 1. Kiểm tra xem thiết bị này đã từng nhận slot nào chưa
     if (action.deviceToken) {
       team = currentHostState.teams.find(t => t.deviceToken === action.deviceToken);
     }
-    // 2. Nếu chưa, và có truyền targetTeamId hợp lệ
-    if (!team && targetTeamId) {
+    // 2. Nếu chưa, hoặc đang re-join vào đúng targetTeamId
+    if (targetTeamId) {
       const candidate = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
-      if (candidate && (!candidate.isConnected || candidate.deviceToken === action.deviceToken)) {
+      if (candidate && (!candidate.deviceToken || candidate.deviceToken === action.deviceToken || action.isRejoin || !candidate.isConnected)) {
         team = candidate;
       }
     }
     // 3. Nếu vẫn chưa, tự động lấy ô trống đầu tiên (chưa kết nối và không phải bot)
-    if (!team) {
+    if (!team && !action.isRejoin) {
       team = currentHostState.teams.find(t => !t.isConnected && !t.isBot);
     }
 
     if (team) {
       team.isConnected = true;
-      team.deviceToken = action.deviceToken || null;
+      team.deviceToken = action.deviceToken || team.deviceToken || null;
       if (action.playerName && action.playerName.trim()) {
         team.customName = action.playerName.trim().substring(0, 20);
         team.name = team.customName;
@@ -307,7 +309,9 @@ function handleIncomingFirebaseAction(action) {
         team.name = team.customName;
       }
       team.isBot = false;
-      team.isReady = true;
+      if (currentHostState.phase === 'LOBBY') {
+        team.isReady = true;
+      }
       soundManager.playSonar();
       addLogItem(`🚢 Chiến hạm <b>${team.name}</b> đã vào [Vị Trí #${team.id}] sẵn sàng!`, 'hit');
       commitLocalState();
@@ -375,20 +379,23 @@ function handleIncomingFirebaseAction(action) {
     }
   } else if (action.type === 'LOCK_FLEET') {
     let team = null;
-    if (action.deviceToken) {
-      team = currentHostState.teams.find(t => t.deviceToken === action.deviceToken);
-    }
-    if (!team && targetTeamId) {
+    if (targetTeamId) {
       team = currentHostState.teams.find(t => parseInt(t.id, 10) === targetTeamId);
     }
-    if (team && currentHostState.phase === 'PLACEMENT') {
+    if (!team && action.deviceToken) {
+      team = currentHostState.teams.find(t => t.deviceToken === action.deviceToken);
+    }
+    if (team) {
+      team.isConnected = true;
+      if (action.deviceToken) team.deviceToken = action.deviceToken;
+
       const isLocked = action.isFleetLocked !== undefined ? !!action.isFleetLocked : true;
       const isReady = action.isReady !== undefined ? !!action.isReady : isLocked;
 
       if (isLocked) {
         const enemyCells = new Set();
         currentHostState.teams.forEach(other => {
-          if (other.id !== team.id && other.fleet && other.fleet.length > 0) {
+          if (other.id !== team.id && other.isFleetLocked && other.fleet && other.fleet.length > 0) {
             other.fleet.forEach(s => s.cells && s.cells.forEach(k => enemyCells.add(k)));
           }
         });
@@ -398,7 +405,6 @@ function handleIncomingFirebaseAction(action) {
           if (validation.valid) {
             team.fleet = action.fleet;
           } else {
-            // Nếu có xung đột với vị trí đã khóa của đội khác: Tự động sắp xếp lại không trùng lặp
             team.fleet = window.GameEngine.generateRandomFleetOpenOcean(currentHostState.config.shipLengths, enemyCells);
           }
         } else if (!team.fleet || team.fleet.length === 0) {
@@ -406,7 +412,7 @@ function handleIncomingFirebaseAction(action) {
         }
         team.isFleetLocked = true;
         team.isReady = true;
-        addLogItem(`🔒 [${team.name}] đã khóa hạm đội sẵn sàng chiến đấu!`, 'hit');
+        addLogItem(`🔒 Chiến hạm <b>${team.name}</b> [Đội ${team.id}] ĐÃ KHÓA ĐỘI HÌNH & SẴN SÀNG!`, 'hit');
         soundManager.playSonar();
       } else {
         team.isFleetLocked = false;
@@ -732,10 +738,16 @@ function renderQRModalTeamsTable(state) {
     if (t.isBot) {
       badgeHtml = '<span style="background: #e2e8f0; color: #475569; font-size: 0.72rem; font-weight: 800; padding: 2px 6px; border-radius: 4px;">🤖 BOT AI</span>';
     } else if (t.isConnected) {
-      if (t.isReady) {
-        badgeHtml = '<span style="background: #dcfce7; color: #15803d; font-size: 0.72rem; font-weight: 800; padding: 2px 6px; border-radius: 4px;">🟢 ĐÃ SẴN SÀNG</span>';
+      if (state.phase === 'PLACEMENT') {
+        if (t.isFleetLocked) {
+          badgeHtml = '<span style="background: #dcfce7; color: #15803d; font-size: 0.72rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1px solid #86efac;">🟢 ĐÃ SẴN SÀNG</span>';
+        } else {
+          badgeHtml = '<span style="background: #fef3c7; color: #b45309; font-size: 0.72rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1px solid #fde68a;">⏳ ĐANG XẾP TÀU</span>';
+        }
+      } else if (t.isReady) {
+        badgeHtml = '<span style="background: #dcfce7; color: #15803d; font-size: 0.72rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1px solid #86efac;">🟢 ĐÃ SẴN SÀNG</span>';
       } else {
-        badgeHtml = '<span style="background: #fef3c7; color: #b45309; font-size: 0.72rem; font-weight: 800; padding: 2px 6px; border-radius: 4px;">🟡 ĐANG CHỌN TÊN</span>';
+        badgeHtml = '<span style="background: #fef3c7; color: #b45309; font-size: 0.72rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1px solid #fde68a;">🟡 ĐANG CHỌN TÊN</span>';
       }
     } else {
       badgeHtml = '<span style="background: #f1f5f9; color: #94a3b8; font-size: 0.72rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">⚪ Ô TRỐNG</span>';
@@ -912,10 +924,19 @@ function renderTeamsRoster(state) {
     if (team.isEliminated) {
       statusText = '<span style="color: #dc2626; font-weight: 800; font-size: 0.8rem;">☠️ ĐÃ CHÌM</span>';
     } else if (state.phase === 'LOBBY') {
-      statusText = `<span style="font-weight: 700; color: #16a34a; font-size: 0.75rem;">✓ Sẵn sàng</span>`;
+      if (team.isReady) {
+        statusText = `<span style="font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 4px; border: 1.5px solid #86efac; font-size: 0.76rem;">🟢 ĐÃ SẴN SÀNG</span>`;
+        card.style.borderColor = '#10b981';
+        card.style.background = '#f0fdf4';
+      } else {
+        statusText = `<span style="font-weight: 700; color: #b45309; background: #fef3c7; padding: 2px 8px; border-radius: 4px; border: 1px solid #fde68a; font-size: 0.75rem;">🟡 Đang Chọn Tên</span>`;
+      }
     } else if (state.phase === 'PLACEMENT') {
       if (team.isFleetLocked) {
-        statusText = `<span style="font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 4px; border: 1px solid #86efac; font-size: 0.75rem;">✓ ĐÃ SẴN SÀNG</span>`;
+        statusText = `<span style="font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 4px; border: 1.5px solid #86efac; font-size: 0.76rem;">🟢 ĐÃ SẴN SÀNG</span>`;
+        card.style.borderColor = '#10b981';
+        card.style.background = '#f0fdf4';
+        card.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.35)';
       } else {
         statusText = `<span style="font-weight: 800; color: #b45309; background: #fef3c7; padding: 2px 8px; border-radius: 4px; border: 1px solid #fde68a; font-size: 0.75rem;">⏳ Đang Xếp...</span>`;
       }
@@ -1290,21 +1311,49 @@ function initEventListeners() {
     });
   });
 
-  // Chọn số lượng tàu (1 -> 5)
-  document.querySelectorAll('.cfg-ship-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.cfg-ship-btn').forEach(b => {
-        b.classList.remove('btn-primary', 'active');
-        b.classList.add('btn-outline');
-      });
-      btn.classList.remove('btn-outline');
-      btn.classList.add('btn-primary', 'active');
-      tempShipsPerPlayer = parseInt(btn.dataset.val, 10);
+  // Steppers cấu hình tàu tùy chỉnh
+  const bindStepper = (btnId, inputId, delta) => {
+    on(btnId, () => {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      let val = Math.max(0, Math.min(6, (parseInt(input.value, 10) || 0) + delta));
+      input.value = val;
+      updateCustomShipSummary();
     });
+  };
+  bindStepper('btnDecSize4', 'cfgCountSize4', -1);
+  bindStepper('btnIncSize4', 'cfgCountSize4', 1);
+  bindStepper('btnDecSize3', 'cfgCountSize3', -1);
+  bindStepper('btnIncSize3', 'cfgCountSize3', 1);
+  bindStepper('btnDecSize2', 'cfgCountSize2', -1);
+  bindStepper('btnIncSize2', 'cfgCountSize2', 1);
+
+  ['cfgCountSize4', 'cfgCountSize3', 'cfgCountSize2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', updateCustomShipSummary);
+      el.addEventListener('change', updateCustomShipSummary);
+    }
   });
 
   on('btnSaveConfig', () => {
-    const shipMode = document.getElementById('cfgShipConfigMode') ? document.getElementById('cfgShipConfigMode').value : 'mix34';
+    const c4El = document.getElementById('cfgCountSize4');
+    const c3El = document.getElementById('cfgCountSize3');
+    const c2El = document.getElementById('cfgCountSize2');
+    let c4 = Math.max(0, parseInt(c4El ? c4El.value : 1, 10) || 0);
+    let c3 = Math.max(0, parseInt(c3El ? c3El.value : 1, 10) || 0);
+    let c2 = Math.max(0, parseInt(c2El ? c2El.value : 0, 10) || 0);
+
+    if (c4 + c3 + c2 === 0) {
+      alert('Vui lòng chọn ít nhất 1 chiến hạm!');
+      return;
+    }
+
+    const shipLengths = [];
+    for (let i = 0; i < c4; i++) shipLengths.push(4);
+    for (let i = 0; i < c3; i++) shipLengths.push(3);
+    for (let i = 0; i < c2; i++) shipLengths.push(2);
+
     const turnOrder = document.getElementById('cfgTurnOrderMode') ? document.getElementById('cfgTurnOrderMode').value : 'random';
     const cInput = document.getElementById('cfgGridColsInput');
     const rInput = document.getElementById('cfgGridRowsInput');
@@ -1319,8 +1368,10 @@ function initEventListeners() {
       gridCols: tempGridCols,
       gridRows: tempGridRows,
       playerCount: tempPlayerCount,
-      shipsPerPlayer: tempShipsPerPlayer,
-      shipConfigMode: shipMode,
+      shipsPerPlayer: shipLengths.length,
+      shipConfigMode: 'custom',
+      customShipCounts: { count4: c4, count3: c3, count2: c2 },
+      customShipLengths: shipLengths,
       turnOrderMode: turnOrder,
     });
     closeConfigModal();
@@ -1466,6 +1517,33 @@ function updateGridConfigBadge() {
   });
 }
 
+function updateCustomShipSummary() {
+  const i4 = document.getElementById('cfgCountSize4');
+  const i3 = document.getElementById('cfgCountSize3');
+  const i2 = document.getElementById('cfgCountSize2');
+  const c4 = Math.max(0, parseInt(i4 ? i4.value : 0, 10) || 0);
+  const c3 = Math.max(0, parseInt(i3 ? i3.value : 0, 10) || 0);
+  const c2 = Math.max(0, parseInt(i2 ? i2.value : 0, 10) || 0);
+  const totalShips = c4 + c3 + c2;
+  const totalCells = c4 * 4 + c3 * 3 + c2 * 2;
+
+  const badge = document.getElementById('cfgTotalShipsBadge');
+  if (badge) badge.textContent = `${totalShips} Tàu (${totalCells} ô)`;
+
+  const summary = document.getElementById('cfgShipSummaryText');
+  if (summary) {
+    if (totalShips === 0) {
+      summary.innerHTML = '<span style="color: #dc2626; font-weight: 800;">⚠️ Vui lòng chọn ít nhất 1 chiến hạm!</span>';
+    } else {
+      const parts = [];
+      if (c4 > 0) parts.push(`${c4} Tàu sân bay (4 ô)`);
+      if (c3 > 0) parts.push(`${c3} Tuần dương hạm (3 ô)`);
+      if (c2 > 0) parts.push(`${c2} Tàu tuần tra (2 ô)`);
+      summary.textContent = `⚓ Mỗi đội có: ${parts.join(' • ')} = Tổng ${totalCells} ô tác chiến`;
+    }
+  }
+}
+
 function openConfigModal() {
   if (currentHostState && currentHostState.phase !== 'LOBBY') {
     alert('Chỉ có thể điều chỉnh cấu hình khi đang ở Sảnh Chờ! Nếu muốn đổi diện tích hải đồ, vui lòng bấm nút "🔄 Đặt Lại" để về Sảnh Chờ trước.');
@@ -1476,6 +1554,25 @@ function openConfigModal() {
   if (colsInput) colsInput.value = tempGridCols;
   if (rowsInput) rowsInput.value = tempGridRows;
   updateGridConfigBadge();
+
+  const cfg = (currentHostState && currentHostState.config) || {};
+  let c4 = 1, c3 = 1, c2 = 0;
+  if (cfg.customShipCounts) {
+    c4 = cfg.customShipCounts.count4 ?? 1;
+    c3 = cfg.customShipCounts.count3 ?? 1;
+    c2 = cfg.customShipCounts.count2 ?? 0;
+  } else if (cfg.shipLengths && Array.isArray(cfg.shipLengths)) {
+    c4 = cfg.shipLengths.filter(l => l === 4).length;
+    c3 = cfg.shipLengths.filter(l => l === 3).length;
+    c2 = cfg.shipLengths.filter(l => l === 2).length;
+  }
+  const i4 = document.getElementById('cfgCountSize4');
+  const i3 = document.getElementById('cfgCountSize3');
+  const i2 = document.getElementById('cfgCountSize2');
+  if (i4) i4.value = c4;
+  if (i3) i3.value = c3;
+  if (i2) i2.value = c2;
+  updateCustomShipSummary();
 
   document.getElementById('modalConfig').classList.add('active');
 }

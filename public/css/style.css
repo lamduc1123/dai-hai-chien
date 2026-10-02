@@ -258,9 +258,9 @@ body {
 }
 
 .map-cell.shot-miss {
-  background-color: rgba(30, 41, 59, 0.6);
-  border-color: #334155;
-  color: #64748b;
+  background-color: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #ef4444;
 }
 
 .map-cell.own-ship {

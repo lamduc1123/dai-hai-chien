@@ -72,8 +72,11 @@ function isValidCoord(colOrKey, row = null, customCols = COLS, customRows = ROWS
  * shipCount: 1..5
  * shipConfigMode: 'mix34' (4 và 3 ô), 'mix234' (4, 3 và 2 ô), 'size2' (toàn 2 ô), 'size3' (toàn 3 ô), 'size4' (toàn 4 ô)
  */
-function getShipLengths(shipCount = 2, shipConfigMode = 'mix34') {
-  const count = Math.min(Math.max(1, shipCount), 5);
+function getShipLengths(shipCount = 2, shipConfigMode = 'mix34', customLengths = null) {
+  if (Array.isArray(customLengths) && customLengths.length > 0) {
+    return [...customLengths];
+  }
+  const count = Math.min(Math.max(1, shipCount), 10);
   if (shipConfigMode === 'size2') {
     return Array(count).fill(2);
   }
@@ -84,10 +87,10 @@ function getShipLengths(shipCount = 2, shipConfigMode = 'mix34') {
     return Array(count).fill(4);
   }
   if (shipConfigMode === 'mix234') {
-    const pattern = [4, 3, 2, 3, 2];
+    const pattern = [4, 3, 2, 3, 2, 4, 3, 2];
     return pattern.slice(0, count);
   }
-  const pattern = [4, 3, 4, 3, 3];
+  const pattern = [4, 3, 4, 3, 3, 4, 3];
   return pattern.slice(0, count);
 }
 
@@ -399,9 +402,24 @@ function createInitialGameState(options = {}) {
   setGridDimensions(gridCols, gridRows);
 
   const playerCount = Math.min(Math.max(2, options.playerCount || 4), 8);
-  const shipsPerPlayer = Math.min(Math.max(1, options.shipsPerPlayer || 2), 5);
-  const shipConfigMode = options.shipConfigMode || 'mix34';
-  const shipLengths = getShipLengths(shipsPerPlayer, shipConfigMode);
+  const shipConfigMode = options.shipConfigMode || 'custom';
+  const customCounts = options.customShipCounts || null;
+  let shipLengths = null;
+  if (options.customShipLengths && Array.isArray(options.customShipLengths) && options.customShipLengths.length > 0) {
+    shipLengths = [...options.customShipLengths];
+  } else if (customCounts && (customCounts.count4 !== undefined || customCounts.count3 !== undefined || customCounts.count2 !== undefined)) {
+    const list = [];
+    const c4 = Math.max(0, parseInt(customCounts.count4, 10) || 0);
+    const c3 = Math.max(0, parseInt(customCounts.count3, 10) || 0);
+    const c2 = Math.max(0, parseInt(customCounts.count2, 10) || 0);
+    for (let i = 0; i < c4; i++) list.push(4);
+    for (let i = 0; i < c3; i++) list.push(3);
+    for (let i = 0; i < c2; i++) list.push(2);
+    shipLengths = list.length > 0 ? list : [4, 3];
+  } else {
+    shipLengths = getShipLengths(options.shipsPerPlayer || 2, shipConfigMode);
+  }
+  const shipsPerPlayer = shipLengths.length;
   const turnOrderMode = options.turnOrderMode || 'random';
   const turnDuration = options.turnDuration || 60; // 60s mỗi lượt
 
@@ -465,6 +483,7 @@ function createInitialGameState(options = {}) {
       shipsPerPlayer,
       shipConfigMode,
       shipLengths,
+      customShipCounts: customCounts,
       turnOrderMode,
       turnDuration,
     },
@@ -1213,6 +1232,7 @@ function getPlayerState(gameState, teamId) {
       isBot: currentTeam.isBot,
       isReady: currentTeam.isReady,
       isFleetLocked: currentTeam.isFleetLocked,
+      deviceToken: currentTeam.deviceToken || null,
       zone: currentTeam.zone,
       fleet: currentTeam.fleet,
       shipsRemaining: currentTeam.shipsRemaining,
@@ -1227,7 +1247,9 @@ function getPlayerState(gameState, teamId) {
       icon: t.icon,
       isBot: t.isBot,
       isConnected: t.isConnected,
+      isReady: t.isReady,
       isFleetLocked: t.isFleetLocked,
+      deviceToken: t.deviceToken || null,
       shipsRemaining: t.shipsRemaining,
       score: t.score,
       crossfireRemaining: t.crossfireRemaining ?? 1,

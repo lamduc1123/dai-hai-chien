@@ -227,11 +227,10 @@
       color: #0284c7;
       background: #e0f2fe;
       padding: 4px 14px;
-    .my-fleet-status {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-      gap: 8px;
+      border-radius: 6px;
     }
+
+    .my-fleet-status {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
       gap: 8px;
@@ -276,6 +275,106 @@
       opacity: 0.5;
       cursor: not-allowed;
       background: #f1f5f9;
+    }
+
+    /* GIAO DIỆN TỐI ƯU CHO MÁY TÍNH / LAPTOP (MÀN HÌNH RỘNG >= 768px) */
+    @media (min-width: 768px) {
+      body.mode-placement,
+      body.mode-battle {
+        position: relative !important;
+        height: 100vh !important;
+        overflow-y: hidden !important;
+      }
+
+      body.mode-placement .mobile-container,
+      body.mode-battle .mobile-container {
+        max-width: 1440px !important;
+        padding: 8px 16px !important;
+        height: calc(100vh - 54px) !important;
+      }
+
+      .placement-container,
+      .battle-container {
+        flex-direction: row !important;
+        gap: 14px !important;
+        align-items: stretch !important;
+        height: 100% !important;
+        justify-content: flex-start !important;
+      }
+
+      .placement-controls-pane,
+      .battle-controls-pane {
+        width: 320px !important;
+        flex-shrink: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        background: #ffffff;
+        border: 1px solid var(--border-ocean);
+        border-radius: 10px;
+        padding: 14px;
+        box-shadow: 0 4px 14px rgba(14, 165, 233, 0.1);
+        height: 100%;
+        overflow-y: auto;
+      }
+
+      .placement-map-wrapper,
+      .battle-map-wrapper {
+        flex: 1 1 0% !important;
+        height: 100% !important;
+        min-height: 480px !important;
+      }
+
+      .desktop-combat-info,
+      .desktop-placement-info {
+        display: block !important;
+      }
+
+      .mobile-only-strip {
+        display: none !important;
+      }
+
+      .battle-control-strip {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+      }
+
+      .weapon-switch-group {
+        width: 100%;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+
+      .btn-weapon-sm {
+        justify-content: center;
+        padding: 8px 10px !important;
+        font-size: 0.85rem !important;
+      }
+
+      .target-action-group {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .btn-fire-direct {
+        flex: 1;
+        padding: 10px !important;
+        font-size: 1rem !important;
+      }
+
+      .manual-coord-strip {
+        display: flex;
+        gap: 6px;
+      }
+
+      .manual-coord-strip input {
+        flex: 1;
+        font-size: 0.95rem !important;
+        padding: 8px !important;
+      }
     }
   </style>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
@@ -376,107 +475,130 @@
 
     <!-- PHẦN 2: DÀN TRẬN CHIẾN HẠM BÍ MẬT (TỐI ƯU 1 KHUNG HÌNH KHÔNG CUỘN) -->
     <section id="viewPlacement" class="glass-panel placement-container" style="display: none;">
-      <!-- Thanh công cụ dàn trận gọn gàng -->
-      <div class="placement-topbar">
-        <div class="placement-title-box">
-          <div class="placement-heading">🗺️ DÀN TRẬN HẠM ĐỘI</div>
-          <div id="placementZoneHint" class="placement-subtext">Chạm ô hoặc bấm nút để đổi vị trí</div>
+      <!-- Panel điều khiển dàn trận (Bên trên khi ở Mobile, Bên trái khi ở Desktop) -->
+      <div class="placement-controls-pane">
+        <!-- Thanh công cụ dàn trận gọn gàng -->
+        <div class="placement-topbar">
+          <div class="placement-title-box">
+            <div class="placement-heading">🗺️ DÀN TRẬN HẠM ĐỘI</div>
+            <div id="placementZoneHint" class="placement-subtext">Chạm ô hoặc bấm nút để đổi vị trí</div>
+          </div>
+          <button id="btnAutoPlace" class="btn btn-primary btn-auto-place" type="button">
+            🎲 Xếp Tự Động
+          </button>
         </div>
-        <button id="btnAutoPlace" class="btn btn-primary btn-auto-place" type="button">
-          🎲 Xếp Tự Động
-        </button>
+
+        <!-- NÚT SẴN SÀNG -->
+        <div class="placement-ready-strip" style="flex-shrink: 0; padding: 2px 0;">
+          <button id="btnLockFleetTop" class="btn btn-success btn-large btn-lock-fleet" type="button" style="width: 100%; padding: 10px 14px; font-size: 0.95rem; font-weight: 900; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.45); letter-spacing: 0.3px;">
+            ✓ XÁC NHẬN SẴN SÀNG & KHÓA VỊ TRÍ
+          </button>
+        </div>
+
+        <div id="placementFleetSummary" class="placement-fleet-info" style="margin: 2px 0;">
+          ⚓ Đang bố trí hạm đội...
+        </div>
+
+        <div class="desktop-placement-info" style="display: none; background: #e0f2fe; padding: 10px; border-radius: 8px; font-size: 0.78rem; color: #0369a1; line-height: 1.4;">
+          💡 <b>Hướng Dẫn Bố Trí:</b>
+          <ul style="margin: 4px 0 0 16px; padding: 0;">
+            <li>Bấm <b>🎲 Xếp Tự Động</b> để đổi đội hình ngẫu nhiên.</li>
+            <li>Các tàu được giữ bí mật 100% với đối thủ.</li>
+            <li>Khi đã ưng ý, bấm <b>✓ XÁC NHẬN SẴN SÀNG</b> để bắt đầu!</li>
+          </ul>
+        </div>
       </div>
 
-      <!-- NÚT SẴN SÀNG ĐẶT NGAY PHÍA TRÊN HẢI ĐỒ: ĐẢM BẢO 100% LUÔN HIỂN THỊ RÕ RÀNG KHÔNG THỂ BỊ CHE -->
-      <div class="placement-ready-strip" style="flex-shrink: 0; padding: 3px 0;">
-        <button id="btnLockFleetTop" class="btn btn-success btn-large btn-lock-fleet" type="button" style="width: 100%; padding: 11px 14px; font-size: 0.96rem; font-weight: 900; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.45); letter-spacing: 0.3px;">
-          ✓ XÁC NHẬN SẴN SÀNG & KHÓA VỊ TRÍ
-        </button>
-      </div>
-
-      <!-- Khung hải đồ tự động co giãn vừa khít 100% màn hình điện thoại -->
+      <!-- Khung hải đồ tự động co giãn vừa khít 100% màn hình -->
       <div class="ocean-map-wrapper placement-map-wrapper" id="placementMapWrapper">
         <div id="placementGrid" class="ocean-grid placement-grid">
           <!-- Render bằng join.js -->
         </div>
       </div>
 
-      <!-- Nút Khóa Hạm Đội & Tóm tắt hạm đội ở đáy -->
-      <div class="placement-bottombar">
+      <!-- Nút phụ ở đáy mobile -->
+      <div class="placement-bottombar mobile-only-strip">
         <button id="btnLockFleet" class="btn btn-success btn-large btn-lock-fleet" type="button">
           ✓ XÁC NHẬN SẴN SÀNG & KHÓA VỊ TRÍ
         </button>
-        <div id="placementFleetSummary" class="placement-fleet-info">
-          ⚓ 1 Tàu sân bay (4 ô) • 1 Tuần dương hạm (3 ô)
-        </div>
       </div>
     </section>
 
     <!-- PHẦN 3: CHIẾN ĐẤU THỜI GIAN THỰC (TỐI ƯU 1 MÀN HÌNH KHÔNG CUỘN) -->
     <section id="viewBattle" class="battle-container" style="display: none;">
       
-      <!-- Topbar: Thông báo lượt bắn & Đếm ngược 60s -->
-      <div class="battle-topbar">
-        <div id="turnBanner" class="turn-banner wait-turn">
-          ⏳ ĐANG CHỜ ĐỐI THỦ KHAI HỎA...
-        </div>
-        <div id="mobileTurnTimer" class="turn-timer-badge">60s</div>
-      </div>
-
-      <!-- Banner Thưởng Easter Egg Mobile -->
-      <div id="mobileEasterEggBanner" style="display: none; padding: 5px 10px; background: linear-gradient(135deg, #f59e0b, #ea580c); color: #ffffff; border-radius: 6px; font-weight: 800; font-size: 0.78rem; text-align: center; box-shadow: 0 2px 8px rgba(234, 88, 12, 0.3);">
-        🎁 <b>BẮN TRÚNG Ô MAY MẮN!</b> Thưởng thêm +1 LƯỢT BẮN! 🎯
-      </div>
-
-      <!-- Thanh công cụ điều khiển siêu gọn: Vũ khí + Tọa độ ngắm + Nút Bắn + Zoom -->
-      <div class="battle-control-strip">
-        <div class="weapon-switch-group">
-          <button id="btnSkillNormal" type="button" class="btn btn-primary btn-weapon-sm">
-            <svg class="weapon-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-              <circle cx="12" cy="12" r="8"></circle>
-              <line x1="12" y1="2" x2="12" y2="6"></line>
-              <line x1="12" y1="18" x2="12" y2="22"></line>
-              <line x1="2" y1="12" x2="6" y2="12"></line>
-              <line x1="18" y1="12" x2="22" y2="12"></line>
-              <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
-            </svg>
-            <span>Đạn Thường</span>
-          </button>
-          <button id="btnSkillCrossfire" type="button" class="btn btn-outline btn-weapon-sm">
-            <svg class="weapon-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-              <line x1="12" y1="2" x2="12" y2="22"></line>
-              <line x1="2" y1="12" x2="22" y2="12"></line>
-              <rect x="7" y="7" width="10" height="10" rx="2" stroke-dasharray="2 2"></rect>
-              <circle cx="12" cy="12" r="2.5" fill="currentColor"></circle>
-            </svg>
-            <span>Chữ Thập (+)</span>
-            <span id="badgeCrossfireCount" class="weapon-badge">1/1</span>
-          </button>
-        </div>
-
-        <div class="target-action-group">
-          <div class="target-coord-box">
-            <svg style="width: 12px; height: 12px; color: #dc2626;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <circle cx="12" cy="12" r="8"></circle>
-              <line x1="12" y1="3" x2="12" y2="7"></line>
-              <line x1="12" y1="17" x2="12" y2="21"></line>
-              <line x1="3" y1="12" x2="7" y2="12"></line>
-              <line x1="17" y1="12" x2="21" y2="12"></line>
-            </svg>
-            <span id="selectedTargetDisplay" style="font-size: 0.95rem; font-weight: 900; color: #dc2626;">--</span>
+      <!-- Panel điều khiển tác chiến (Bên trên khi ở Mobile, Bên trái khi ở Desktop) -->
+      <div class="battle-controls-pane">
+        <!-- Topbar: Thông báo lượt bắn & Đếm ngược 60s -->
+        <div class="battle-topbar">
+          <div id="turnBanner" class="turn-banner wait-turn">
+            ⏳ ĐANG CHỜ ĐỐI THỦ KHAI HỎA...
           </div>
-          <button id="btnFireDirect" type="button" class="btn btn-danger btn-fire-direct" disabled>
-            🔥 BẮN
-          </button>
+          <div id="mobileTurnTimer" class="turn-timer-badge">60s</div>
         </div>
-      </div>
 
-      <!-- Nhập tọa độ nhanh (1 hàng rút gọn) -->
-      <div id="manualCoordStrip" class="manual-coord-strip">
-        <input type="text" id="inputManualCoord" placeholder="Tọa độ VD: B14" maxlength="4">
-        <button id="btnApplyCoord" type="button" class="btn btn-primary btn-apply-sm">Nhắm</button>
-        <div id="selectedTargetText" class="target-hint-text">
-          👆 Chạm 2 lần để bắn • Dùng 2 ngón tay kéo để phóng to/nhỏ
+        <!-- Banner Thưởng Easter Egg Mobile -->
+        <div id="mobileEasterEggBanner" style="display: none; padding: 5px 10px; background: linear-gradient(135deg, #f59e0b, #ea580c); color: #ffffff; border-radius: 6px; font-weight: 800; font-size: 0.78rem; text-align: center; box-shadow: 0 2px 8px rgba(234, 88, 12, 0.3);">
+          🎁 <b>BẮN TRÚNG Ô MAY MẮN!</b> Thưởng thêm +1 LƯỢT BẮN! 🎯
+        </div>
+
+        <!-- Thanh công cụ điều khiển siêu gọn: Vũ khí + Tọa độ ngắm + Nút Bắn -->
+        <div class="battle-control-strip">
+          <div class="weapon-switch-group">
+            <button id="btnSkillNormal" type="button" class="btn btn-primary btn-weapon-sm">
+              <svg class="weapon-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <circle cx="12" cy="12" r="8"></circle>
+                <line x1="12" y1="2" x2="12" y2="6"></line>
+                <line x1="12" y1="18" x2="12" y2="22"></line>
+                <line x1="2" y1="12" x2="6" y2="12"></line>
+                <line x1="18" y1="12" x2="22" y2="12"></line>
+                <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
+              </svg>
+              <span>Đạn Thường</span>
+            </button>
+            <button id="btnSkillCrossfire" type="button" class="btn btn-outline btn-weapon-sm">
+              <svg class="weapon-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <line x1="12" y1="2" x2="12" y2="22"></line>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <rect x="7" y="7" width="10" height="10" rx="2" stroke-dasharray="2 2"></rect>
+                <circle cx="12" cy="12" r="2.5" fill="currentColor"></circle>
+              </svg>
+              <span>Chữ Thập (+)</span>
+              <span id="badgeCrossfireCount" class="weapon-badge">1/1</span>
+            </button>
+          </div>
+
+          <div class="target-action-group">
+            <div class="target-coord-box">
+              <svg style="width: 12px; height: 12px; color: #dc2626;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="8"></circle>
+                <line x1="12" y1="3" x2="12" y2="7"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+                <line x1="3" y1="12" x2="7" y2="12"></line>
+                <line x1="17" y1="12" x2="21" y2="12"></line>
+              </svg>
+              <span id="selectedTargetDisplay" style="font-size: 0.95rem; font-weight: 900; color: #dc2626;">--</span>
+            </div>
+            <button id="btnFireDirect" type="button" class="btn btn-danger btn-fire-direct" disabled>
+              🔥 BẮN
+            </button>
+          </div>
+        </div>
+
+        <!-- Nhập tọa độ nhanh (1 hàng rút gọn) -->
+        <div id="manualCoordStrip" class="manual-coord-strip">
+          <input type="text" id="inputManualCoord" placeholder="Tọa độ (B14)" maxlength="4">
+          <button id="btnApplyCoord" type="button" class="btn btn-primary btn-apply-sm">Nhắm</button>
+          <div id="selectedTargetText" class="target-hint-text">
+            👆 Chạm 2 lần để bắn • Kéo để phóng to
+          </div>
+        </div>
+
+        <!-- Desktop Only: Thông tin hạm đội và phím tắt -->
+        <div class="desktop-combat-info" style="display: none;">
+          <div style="background: #e0f2fe; padding: 8px 12px; border-radius: 6px; font-size: 0.76rem; color: #0369a1; line-height: 1.4;">
+            ⌨️ <b>Phím tắt Desktop:</b> Nhập tọa độ + <b>Enter</b> để nhắm, bấm <b>Space</b> (phím cách) để khai hỏa.
+          </div>
         </div>
       </div>
 
