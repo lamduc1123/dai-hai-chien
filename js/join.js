@@ -10,6 +10,7 @@ let ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
 let socket = null;
 let currentRoomId = 'PHONG-01';
 let myTeamId = null;
+let selectedSlotId = null;
 const savedStoredTeamId = localStorage.getItem('dai_hai_chien_team_id');
 if (savedStoredTeamId) {
   myTeamId = parseInt(savedStoredTeamId, 10);
