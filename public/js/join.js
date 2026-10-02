@@ -494,159 +494,35 @@ function renderTeamSlots(teams) {
   });
 }
 
-let selectedPlacementShipIdx = -1;
-
-function rotateShipInFleet(myTeam, shipIdx) {
-  const ship = myTeam.fleet[shipIdx];
-  if (!ship || !ship.cells || ship.cells.length < 2) return false;
-
-  const length = ship.cells.length;
-  const headKey = ship.cells[0];
-  const colLetter = headKey.match(/^[A-Z]+/)[0];
-  const rowNum = parseInt(headKey.replace(/^[A-Z]+/, ''), 10);
-  const colIdx = COLS.indexOf(colLetter);
-  const rowIdx = ROWS.indexOf(rowNum);
-
-  if (colIdx === -1 || rowIdx === -1) return false;
-
-  const secondKey = ship.cells[1];
-  const isHorizontal = !secondKey.startsWith(colLetter);
-  const newHorizontal = !isHorizontal;
-
-  const newCells = [];
-  for (let step = 0; step < length; step++) {
-    const c = newHorizontal ? colIdx + step : colIdx;
-    const r = newHorizontal ? rowIdx : rowIdx + step;
-    if (c < 0 || c >= COLS.length || r < 0 || r >= ROWS.length) {
-      showTurnToast('⚠️ Vượt biên hải đồ, không thể xoay tàu!');
-      return false;
-    }
-    newCells.push(`${COLS[c]}${ROWS[r]}`);
-  }
-
-  // Kiểm tra va chạm với tàu khác
-  for (let i = 0; i < myTeam.fleet.length; i++) {
-    if (i === shipIdx) continue;
-    const other = myTeam.fleet[i];
-    if (other && other.cells) {
-      for (const k of newCells) {
-        if (other.cells.includes(k)) {
-          showTurnToast('⚠️ Bị vướng tàu khác, không thể xoay!');
-          return false;
-        }
-      }
-    }
-  }
-
-  ship.cells = newCells;
-  if (soundManager) soundManager.playSonar();
-  if (navigator.vibrate) navigator.vibrate(40);
-  showTurnToast(`🔄 Đã xoay tàu ${newHorizontal ? 'Hàng Ngang' : 'Hàng Dọc'}!`);
-  return true;
-}
-
-function moveShipInFleet(myTeam, shipIdx, targetKey) {
-  const ship = myTeam.fleet[shipIdx];
-  if (!ship || !ship.cells || ship.cells.length === 0) return false;
-
-  const length = ship.cells.length;
-  const colLetter = targetKey.match(/^[A-Z]+/)[0];
-  const rowNum = parseInt(targetKey.replace(/^[A-Z]+/, ''), 10);
-  const colIdx = COLS.indexOf(colLetter);
-  const rowIdx = ROWS.indexOf(rowNum);
-
-  if (colIdx === -1 || rowIdx === -1) return false;
-
-  let isHorizontal = true;
-  if (ship.cells.length >= 2) {
-    isHorizontal = !ship.cells[1].startsWith(ship.cells[0].match(/^[A-Z]+/)[0]);
-  }
-
-  const newCells = [];
-  for (let step = 0; step < length; step++) {
-    const c = isHorizontal ? colIdx + step : colIdx;
-    const r = isHorizontal ? rowIdx : rowIdx + step;
-    if (c < 0 || c >= COLS.length || r < 0 || r >= ROWS.length) {
-      showTurnToast('⚠️ Vượt biên hải đồ!');
-      return false;
-    }
-    newCells.push(`${COLS[c]}${ROWS[r]}`);
-  }
-
-  // Kiểm tra va chạm với tàu khác
-  for (let i = 0; i < myTeam.fleet.length; i++) {
-    if (i === shipIdx) continue;
-    const other = myTeam.fleet[i];
-    if (other && other.cells) {
-      for (const k of newCells) {
-        if (other.cells.includes(k)) {
-          showTurnToast('⚠️ Không thể đặt đè lên tàu khác!');
-          return false;
-        }
-      }
-    }
-  }
-
-  ship.cells = newCells;
-  if (soundManager) soundManager.playSonar();
-  if (navigator.vibrate) navigator.vibrate(40);
-  showTurnToast(`⚓ Đã chuyển vị trí ${ship.name}!`);
-  return true;
-}
-
 function handlePlacementCellClick(key) {
   if (!myPlayerState || !myPlayerState.myTeam) return;
   const myTeam = myPlayerState.myTeam;
   if (myTeam.isFleetLocked) {
-    showTurnToast('🔒 Hạm đội đã khóa. Bấm "Mở khóa" để chỉnh sửa vị trí!');
+    showTurnToast('🔒 Hạm đội đã khóa. Bấm nút mở khóa nếu muốn đổi vị trí.');
     return;
   }
-
-  if (!myTeam.fleet || myTeam.fleet.length === 0) {
+  if (window.GameEngine) {
+    if (window.GameEngine.setGridDimensions) {
+      window.GameEngine.setGridDimensions(COLS.length, ROWS.length);
+    }
     const shipLengths = (myPlayerState.config && myPlayerState.config.shipLengths) || [4, 3];
     myTeam.fleet = window.GameEngine.generateRandomFleetOpenOcean(shipLengths);
-  }
+    renderPlacementView(myPlayerState);
+    if (soundManager) soundManager.playSonar();
+    if (navigator.vibrate) navigator.vibrate(40);
+    showTurnToast('🎲 Đã tự động đổi vị trí hạm đội mới!');
 
-  // Kiểm tra xem ô được bấm có thuộc tàu nào không
-  let clickedShipIdx = -1;
-  myTeam.fleet.forEach((ship, idx) => {
-    if (ship.cells && ship.cells.includes(key)) {
-      clickedShipIdx = idx;
+    if (socket && socket.connected) {
+      socket.emit('player:auto_place', { roomId: currentRoomId, teamId: myTeamId });
     }
-  });
-
-  if (clickedShipIdx !== -1) {
-    // Chạm vào một chiếc tàu
-    if (selectedPlacementShipIdx === clickedShipIdx) {
-      // Chạm lần 2 vào cùng tàu: XOAY 90 ĐỘ
-      rotateShipInFleet(myTeam, clickedShipIdx);
-    } else {
-      // Chọn tàu này
-      selectedPlacementShipIdx = clickedShipIdx;
-      showTurnToast(`⚓ Đã chọn ${myTeam.fleet[clickedShipIdx].name}. Chạm lại để xoay 90°, hoặc chạm ô trống để dời tàu!`);
+    if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId && myTeamId) {
+      window.firebaseSync.clientSendAction(currentRoomId, {
+        type: 'UPDATE_FLEET',
+        teamId: myTeamId,
+        fleet: myTeam.fleet,
+        deviceToken: myDeviceToken,
+      });
     }
-  } else {
-    // Chạm vào ô trống
-    if (selectedPlacementShipIdx !== -1 && selectedPlacementShipIdx < myTeam.fleet.length) {
-      // Dời tàu đang chọn tới ô này
-      moveShipInFleet(myTeam, selectedPlacementShipIdx, key);
-    } else {
-      // Tự động chọn chiếc tàu đầu tiên
-      selectedPlacementShipIdx = 0;
-      showTurnToast(`⚓ Đã chọn ${myTeam.fleet[0].name}. Chạm ô trống để di chuyển tàu!`);
-    }
-  }
-
-  renderPlacementView(myPlayerState);
-
-  // Gửi cập nhật lên máy chủ khi người chơi thao tác thủ công
-  if (window.firebaseSync && window.firebaseSync.isReady && currentRoomId && myTeamId) {
-    window.firebaseSync.clientSendAction(currentRoomId, {
-      type: 'UPDATE_FLEET',
-      teamId: myTeamId,
-      fleet: myTeam.fleet,
-      deviceToken: myDeviceToken,
-    });
   }
 }
 
